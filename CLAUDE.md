@@ -127,8 +127,12 @@ Canonical loop:
 JAVA_HOME=/usr/lib/jvm/java-26-openjdk ANDROID_HOME=$HOME/Android/Sdk ./gradlew :app:assembleDebug
 adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
 adb -s emulator-5554 shell am start -n com.eight87.lectern/.MainActivity
-adb -s emulator-5554 exec-out screencap -p > /tmp/lectern.png   # then Read the PNG
+adb -s emulator-5554 exec-out screencap -p | magick - -resize 50% /tmp/lectern.png   # then Read the PNG
 ```
+
+The AVD is 1080x2400 native, which is too big to read comfortably — pipe screencaps through `magick - -resize 50%` to land at 540x1200 (quarter the pixels, easier to inspect, tap coords are still computed against the device's native 1080x2400, just multiply scaled image coords by 2). Skip the resize only when you genuinely need pixel-accurate detail.
+
+Also: clean up `/tmp/*.png` periodically — these accumulate fast across sessions and a few hundred stale screenshots makes file listings noisy.
 
 Prefer `mobile-mcp` tools when they're loaded in the session (they give the accessibility tree + tap-by-label, much more precise than coordinate input). When mobile-mcp isn't available, fall back to `adb exec-out screencap -p` + visual inspection of the PNG via the Read tool — it's lower-resolution evidence than the a11y tree but enough to confirm widget presence, position, and overflow behaviour.
 
