@@ -1,0 +1,36 @@
+# Android
+build/
+.gradle/
+local.properties
+captures/
+.cxx/
+.externalNativeBuild/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Signing
+keystore.properties
+*.keystore
+*.jks
+release/
+
+# Tooling we don't use but might leak in
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code agent worktrees
+.claude/worktrees/
+
+# Downloaded test fixtures (re-fetchable via scripts/fetch-test-audiobooks.sh)
+test-audiobooks/
+
+# Release artifacts (rebuildable via scripts/build-release-apk.sh)
+release/

@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "mobile": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@mobilenext/mobile-mcp@latest"
+      ],
+      "env": {}
+    },
+    "android-skills": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "android-skills-mcp"
+      ],
+      "env": {}
+    }
+  }
+}
