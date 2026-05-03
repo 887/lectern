@@ -34,12 +34,14 @@ When a phase below has a Voice analog, the phase header references the Voice mod
 
 Goal: a buildable host. These run once per developer machine. Tracked here so the environment is verifiable before agents go to work. (Same machine as tonearm, so most of these are no-ops on this user's box, but we tick them for completeness on a fresh checkout.)
 
-- [ ] **0.1** Install Google's Android CLI: `curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/android -o ~/.local/bin/android && chmod +x ~/.local/bin/android`. The launcher self-bootstraps a 78 MB runtime on first invocation, including a bundled JDK 21 at `~/.android/cli/bundles/<hash>/jre/`. Verify with `android --version`.
-- [ ] **0.2** `android sdk install platforms/android-34 build-tools/34.0.0` — installs to `~/Android/Sdk/`. Bump version when AGP requires.
-- [ ] **0.3** JDK 21 bundled by the Android CLI is sufficient for AGP 9. System Java only matters if a subagent invokes `./gradlew` directly without going through `android` — set `JAVA_HOME` to a system JDK 17+ in that case (see CLAUDE.md).
-- [ ] **0.4** `mobile` MCP server registered at **project scope** (`lectern/.mcp.json`) — already committed in the initial skeleton; verify with `claude mcp list` from inside the repo.
-- [ ] **0.5** `android-skills` MCP server registered at **project scope** (`lectern/.mcp.json`) — already committed in the initial skeleton; verify with `claude mcp list` from inside the repo.
-- [ ] **0.6** Test target: **headless AVD `medium_phone`** (shared with tonearm). Created via `android emulator create --profile=medium_phone`. Started headlessly. Visible to ADB as `emulator-5554`.
+- [x] **0.1** Install Google's Android CLI: `curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/android -o ~/.local/bin/android && chmod +x ~/.local/bin/android`. — already installed at `~/.local/bin/android`, version `0.7.15326717`.
+- [x] **0.2** `android sdk install platforms/android-34 build-tools/34.0.0` — installs to `~/Android/Sdk/`. — `~/Android/Sdk/platforms/` has `android-34` and `android-36`; `~/Android/Sdk/build-tools/` has `34.0.0` and `36.0.0` (carried from tonearm; lectern compiles against API 36 like tonearm does).
+- [x] **0.3** JDK 21 bundled by the Android CLI is sufficient for AGP 9. System Java only matters if a subagent invokes `./gradlew` directly without going through `android` — set `JAVA_HOME` to a system JDK 17+ in that case (see CLAUDE.md). — `/usr/lib/jvm/java-17-openjdk` and `/usr/lib/jvm/java-26-openjdk` both available; CLAUDE.md guidance points at `java-26-openjdk` for direct `./gradlew` invocations.
+- [x] **0.4** `mobile` MCP server registered at **project scope** (`lectern/.mcp.json`) — already committed in the initial skeleton; verify with `claude mcp list` from inside the repo. — entry confirmed in `.mcp.json` shipped with `a863c13`.
+- [x] **0.5** `android-skills` MCP server registered at **project scope** (`lectern/.mcp.json`) — already committed in the initial skeleton; verify with `claude mcp list` from inside the repo. — entry confirmed in `.mcp.json` shipped with `a863c13`.
+- [x] **0.6** Test target: **headless AVD `medium_phone`** (shared with tonearm). Created via `android emulator create --profile=medium_phone`. Started headlessly. Visible to ADB as `emulator-5554`. — `emulator -list-avds` confirms `medium_phone` exists; `adb devices` shows `emulator-5554 device` already running (carried from tonearm session).
+
+**Shipped:** 0.1–0.6 in commit _(this commit)_.
 
 ---
 
