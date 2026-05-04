@@ -7,8 +7,12 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import com.eight87.whisperboy.data.library.AndroidPersistedUriPermissionStore
+import com.eight87.whisperboy.data.library.FolderCoverFinder
 import com.eight87.whisperboy.data.library.LibraryDatabase
 import com.eight87.whisperboy.data.library.LibraryScanner
+import com.eight87.whisperboy.data.library.LibraryScannerEnrichment
+import com.eight87.whisperboy.data.library.Media3MediaAnalyzer
+import com.eight87.whisperboy.data.library.MediaAnalyzer
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
 import com.eight87.whisperboy.data.library.SafLibraryScanner
 import com.eight87.whisperboy.playback.PlayerHolder
@@ -49,6 +53,22 @@ class AppGraph(context: Context) {
      * `LibraryRepository` will own the scan→write pipeline.
      */
     val libraryScanner: LibraryScanner = SafLibraryScanner(appContext)
+
+    /**
+     * Phase D.3's per-file metadata extractor. Exposed via the narrow [MediaAnalyzer] interface
+     * (R.A pattern); the concrete `Media3MediaAnalyzer` stays internal.
+     */
+    val mediaAnalyzer: MediaAnalyzer = Media3MediaAnalyzer(appContext)
+
+    /**
+     * Phase D.3's enrichment pass. Glues D.2's structural [com.eight87.whisperboy.data.library.ScanSnapshot]
+     * to per-file metadata (durations / titles / authors / cumulative positions). Phase D.4's
+     * `applyScan` will consume the enriched output.
+     */
+    val libraryScannerEnrichment: LibraryScannerEnrichment = LibraryScannerEnrichment(
+        mediaAnalyzer = mediaAnalyzer,
+        folderCoverFinder = FolderCoverFinder(),
+    )
 
     fun release() {
         playerHolder.release()
