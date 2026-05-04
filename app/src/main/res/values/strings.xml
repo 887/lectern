@@ -1,3 +1,29 @@
-<resources>
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  whisperboy — canonical English string table. Source of truth for all locales.
+
+  See docs/plans/translations.md for the per-locale workflow.
+
+  Naming scheme: <surface>_<role> (lowercase snake). Surfaces:
+    library_      cover grid, filter chips, sort menu, search, long-press sheet
+    player_       transport, scrubber timestamps, top app bar, book/chapter title
+    chapter_      chapter list bottom sheet, current-chapter indicator
+    bookmark_     bookmark list, add/rename/delete, "set by sleep timer" badge
+    sleep_        sleep timer sheet, fade-out, shake-to-resume
+    folder_       SAF picker bridge, four FolderType labels + descriptions
+    onboarding_   welcome, permissions rationale, picker explainer, first-scan
+    settings_     every settings sub-page (Playback / Sleep / Library / Theme / About)
+    widget_       home-screen widget labels + content descriptions
+    auto_         Android Auto custom command labels
+    permission_   POST_NOTIFICATIONS rationale
+    dialog_       generic dialog buttons (Cancel / OK / Delete)
+    error_        error messages
+    cd_           content descriptions (transport buttons, cover art alt text)
+-->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
     <string name="app_name">Whisperboy</string>
+
+    <!-- home_ — template-leftover home surface; Phase E replaces this with the library_ surface -->
+    <string name="home_greeting">Hello %1$s!</string>
+    <string name="home_error_loading">Error loading data: %1$s</string>
 </resources>

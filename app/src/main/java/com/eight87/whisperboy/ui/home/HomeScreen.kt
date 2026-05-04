@@ -5,10 +5,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
+import com.eight87.whisperboy.R
 import com.eight87.whisperboy.data.DefaultDataRepository
 import com.eight87.whisperboy.theme.WhisperboyTheme
 
@@ -27,7 +29,7 @@ fun HomeScreen(
       HomeScreen(data = (state as HomeScreenUiState.Success).data, modifier = modifier)
     }
     is HomeScreenUiState.Error -> {
-      Text("Error loading data: ${(state as HomeScreenUiState.Error).throwable.message}")
+      Text(stringResource(R.string.home_error_loading, (state as HomeScreenUiState.Error).throwable.message ?: ""))
     }
   }
 }
@@ -39,7 +41,7 @@ internal fun HomeScreen(data: List<String>, modifier: Modifier = Modifier) {
 
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
-  Text(text = "Hello $name!", modifier = modifier)
+  Text(text = stringResource(R.string.home_greeting, name), modifier = modifier)
 }
 
 @Preview(showBackground = true)

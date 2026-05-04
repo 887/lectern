@@ -177,6 +177,7 @@ These are evaluation criteria, not religion — small ad-hoc helpers don't need 
 
 - [`docs/plans/main.md`](docs/plans/main.md) — phased build plan, per the user's global CLAUDE.md rule (numbered phases, sub-step checkboxes).
 - [`docs/plans/sharing-analysis.md`](docs/plans/sharing-analysis.md) — cost/benefit memo on extracting shared atomic libraries between tonearmboy and whisperboy. Decision: **don't share yet.** Revisit after both apps ship 1.0 if a load-bearing hotspot emerges.
+- [`docs/plans/translations.md`](docs/plans/translations.md) — i18n + l10n plan. Discipline-from-day-one (no retro extraction), user-+-Claude per-locale workflow, no third-party service, README progress table piggybacks on `--gh-release`. T.A + T.B foundational pieces shipped; T.C / T.D / T.E open as project ships UI.
 
 When working on a phase:
 
@@ -188,6 +189,15 @@ When working on a phase:
 ## Editorial — user-facing copy
 
 The user follows Paul Graham's *Keep Your Identity Small*. App copy (settings descriptions, error messages, About text, onboarding) should be plain, factual, useful. No "vibes" copy, no personal opinions, no humor that pins identity. This applies double to onboarding (Phase L) — Voice's onboarding is exemplary and the bar to clear.
+
+## i18n discipline + per-locale workflow
+
+See [`docs/plans/translations.md`](docs/plans/translations.md) for the full plan. Two rules carry directly into every Phase E–L PR:
+
+1. **Every user-facing string lands in `app/src/main/res/values/strings.xml` in the SAME COMMIT that introduces the surface.** No `Text("...")` with literal copy in `ui/**`. testTags / log tags / debug-only strings / format-string constants / internal sentinels stay literal — those are not user-facing. Run `./scripts/check-i18n.sh` to audit `ui/**` for violations; it greps Compose source (Android lint's `HardcodedText` covers XML only).
+2. **Naming scheme: `<surface>_<role>` lowercase snake** (e.g. `player_play_pause_cd`, `sleep_fade_out_label`, `folder_type_root_description`). Surfaces are documented as a leading XML comment in `values/strings.xml`.
+
+**Per-locale session workflow** (when the user wants a new language): the user picks the target locale; Claude reads `values/strings.xml` plus the editorial brief above; Claude drafts `values-<locale>/strings.xml` with every translatable key in the same order as the canonical file; the user reviews per-entry; signed-off entries are committed; missing keys fall back to English at runtime (Android default). No third-party translation service. Adding a locale is one file; removing it is `git rm -r values-<locale>/`.
 
 ## Release workflow
 
