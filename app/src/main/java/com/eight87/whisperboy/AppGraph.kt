@@ -8,7 +8,9 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import com.eight87.whisperboy.data.library.AndroidPersistedUriPermissionStore
 import com.eight87.whisperboy.data.library.LibraryDatabase
+import com.eight87.whisperboy.data.library.LibraryScanner
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
+import com.eight87.whisperboy.data.library.SafLibraryScanner
 import com.eight87.whisperboy.playback.PlayerHolder
 
 /**
@@ -40,6 +42,13 @@ class AppGraph(context: Context) {
         LibraryDatabase::class.java,
         "library.db",
     ).build()
+
+    /**
+     * Phase D.2's SAF tree walker. Composables / future settings / Phase D.5 rescan triggers
+     * call this via the [LibraryScanner] interface, never the concrete impl. Phase D.4's
+     * `LibraryRepository` will own the scan→write pipeline.
+     */
+    val libraryScanner: LibraryScanner = SafLibraryScanner(appContext)
 
     fun release() {
         playerHolder.release()
