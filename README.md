@@ -1,10 +1,10 @@
 # whisperboy
 
-Modern Android audiobook player. Built on Jetpack Compose + Media3. Spiritual sibling to [Voice](https://github.com/PaulWoitaschek/Voice) — same feature surface (SAF folder libraries, embedded chapter parsing, sleep timer with fade-out and shake-to-resume, per-book speed and skip-silence, bookmarks, Android Auto via `MediaLibraryService`), rebuilt fresh in Kotlin + Compose with the same CLI-only build philosophy as [tonearm](https://github.com/887/tonearm).
+Modern Android audiobook player. Built on Jetpack Compose + Media3. Spiritual sibling to [Voice](https://github.com/PaulWoitaschek/Voice) — same feature surface (SAF folder libraries, embedded chapter parsing, sleep timer with fade-out and shake-to-resume, per-book speed and skip-silence, bookmarks, Android Auto via `MediaLibraryService`), rebuilt fresh in Kotlin + Compose with the same CLI-only build philosophy as [tonearmboy](https://github.com/887/tonearmboy).
 
 ## Status
 
-Pre-Phase 0. Repo skeleton + plans only. See [`docs/plans/main.md`](docs/plans/main.md) for the phased build plan and [`docs/plans/sharing-analysis.md`](docs/plans/sharing-analysis.md) for the tonearm/whisperboy shared-code analysis.
+Pre-Phase 0. Repo skeleton + plans only. See [`docs/plans/main.md`](docs/plans/main.md) for the phased build plan and [`docs/plans/sharing-analysis.md`](docs/plans/sharing-analysis.md) for the tonearmboy/whisperboy shared-code analysis.
 
 ## Goals
 
@@ -16,19 +16,17 @@ Pre-Phase 0. Repo skeleton + plans only. See [`docs/plans/main.md`](docs/plans/m
 ## Non-goals (v1)
 
 - Cloud sync / Audiobookshelf / Plex / Jellyfin server integration. (Tracked as a stretch differentiator in `docs/plans/main.md`.)
-- Podcast / RSS support. Whisperboy plays *audiobooks* — there is a separate [tonearm](https://github.com/887/tonearm) for music; podcasts can pick a third app.
+- Podcast / RSS support. Whisperboy plays *audiobooks* — there is a separate [tonearmboy](https://github.com/887/tonearmboy) for music; podcasts can pick a third app.
 - Cast / Wear OS / tablet-specific layouts (works on phone, scales later).
 - Online cover-art search. Local + embedded only in v1.
 
 ## Why "whisperboy"?
 
-Sister naming convention with the gallery app **shutterboy**: *<object-from-the-medium> + boy*. Shutter for cameras; whisper for audiobooks. An audiobook *is* a voice whispered into your ear at close range — that's the whole register: intimate, bedside, late-night. The "boy" suffix marks these apps as a family.
-
-Tonearm doesn't follow this convention — it predates it, and the tonearm-as-physical-object metaphor (the soft mechanical thing that touches the groove) still works in its own right. Sister-app naming starts with shutterboy and continues here.
+Sister naming convention with the gallery app **shutterboy** and the music app **tonearmboy**: *<object-from-the-medium> + boy*. Shutter for cameras; tonearm for music; whisper for audiobooks. An audiobook *is* a voice whispered into your ear at close range — that's the whole register: intimate, bedside, late-night. The "boy" suffix marks these apps as a family.
 
 ## Why a sibling app, not a music+audiobook combo?
 
-Because the data model differs and forcing both into one app produces compromises in both. Music: many short tracks per album, queue-based, MediaStore-scanned, ReplayGain. Audiobooks: few long files per book, position-per-book, SAF-scanned, sleep timer, embedded chapter markers. Tonearm and whisperboy share Media3 + Compose + Room as a *stack*, not as a codebase. See [`docs/plans/sharing-analysis.md`](docs/plans/sharing-analysis.md) for the cost/benefit analysis of extracting a shared library between the two — the short answer is that the shareable wins are small (a few hundred LOC each) and the cost of a subrepo / separate versioning / change-coordination overhead currently outweighs them. Revisit after both apps ship 1.0.
+Because the data model differs and forcing both into one app produces compromises in both. Music: many short tracks per album, queue-based, MediaStore-scanned, ReplayGain. Audiobooks: few long files per book, position-per-book, SAF-scanned, sleep timer, embedded chapter markers. Tonearmboy and whisperboy share Media3 + Compose + Room as a *stack*, not as a codebase. See [`docs/plans/sharing-analysis.md`](docs/plans/sharing-analysis.md) for the cost/benefit analysis of extracting a shared library between the two — the short answer is that the shareable wins are small (a few hundred LOC each) and the cost of a subrepo / separate versioning / change-coordination overhead currently outweighs them. Revisit after both apps ship 1.0.
 
 ## Install on Android via Obtainium
 

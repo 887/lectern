@@ -32,14 +32,14 @@ When a phase below has a Voice analog, the phase header references the Voice mod
 
 ## Phase 0 — prerequisites (one-time, on the host)
 
-Goal: a buildable host. These run once per developer machine. Tracked here so the environment is verifiable before agents go to work. (Same machine as tonearm, so most of these are no-ops on this user's box, but we tick them for completeness on a fresh checkout.)
+Goal: a buildable host. These run once per developer machine. Tracked here so the environment is verifiable before agents go to work. (Same machine as tonearmboy, so most of these are no-ops on this user's box, but we tick them for completeness on a fresh checkout.)
 
 - [x] **0.1** Install Google's Android CLI: `curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/android -o ~/.local/bin/android && chmod +x ~/.local/bin/android`. — already installed at `~/.local/bin/android`, version `0.7.15326717`.
-- [x] **0.2** `android sdk install platforms/android-34 build-tools/34.0.0` — installs to `~/Android/Sdk/`. — `~/Android/Sdk/platforms/` has `android-34` and `android-36`; `~/Android/Sdk/build-tools/` has `34.0.0` and `36.0.0` (carried from tonearm; whisperboy compiles against API 36 like tonearm does).
+- [x] **0.2** `android sdk install platforms/android-34 build-tools/34.0.0` — installs to `~/Android/Sdk/`. — `~/Android/Sdk/platforms/` has `android-34` and `android-36`; `~/Android/Sdk/build-tools/` has `34.0.0` and `36.0.0` (carried from tonearmboy; whisperboy compiles against API 36 like tonearmboy does).
 - [x] **0.3** JDK 21 bundled by the Android CLI is sufficient for AGP 9. System Java only matters if a subagent invokes `./gradlew` directly without going through `android` — set `JAVA_HOME` to a system JDK 17+ in that case (see CLAUDE.md). — `/usr/lib/jvm/java-17-openjdk` and `/usr/lib/jvm/java-26-openjdk` both available; CLAUDE.md guidance points at `java-26-openjdk` for direct `./gradlew` invocations.
 - [x] **0.4** `mobile` MCP server registered at **project scope** (`whisperboy/.mcp.json`) — already committed in the initial skeleton; verify with `claude mcp list` from inside the repo. — entry confirmed in `.mcp.json` shipped with `a863c13`.
 - [x] **0.5** `android-skills` MCP server registered at **project scope** (`whisperboy/.mcp.json`) — already committed in the initial skeleton; verify with `claude mcp list` from inside the repo. — entry confirmed in `.mcp.json` shipped with `a863c13`.
-- [x] **0.6** Test target: **headless AVD `medium_phone`** (shared with tonearm). Created via `android emulator create --profile=medium_phone`. Started headlessly. Visible to ADB as `emulator-5554`. — `emulator -list-avds` confirms `medium_phone` exists; `adb devices` shows `emulator-5554 device` already running (carried from tonearm session).
+- [x] **0.6** Test target: **headless AVD `medium_phone`** (shared with tonearmboy). Created via `android emulator create --profile=medium_phone`. Started headlessly. Visible to ADB as `emulator-5554`. — `emulator -list-avds` confirms `medium_phone` exists; `adb devices` shows `emulator-5554 device` already running (carried from tonearmboy session).
 
 **Shipped:** 0.1–0.6 in commit _(this commit)_.
 
@@ -47,9 +47,9 @@ Goal: a buildable host. These run once per developer machine. Tracked here so th
 
 ## Phase A — scaffold
 
-Goal: a buildable, sideload-able APK that boots into a blank Compose screen. Everything that follows assumes this exists. Mirror tonearm Phase A almost exactly — same template choice, same gradle setup, same package convention.
+Goal: a buildable, sideload-able APK that boots into a blank Compose screen. Everything that follows assumes this exists. Mirror tonearmboy Phase A almost exactly — same template choice, same gradle setup, same package convention.
 
-- [x] **A.0** Browse `android create list` and pick the closest official template. Default expectation: `empty-activity` (the same template tonearm used). — chose `empty-activity` (only template currently shipped, tagged `compose,activity,agp-9`); same call tonearm made.
+- [x] **A.0** Browse `android create list` and pick the closest official template. Default expectation: `empty-activity` (the same template tonearmboy used). — chose `empty-activity` (only template currently shipped, tagged `compose,activity,agp-9`); same call tonearmboy made.
 - [x] **A.1** `android create --name=whisperboy --output=. <template>` from inside the repo root. Verify the generated layout: `app/`, `gradle/wrapper/`, `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`. Rename package from `com.example.whisperboy` to `com.eight87.whisperboy`. Rename theme to `WhisperboyTheme`. — scaffolded into `/tmp/whisperboy-scaffold` then `rsync --ignore-existing` into the repo (preserves README, CLAUDE.md, plans, LICENSE, .gitignore, .mcp.json). Package renamed `com.example.whisperboy` → `com.eight87.whisperboy` everywhere via `sed`; source dirs moved `app/src/{main,test,androidTest}/java/com/example/whisperboy` → `app/src/.../java/com/eight87/whisperboy`. Theme renamed `MyApplicationTheme` → `WhisperboyTheme` and `Theme.MyApplication` → `Theme.Whisperboy`. Template ships with Compose + Material 3 + AGP 9.0.1 + Kotlin 2.3.20 + Navigation 3 + Lifecycle ViewModel + a placeholder `DataRepository` / `MainScreenViewModel` / `MainScreen` — kept as-is for the hello-Compose smoke; will be reshaped or stripped as Phase B / E land their own surfaces.
 - [x] **A.2** Add Media3 deps to `app/build.gradle.kts`: `media3-exoplayer`, `media3-session`, `media3-ui`. Pin via a single `media3 = "1.10.0"` key in `libs.versions.toml` shared by all three module entries (no Maven BOM exists for Media3). — single `media3 = "1.10.0"` key in `[versions]`, three `androidx-media3-{exoplayer,session,ui}` entries in `[libraries]`, three `implementation(libs.androidx.media3.*)` lines in `app/build.gradle.kts`. A bump touches one line.
 - [x] **A.3** `AndroidManifest.xml` adds: `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `POST_NOTIFICATIONS`, `WAKE_LOCK`. **No `READ_MEDIA_AUDIO` / `READ_EXTERNAL_STORAGE`** — whisperboy is SAF-only. `minSdk = 28` (matching Voice's floor; SAF flake on older APIs makes the cost of supporting 26-27 not worth the user count). `compileSdk` and `targetSdk` set to current stable. — four `<uses-permission>` lines added with a comment block pointing at CLAUDE.md "Why SAF (not MediaStore)". `minSdk` bumped from template default 24 → 28. `compileSdk = 36`, `targetSdk = 36` kept from template (matches the API-36 system image on `medium_phone`).
@@ -68,8 +68,8 @@ Goal: ExoPlayer plays a known audio file. `MediaLibrarySession` is registered. A
 - [ ] **B.1** `PlayerHolder` wraps an `ExoPlayer` instance. Build with `setAudioAttributes(..., handleAudioFocus = true)`, `setHandleAudioBecomingNoisy(true)`, `setWakeMode(WAKE_MODE_LOCAL)`. Use a **`OnlyAudioRenderersFactory`** (audio-only `RenderersFactory` — strips video renderers entirely; lifted as a *pattern* from Voice, not vendored) to keep APK small and avoid any video decoder surface.
 - [ ] **B.2** `PlaybackService : MediaLibraryService` declared in the manifest with `foregroundServiceType="mediaPlayback"` and the `androidx.media3.session.MediaLibraryService` intent filter. Stub notification (replaced for real in Phase F).
 - [ ] **B.3** `MediaLibrarySession` wired to the Player via `MediaLibrarySession.Builder(this, player, callback)`. Stub `MediaLibrarySession.Callback` returns an empty browse tree — real tree lands in Phase N.
-- [ ] **B.4** Audio focus delegated to ExoPlayer's built-in handling via `setAudioAttributes(..., handleAudioFocus = true)`. (Same pattern tonearm validated; verified against `kb://android/media/media3/session/background-playback`.)
-- [ ] **B.5** Format smoke test on the real target: play one each of MP3, M4B (with embedded chapters), OGG Vorbis, FLAC, WebM/Matroska. Tonearm's smoke pattern (`scripts/smoke-test.sh`, broadcast intent → service plays via `/data/local/tmp` fixtures) ports cleanly to whisperboy. The M4B + Matroska format coverage is new; both pass at the codec layer (Phase I parses the chapter markers — Phase B just needs the audio to decode).
+- [ ] **B.4** Audio focus delegated to ExoPlayer's built-in handling via `setAudioAttributes(..., handleAudioFocus = true)`. (Same pattern tonearmboy validated; verified against `kb://android/media/media3/session/background-playback`.)
+- [ ] **B.5** Format smoke test on the real target: play one each of MP3, M4B (with embedded chapters), OGG Vorbis, FLAC, WebM/Matroska. Tonearmboy's smoke pattern (`scripts/smoke-test.sh`, broadcast intent → service plays via `/data/local/tmp` fixtures) ports cleanly to whisperboy. The M4B + Matroska format coverage is new; both pass at the codec layer (Phase I parses the chapter markers — Phase B just needs the audio to decode).
 
 ---
 
@@ -110,7 +110,7 @@ Goal: cover-grid library screen, three filter chips (Current / Not started / Com
 - [ ] **E.1** `LibraryScreen` composable — cover-forward grid, default columns auto-sized to width, list-toggle in the top app bar (`GridMode` sealed type). Each cover renders the book title underneath + a thin progress bar overlay along the bottom edge of the cover (% of total duration listened).
 - [ ] **E.2** Filter chips row: Current / Not started / Completed. Filter is a sealed `BookFilter`; query plumbed through `BookSource.observeBooks(filter)`.
 - [ ] **E.3** Sort menu (Recent, Title, Author). Persisted in DataStore.
-- [ ] **E.4** Search — full-text over book title + author. Room FTS4 if it composes cleanly with the `BookEntity` shape, else `LIKE` fallback. Same pattern tonearm validated in C.4.
+- [ ] **E.4** Search — full-text over book title + author. Room FTS4 if it composes cleanly with the `BookEntity` shape, else `LIKE` fallback. Same pattern tonearmboy validated in C.4.
 - [ ] **E.5** Long-press → `BookActionSheet` (Rename, Change cover from device, Mark completed, Mark not started, Forget book record). "Forget" only deletes the row + bookmarks — does not delete files (whisperboy doesn't delete audiobook files; the user's library is precious).
 - [ ] **E.6** Now-playing bar pinned to the bottom when something is playing — book title, chapter title, play/pause, taps through to the player screen (Phase F).
 
@@ -191,7 +191,7 @@ Goal: full settings tree. **Voice analog:** `:features:settings`.
 - [ ] **K.3** Sleep timer section: default duration, fade-out duration, shake-to-resume on/off, auto-arm window.
 - [ ] **K.4** Library section: list of roots with `FolderType` + remove + add-new; manual rescan button.
 - [ ] **K.5** Theme section: light / dark / follow-system; dynamic color toggle (Material You).
-- [ ] **K.6** About section: version, build hash, license, link to GitHub repo. Build metadata captured at compile time (same pattern tonearm validated).
+- [ ] **K.6** About section: version, build hash, license, link to GitHub repo. Build metadata captured at compile time (same pattern tonearmboy validated).
 
 ---
 
@@ -234,10 +234,10 @@ This is the payoff for picking `MediaLibraryService` in Phase B.2 instead of the
 
 ## Phase O — release / Obtainium / GitHub Actions
 
-Goal: a sideload-able APK on GitHub Releases. Mirror of tonearm's release pipeline almost exactly. **Voice analog:** none — Voice ships via Play + F-Droid.
+Goal: a sideload-able APK on GitHub Releases. Mirror of tonearmboy's release pipeline almost exactly. **Voice analog:** none — Voice ships via Play + F-Droid.
 
-- [ ] **O.1** `scripts/build-release-apk.sh` — port from tonearm, swap `tonearm` → `whisperboy` in artefact names + tag prefixes.
-- [ ] **O.2** `.github/workflows/release.yml` — tag-only, self-disabling, mirror of tonearm's workflow. Zero CI minutes by default.
+- [ ] **O.1** `scripts/build-release-apk.sh` — port from tonearmboy, swap `tonearmboy` → `whisperboy` in artefact names + tag prefixes.
+- [ ] **O.2** `.github/workflows/release.yml` — tag-only, self-disabling, mirror of tonearmboy's workflow. Zero CI minutes by default.
 - [ ] **O.3** First release `v0.1.0-<sha7>` — debug-signed, sideload via Obtainium, validate the install path end-to-end.
 - [ ] **O.4** Production-signed releases when keystore is in place — env vars `WHISPERBOY_RELEASE_KEYSTORE` / `WHISPERBOY_RELEASE_KEY_ALIAS` / `WHISPERBOY_RELEASE_KEY_PASSWORD`.
 
@@ -245,7 +245,7 @@ Goal: a sideload-able APK on GitHub Releases. Mirror of tonearm's release pipeli
 
 ## Phase P — polish + edge cases (the unglamorous one)
 
-Caught-once-then-fixed bugs and gnarly real-world cases that don't belong to any earlier phase. Whisperboy will accumulate these the same way tonearm did; this is the catch-bucket so they don't get filed under a wrong phase.
+Caught-once-then-fixed bugs and gnarly real-world cases that don't belong to any earlier phase. Whisperboy will accumulate these the same way tonearmboy did; this is the catch-bucket so they don't get filed under a wrong phase.
 
 - [ ] **P.1** Cold-start playback resumption — `MediaSession.Callback.onPlaybackResumption` returns last book + position. Verified via process-death simulation (`adb shell am force-stop com.eight87.whisperboy` while playing).
 - [ ] **P.2** Headset / Bluetooth controls — play, pause, prev-chapter (long-press prev), next-chapter (long-press next). Verified on AVD virtual headset + real BT headset.

@@ -1,12 +1,12 @@
 # whisperboy — Claude instructions
 
-Modern Android audiobook player. Kotlin + Jetpack Compose + Media3 + Room + DataStore + SAF. Spiritual sibling to [Voice](https://github.com/PaulWoitaschek/Voice). Built entirely from the CLI, no Android Studio required, no QEMU emulator. Sister app to [tonearm](https://github.com/887/tonearm) (music player) — same toolchain and conventions, different data model and feature set; see [`docs/plans/sharing-analysis.md`](docs/plans/sharing-analysis.md) for the cross-app shared-code analysis.
+Modern Android audiobook player. Kotlin + Jetpack Compose + Media3 + Room + DataStore + SAF. Spiritual sibling to [Voice](https://github.com/PaulWoitaschek/Voice). Built entirely from the CLI, no Android Studio required, no QEMU emulator. Sister app to [tonearmboy](https://github.com/887/tonearmboy) (music player) — same toolchain and conventions, different data model and feature set; see [`docs/plans/sharing-analysis.md`](docs/plans/sharing-analysis.md) for the cross-app shared-code analysis.
 
 ## Architectural decisions (locked)
 
 - **Language:** Kotlin only. No Java.
 - **UI:** Jetpack Compose. No Android Views.
-- **Audio:** [androidx.media3](https://developer.android.com/media/media3) (ExoPlayer + MediaSession + **`MediaLibraryService`**). The `MediaLibraryService` choice — vs. the simpler `MediaSessionService` tonearm uses — is locked: it is required for Android Auto / Automotive media-browse trees, which is a Phase N goal. Same audio engine; richer service.
+- **Audio:** [androidx.media3](https://developer.android.com/media/media3) (ExoPlayer + MediaSession + **`MediaLibraryService`**). The `MediaLibraryService` choice — vs. the simpler `MediaSessionService` tonearmboy uses — is locked: it is required for Android Auto / Automotive media-browse trees, which is a Phase N goal. Same audio engine; richer service.
 - **Data, library:** Room for cached book / chapter / bookmark metadata. Per-book position lives on the `BookContent` row — single source of truth, not a separate table.
 - **Storage, audio files:** **SAF only** (Storage Access Framework, `DocumentFile` + persisted URI permissions). No `READ_EXTERNAL_STORAGE`, no MediaStore. Audiobook collections live wherever the user keeps them (frequently on SD card, frequently in folders the user explicitly opts into) — SAF is the modern Android-correct path. We will wrap `DocumentFile` in a `CachedDocumentFile` to mitigate SAF's well-known performance pain.
 - **Settings, preferences:** DataStore (Preferences) for sleep timer defaults, seek-back-on-resume seconds, theme, etc. Per-book settings (speed, skip silence, gain) live on the `BookContent` row.
@@ -17,7 +17,7 @@ Modern Android audiobook player. Kotlin + Jetpack Compose + Media3 + Room + Data
 
 ### Why SAF (not MediaStore)
 
-Tonearm uses MediaStore because music collections are typically in `/sdcard/Music/`, indexed by the system, and the affordances MediaStore provides (alphabetical-by-artist views, full-library scan, change observer) line up with how people consume music. Audiobooks are different:
+Tonearmboy uses MediaStore because music collections are typically in `/sdcard/Music/`, indexed by the system, and the affordances MediaStore provides (alphabetical-by-artist views, full-library scan, change observer) line up with how people consume music. Audiobooks are different:
 
 - Often live in `/sdcard/Audiobooks/` or `/sdcard/Documents/Audiobooks/` or on **SD card / OTG drives** that MediaStore does not always index reliably.
 - Are *opt-in collections* — the user wants to point whisperboy at a specific folder, not see "every audio file on the device". MediaStore's all-or-nothing visibility is the wrong shape.
@@ -27,7 +27,7 @@ So: SAF picker, persisted URI permissions, per-root folder-mode classification (
 
 ### Why `MediaLibraryService` (not `MediaSessionService`)
 
-`MediaLibraryService extends MediaSessionService`. It adds the `MediaLibrarySession` browse tree that Android Auto / Wear OS / system media-browse clients walk. Tonearm doesn't need this (Phase N for tonearm is "delete files from the player", not "ship to Auto"). Whisperboy does — Auto support is a Phase N goal — and adding it later means rewriting the service plumbing once it has callers, which is exactly the kind of scope-creep we avoid by deciding now. Same `ExoPlayer` underneath; the difference is the service surface.
+`MediaLibraryService extends MediaSessionService`. It adds the `MediaLibrarySession` browse tree that Android Auto / Wear OS / system media-browse clients walk. Tonearmboy doesn't need this (Phase N for tonearmboy is "delete files from the player", not "ship to Auto"). Whisperboy does — Auto support is a Phase N goal — and adding it later means rewriting the service plumbing once it has callers, which is exactly the kind of scope-creep we avoid by deciding now. Same `ExoPlayer` underneath; the difference is the service surface.
 
 ## Required CLIs and MCP servers
 
@@ -154,11 +154,11 @@ The SAF picker presents a system UI surface that the AVD reproduces faithfully b
 
 ## File conventions
 
-- Single-module to start. Split into `:core` / `:data` / `:ui` only when the single-module size warrants it; do not premature-modularize. (Voice is multi-module — `:core:*` × N, `:features:*` × N — and the user has a strong prior, validated on tonearm, that single-module is the right starting shape and modularization should follow pain, not predict it.)
+- Single-module to start. Split into `:core` / `:data` / `:ui` only when the single-module size warrants it; do not premature-modularize. (Voice is multi-module — `:core:*` × N, `:features:*` × N — and the user has a strong prior, validated on tonearmboy, that single-module is the right starting shape and modularization should follow pain, not predict it.)
 - Package root: `com.eight87.whisperboy`.
 - Composable functions: PascalCase, no `@Composable` on private helpers unless they take a Modifier.
 - ViewModels: one per screen, talk to the data layer via repository interfaces.
-- No DI framework in v1 (Hilt/Koin/Metro) — pass dependencies as constructor params via a hand-rolled `AppGraph` composition root, the same pattern tonearm uses. Add DI later if/when the manual wiring hurts. (Voice migrated to Metro; we don't follow them on that until whisperboy's wiring complexity actually warrants it.)
+- No DI framework in v1 (Hilt/Koin/Metro) — pass dependencies as constructor params via a hand-rolled `AppGraph` composition root, the same pattern tonearmboy uses. Add DI later if/when the manual wiring hurts. (Voice migrated to Metro; we don't follow them on that until whisperboy's wiring complexity actually warrants it.)
 - No reflection-based JSON. Use `kotlinx.serialization` if any serialization is needed.
 
 ## Design principles — SOLID, applied to Kotlin + Compose
@@ -176,7 +176,7 @@ These are evaluation criteria, not religion — small ad-hoc helpers don't need 
 ## Plan files
 
 - [`docs/plans/main.md`](docs/plans/main.md) — phased build plan, per the user's global CLAUDE.md rule (numbered phases, sub-step checkboxes).
-- [`docs/plans/sharing-analysis.md`](docs/plans/sharing-analysis.md) — cost/benefit memo on extracting shared atomic libraries between tonearm and whisperboy. Decision: **don't share yet.** Revisit after both apps ship 1.0 if a load-bearing hotspot emerges.
+- [`docs/plans/sharing-analysis.md`](docs/plans/sharing-analysis.md) — cost/benefit memo on extracting shared atomic libraries between tonearmboy and whisperboy. Decision: **don't share yet.** Revisit after both apps ship 1.0 if a load-bearing hotspot emerges.
 
 When working on a phase:
 
