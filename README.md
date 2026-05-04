@@ -126,13 +126,13 @@ export JAVA_HOME=/usr/lib/jvm/java-26-openjdk
 export ANDROID_HOME=$HOME/Android/Sdk
 
 ./gradlew assembleDebug
-android run --apks=app/build/outputs/apk/debug/app-debug.apk --device=emulator-5554
+android run --apks=app/build/outputs/apk/debug/whisperboy-debug.apk --device=emulator-5554
 ```
 
 Or via the Android CLI directly (which handles the toolchain internally):
 
 ```bash
-android run --apks=app/build/outputs/apk/debug/app-debug.apk
+android run --apks=app/build/outputs/apk/debug/whisperboy-debug.apk
 ```
 
 ## Build a release APK

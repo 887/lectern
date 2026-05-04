@@ -7,6 +7,9 @@ plugins {
 android {
     namespace = "com.eight87.whisperboy"
     compileSdk = 36
+    base {
+        archivesName.set("whisperboy")
+    }
     defaultConfig {
         applicationId = "com.eight87.whisperboy"
         minSdk = 28

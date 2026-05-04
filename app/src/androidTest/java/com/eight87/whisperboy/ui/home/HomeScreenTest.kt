@@ -1,4 +1,4 @@
-package com.eight87.whisperboy.ui.main
+package com.eight87.whisperboy.ui.home
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -7,14 +7,14 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-/** UI tests for [com.eight87.whisperboy.ui.main.MainScreen]. */
-class MainScreenTest {
+/** UI tests for [com.eight87.whisperboy.ui.home.HomeScreen]. */
+class HomeScreenTest {
 
   @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
   @Before
   fun setup() {
-    composeTestRule.setContent { MainScreen(FAKE_DATA) }
+    composeTestRule.setContent { HomeScreen(FAKE_DATA) }
   }
 
   @Test

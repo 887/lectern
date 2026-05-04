@@ -10,13 +10,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.eight87.whisperboy.theme.WhisperboyTheme
 
-class MainActivity : ComponentActivity() {
+class WhisperboyActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
     enableEdgeToEdge()
     setContent {
-      WhisperboyTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainNavigation() } }
+      WhisperboyTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { WhisperboyApp() } }
     }
   }
 }

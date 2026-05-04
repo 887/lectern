@@ -1,4 +1,4 @@
-package com.eight87.whisperboy.ui.main
+package com.eight87.whisperboy.ui.home
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
@@ -13,27 +13,27 @@ import com.eight87.whisperboy.data.DefaultDataRepository
 import com.eight87.whisperboy.theme.WhisperboyTheme
 
 @Composable
-fun MainScreen(
+fun HomeScreen(
   onItemClick: (NavKey) -> Unit,
   modifier: Modifier = Modifier,
-  viewModel: MainScreenViewModel = viewModel { MainScreenViewModel(DefaultDataRepository()) },
+  viewModel: HomeScreenViewModel = viewModel { HomeScreenViewModel(DefaultDataRepository()) },
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
   when (state) {
-    MainScreenUiState.Loading -> {
+    HomeScreenUiState.Loading -> {
       // Blank
     }
-    is MainScreenUiState.Success -> {
-      MainScreen(data = (state as MainScreenUiState.Success).data, modifier = modifier)
+    is HomeScreenUiState.Success -> {
+      HomeScreen(data = (state as HomeScreenUiState.Success).data, modifier = modifier)
     }
-    is MainScreenUiState.Error -> {
-      Text("Error loading data: ${(state as MainScreenUiState.Error).throwable.message}")
+    is HomeScreenUiState.Error -> {
+      Text("Error loading data: ${(state as HomeScreenUiState.Error).throwable.message}")
     }
   }
 }
 
 @Composable
-internal fun MainScreen(data: List<String>, modifier: Modifier = Modifier) {
+internal fun HomeScreen(data: List<String>, modifier: Modifier = Modifier) {
   Column(modifier) { data.forEach { Greeting(it) } }
 }
 
@@ -44,12 +44,12 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 
 @Preview(showBackground = true)
 @Composable
-fun MainScreenPreview() {
-  WhisperboyTheme { MainScreen(listOf("Android")) }
+fun HomeScreenPreview() {
+  WhisperboyTheme { HomeScreen(listOf("Android")) }
 }
 
 @Preview(showBackground = true, widthDp = 340)
 @Composable
-fun MainScreenPortraitPreview() {
-  WhisperboyTheme { MainScreen(listOf("Android")) }
+fun HomeScreenPortraitPreview() {
+  WhisperboyTheme { HomeScreen(listOf("Android")) }
 }

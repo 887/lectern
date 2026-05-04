@@ -59,7 +59,7 @@ Useful subcommands:
 android create list                                  # browse project templates
 android create --name=whisperboy --output=. <template>  # scaffold a new project
 android sdk install platforms/android-34 build-tools/34.0.0
-android run --apks=app/build/outputs/apk/debug/app-debug.apk
+android run --apks=app/build/outputs/apk/debug/whisperboy-debug.apk
 android docs search <query>                          # query the Android Knowledge Base
 android docs fetch <kb-url>                          # fetch a specific KB doc
 android skills list --long                           # browse official Android skills
@@ -113,7 +113,7 @@ For whisperboy specifically, the AVD is fine for the cover-grid / SAF-picker / s
 
 ```bash
 ./gradlew assembleDebug
-android run --apks=app/build/outputs/apk/debug/app-debug.apk
+android run --apks=app/build/outputs/apk/debug/whisperboy-debug.apk
 # mobile-mcp tools take over for UI interaction
 ```
 
@@ -125,8 +125,8 @@ Canonical loop:
 
 ```bash
 JAVA_HOME=/usr/lib/jvm/java-26-openjdk ANDROID_HOME=$HOME/Android/Sdk ./gradlew :app:assembleDebug
-adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
-adb -s emulator-5554 shell am start -n com.eight87.whisperboy/.MainActivity
+adb -s emulator-5554 install -r app/build/outputs/apk/debug/whisperboy-debug.apk
+adb -s emulator-5554 shell am start -n com.eight87.whisperboy/.WhisperboyActivity
 adb -s emulator-5554 exec-out screencap -p | magick - -resize 50% /tmp/whisperboy.png   # then Read the PNG
 ```
 
@@ -142,7 +142,7 @@ For raw ADB inspection during dev:
 
 ```bash
 adb logcat -s whisperboy:* AudioFocus:* MediaSession:* MediaBrowserService:*
-adb shell am start -n com.eight87.whisperboy/.MainActivity
+adb shell am start -n com.eight87.whisperboy/.WhisperboyActivity
 ```
 
 ### SAF-specific test-loop notes

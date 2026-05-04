@@ -8,19 +8,19 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
-import com.eight87.whisperboy.ui.main.MainScreen
+import com.eight87.whisperboy.ui.home.HomeScreen
 
 @Composable
-fun MainNavigation() {
-  val backStack = rememberNavBackStack(Main)
+fun WhisperboyApp() {
+  val backStack = rememberNavBackStack(HomeRoute)
 
   NavDisplay(
     backStack = backStack,
     onBack = { backStack.removeLastOrNull() },
     entryProvider =
       entryProvider {
-        entry<Main> {
-          MainScreen(onItemClick = { navKey -> backStack.add(navKey) }, modifier = Modifier.safeDrawingPadding().padding(16.dp))
+        entry<HomeRoute> {
+          HomeScreen(onItemClick = { navKey -> backStack.add(navKey) }, modifier = Modifier.safeDrawingPadding().padding(16.dp))
         }
       },
   )
