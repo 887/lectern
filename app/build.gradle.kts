@@ -5,10 +5,10 @@ plugins {
 }
 
 android {
-    namespace = "com.eight87.lectern"
+    namespace = "com.eight87.whisperboy"
     compileSdk = 36
     defaultConfig {
-        applicationId = "com.eight87.lectern"
+        applicationId = "com.eight87.whisperboy"
         minSdk = 28
         targetSdk = 36
         versionCode = 1

@@ -1,4 +1,4 @@
-# lectern — main build plan
+# whisperboy — main build plan
 
 ## Status: 🟡 PRE-PHASE 0 (skeleton + plans only)
 
@@ -18,7 +18,7 @@ _Repo skeleton, README, CLAUDE.md, and this plan landed in the initial commit. N
 
 ## Spiritual sibling
 
-[Voice](https://github.com/PaulWoitaschek/Voice) (GPLv3, by Paul Woitaschek) is the closest functional analog. Lectern is **not** a fork — written from scratch in Kotlin + Compose, MIT-licensed — but Voice's mapped design space is the one we start in:
+[Voice](https://github.com/PaulWoitaschek/Voice) (GPLv3, by Paul Woitaschek) is the closest functional analog. Whisperboy is **not** a fork — written from scratch in Kotlin + Compose, MIT-licensed — but Voice's mapped design space is the one we start in:
 
 - SAF-only library, four folder modes (`SingleFile` / `SingleFolder` / `Root` / `Author`)
 - Per-book speed, skip-silence, gain stored on the `BookContent` row
@@ -35,10 +35,10 @@ When a phase below has a Voice analog, the phase header references the Voice mod
 Goal: a buildable host. These run once per developer machine. Tracked here so the environment is verifiable before agents go to work. (Same machine as tonearm, so most of these are no-ops on this user's box, but we tick them for completeness on a fresh checkout.)
 
 - [x] **0.1** Install Google's Android CLI: `curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/android -o ~/.local/bin/android && chmod +x ~/.local/bin/android`. — already installed at `~/.local/bin/android`, version `0.7.15326717`.
-- [x] **0.2** `android sdk install platforms/android-34 build-tools/34.0.0` — installs to `~/Android/Sdk/`. — `~/Android/Sdk/platforms/` has `android-34` and `android-36`; `~/Android/Sdk/build-tools/` has `34.0.0` and `36.0.0` (carried from tonearm; lectern compiles against API 36 like tonearm does).
+- [x] **0.2** `android sdk install platforms/android-34 build-tools/34.0.0` — installs to `~/Android/Sdk/`. — `~/Android/Sdk/platforms/` has `android-34` and `android-36`; `~/Android/Sdk/build-tools/` has `34.0.0` and `36.0.0` (carried from tonearm; whisperboy compiles against API 36 like tonearm does).
 - [x] **0.3** JDK 21 bundled by the Android CLI is sufficient for AGP 9. System Java only matters if a subagent invokes `./gradlew` directly without going through `android` — set `JAVA_HOME` to a system JDK 17+ in that case (see CLAUDE.md). — `/usr/lib/jvm/java-17-openjdk` and `/usr/lib/jvm/java-26-openjdk` both available; CLAUDE.md guidance points at `java-26-openjdk` for direct `./gradlew` invocations.
-- [x] **0.4** `mobile` MCP server registered at **project scope** (`lectern/.mcp.json`) — already committed in the initial skeleton; verify with `claude mcp list` from inside the repo. — entry confirmed in `.mcp.json` shipped with `a863c13`.
-- [x] **0.5** `android-skills` MCP server registered at **project scope** (`lectern/.mcp.json`) — already committed in the initial skeleton; verify with `claude mcp list` from inside the repo. — entry confirmed in `.mcp.json` shipped with `a863c13`.
+- [x] **0.4** `mobile` MCP server registered at **project scope** (`whisperboy/.mcp.json`) — already committed in the initial skeleton; verify with `claude mcp list` from inside the repo. — entry confirmed in `.mcp.json` shipped with `a863c13`.
+- [x] **0.5** `android-skills` MCP server registered at **project scope** (`whisperboy/.mcp.json`) — already committed in the initial skeleton; verify with `claude mcp list` from inside the repo. — entry confirmed in `.mcp.json` shipped with `a863c13`.
 - [x] **0.6** Test target: **headless AVD `medium_phone`** (shared with tonearm). Created via `android emulator create --profile=medium_phone`. Started headlessly. Visible to ADB as `emulator-5554`. — `emulator -list-avds` confirms `medium_phone` exists; `adb devices` shows `emulator-5554 device` already running (carried from tonearm session).
 
 **Shipped:** 0.1–0.6 in commit _(this commit)_.
@@ -50,12 +50,12 @@ Goal: a buildable host. These run once per developer machine. Tracked here so th
 Goal: a buildable, sideload-able APK that boots into a blank Compose screen. Everything that follows assumes this exists. Mirror tonearm Phase A almost exactly — same template choice, same gradle setup, same package convention.
 
 - [x] **A.0** Browse `android create list` and pick the closest official template. Default expectation: `empty-activity` (the same template tonearm used). — chose `empty-activity` (only template currently shipped, tagged `compose,activity,agp-9`); same call tonearm made.
-- [x] **A.1** `android create --name=lectern --output=. <template>` from inside the repo root. Verify the generated layout: `app/`, `gradle/wrapper/`, `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`. Rename package from `com.example.lectern` to `com.eight87.lectern`. Rename theme to `LecternTheme`. — scaffolded into `/tmp/lectern-scaffold` then `rsync --ignore-existing` into the repo (preserves README, CLAUDE.md, plans, LICENSE, .gitignore, .mcp.json). Package renamed `com.example.lectern` → `com.eight87.lectern` everywhere via `sed`; source dirs moved `app/src/{main,test,androidTest}/java/com/example/lectern` → `app/src/.../java/com/eight87/lectern`. Theme renamed `MyApplicationTheme` → `LecternTheme` and `Theme.MyApplication` → `Theme.Lectern`. Template ships with Compose + Material 3 + AGP 9.0.1 + Kotlin 2.3.20 + Navigation 3 + Lifecycle ViewModel + a placeholder `DataRepository` / `MainScreenViewModel` / `MainScreen` — kept as-is for the hello-Compose smoke; will be reshaped or stripped as Phase B / E land their own surfaces.
+- [x] **A.1** `android create --name=whisperboy --output=. <template>` from inside the repo root. Verify the generated layout: `app/`, `gradle/wrapper/`, `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`. Rename package from `com.example.whisperboy` to `com.eight87.whisperboy`. Rename theme to `WhisperboyTheme`. — scaffolded into `/tmp/whisperboy-scaffold` then `rsync --ignore-existing` into the repo (preserves README, CLAUDE.md, plans, LICENSE, .gitignore, .mcp.json). Package renamed `com.example.whisperboy` → `com.eight87.whisperboy` everywhere via `sed`; source dirs moved `app/src/{main,test,androidTest}/java/com/example/whisperboy` → `app/src/.../java/com/eight87/whisperboy`. Theme renamed `MyApplicationTheme` → `WhisperboyTheme` and `Theme.MyApplication` → `Theme.Whisperboy`. Template ships with Compose + Material 3 + AGP 9.0.1 + Kotlin 2.3.20 + Navigation 3 + Lifecycle ViewModel + a placeholder `DataRepository` / `MainScreenViewModel` / `MainScreen` — kept as-is for the hello-Compose smoke; will be reshaped or stripped as Phase B / E land their own surfaces.
 - [x] **A.2** Add Media3 deps to `app/build.gradle.kts`: `media3-exoplayer`, `media3-session`, `media3-ui`. Pin via a single `media3 = "1.10.0"` key in `libs.versions.toml` shared by all three module entries (no Maven BOM exists for Media3). — single `media3 = "1.10.0"` key in `[versions]`, three `androidx-media3-{exoplayer,session,ui}` entries in `[libraries]`, three `implementation(libs.androidx.media3.*)` lines in `app/build.gradle.kts`. A bump touches one line.
-- [x] **A.3** `AndroidManifest.xml` adds: `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `POST_NOTIFICATIONS`, `WAKE_LOCK`. **No `READ_MEDIA_AUDIO` / `READ_EXTERNAL_STORAGE`** — lectern is SAF-only. `minSdk = 28` (matching Voice's floor; SAF flake on older APIs makes the cost of supporting 26-27 not worth the user count). `compileSdk` and `targetSdk` set to current stable. — four `<uses-permission>` lines added with a comment block pointing at CLAUDE.md "Why SAF (not MediaStore)". `minSdk` bumped from template default 24 → 28. `compileSdk = 36`, `targetSdk = 36` kept from template (matches the API-36 system image on `medium_phone`).
+- [x] **A.3** `AndroidManifest.xml` adds: `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `POST_NOTIFICATIONS`, `WAKE_LOCK`. **No `READ_MEDIA_AUDIO` / `READ_EXTERNAL_STORAGE`** — whisperboy is SAF-only. `minSdk = 28` (matching Voice's floor; SAF flake on older APIs makes the cost of supporting 26-27 not worth the user count). `compileSdk` and `targetSdk` set to current stable. — four `<uses-permission>` lines added with a comment block pointing at CLAUDE.md "Why SAF (not MediaStore)". `minSdk` bumped from template default 24 → 28. `compileSdk = 36`, `targetSdk = 36` kept from template (matches the API-36 system image on `medium_phone`).
 - [x] **A.4** `.gitignore` covers `build/`, `.gradle/`, `local.properties`, `captures/`, `.cxx/`, `*.apk`, `*.aab`, `keystore.properties`, `*.keystore`, `*.jks`, plus `.idea/`, `*.iml`. (Already committed in skeleton — verify.) — root `.gitignore` from `a863c13` already covers all required entries; scaffold's `app/.gitignore` (`/build` only) kept as the per-module file.
 - [x] **A.5** Build verification: `./gradlew assembleDebug` succeeds. APK lands at `app/build/outputs/apk/debug/app-debug.apk`. — `JAVA_HOME=/usr/lib/jvm/java-26-openjdk ANDROID_HOME=$HOME/Android/Sdk ./gradlew :app:assembleDebug` → `BUILD SUCCESSFUL in 18s`. APK 39 MB (template carries Navigation 3 + Lifecycle ViewModel — will trim once Phase B/E reshape the entry surface).
-- [x] **A.6** Install verification: `android run --apks=app/build/outputs/apk/debug/app-debug.apk` launches the placeholder activity on `emulator-5554`. Confirm via `dumpsys window | grep mCurrentFocus`. — installed via `adb -s emulator-5554 install -r`, launched via `am start -n com.eight87.lectern/.MainActivity`; `dumpsys window | grep mCurrentFocus` returns `Window{... com.eight87.lectern/com.eight87.lectern.MainActivity}`. Screencap at `/tmp/lectern-A6.png` shows the template's "Hello Android!" Compose surface rendering correctly.
+- [x] **A.6** Install verification: `android run --apks=app/build/outputs/apk/debug/app-debug.apk` launches the placeholder activity on `emulator-5554`. Confirm via `dumpsys window | grep mCurrentFocus`. — installed via `adb -s emulator-5554 install -r`, launched via `am start -n com.eight87.whisperboy/.MainActivity`; `dumpsys window | grep mCurrentFocus` returns `Window{... com.eight87.whisperboy/com.eight87.whisperboy.MainActivity}`. Screencap at `/tmp/whisperboy-A6.png` shows the template's "Hello Android!" Compose surface rendering correctly.
 
 **Shipped:** A.0–A.6 in commit _(this commit)_.
 
@@ -69,13 +69,13 @@ Goal: ExoPlayer plays a known audio file. `MediaLibrarySession` is registered. A
 - [ ] **B.2** `PlaybackService : MediaLibraryService` declared in the manifest with `foregroundServiceType="mediaPlayback"` and the `androidx.media3.session.MediaLibraryService` intent filter. Stub notification (replaced for real in Phase F).
 - [ ] **B.3** `MediaLibrarySession` wired to the Player via `MediaLibrarySession.Builder(this, player, callback)`. Stub `MediaLibrarySession.Callback` returns an empty browse tree — real tree lands in Phase N.
 - [ ] **B.4** Audio focus delegated to ExoPlayer's built-in handling via `setAudioAttributes(..., handleAudioFocus = true)`. (Same pattern tonearm validated; verified against `kb://android/media/media3/session/background-playback`.)
-- [ ] **B.5** Format smoke test on the real target: play one each of MP3, M4B (with embedded chapters), OGG Vorbis, FLAC, WebM/Matroska. Tonearm's smoke pattern (`scripts/smoke-test.sh`, broadcast intent → service plays via `/data/local/tmp` fixtures) ports cleanly to lectern. The M4B + Matroska format coverage is new; both pass at the codec layer (Phase I parses the chapter markers — Phase B just needs the audio to decode).
+- [ ] **B.5** Format smoke test on the real target: play one each of MP3, M4B (with embedded chapters), OGG Vorbis, FLAC, WebM/Matroska. Tonearm's smoke pattern (`scripts/smoke-test.sh`, broadcast intent → service plays via `/data/local/tmp` fixtures) ports cleanly to whisperboy. The M4B + Matroska format coverage is new; both pass at the codec layer (Phase I parses the chapter markers — Phase B just needs the audio to decode).
 
 ---
 
 ## Phase C — SAF folder picker + persisted URI permissions
 
-Goal: the user can pick one or more folders, lectern persists `Uri.persistableUriPermission` across reboots, and the picked tree is reachable as a `DocumentFile`. **Voice analog:** `:features:folderPicker`, `PersistedUriPermissions`.
+Goal: the user can pick one or more folders, whisperboy persists `Uri.persistableUriPermission` across reboots, and the picked tree is reachable as a `DocumentFile`. **Voice analog:** `:features:folderPicker`, `PersistedUriPermissions`.
 
 - [ ] **C.1** Onboarding entry — first launch shows a "Pick your audiobook folder" empty state with a single CTA. (Real onboarding flow lands in Phase L; this is the placeholder bridge.)
 - [ ] **C.2** `Intent.ACTION_OPEN_DOCUMENT_TREE` launched via `ActivityResultContracts.OpenDocumentTree`. On success, take persistable read permission via `contentResolver.takePersistableUriPermission(uri, FLAG_GRANT_READ_URI_PERMISSION)`.
@@ -99,7 +99,7 @@ Goal: walk every root, classify folders by `FolderType`, materialize Book / Chap
 - [ ] **D.3** `MediaAnalyzer` extracts duration + title/author/cover via `MediaMetadataRetriever` for each audio file. Cover bytes: prefer embedded → fallback to `cover.jpg` / `folder.jpg` next to the audio file.
 - [ ] **D.4** Diff & apply: scanner produces a `ScanSnapshot`; `LibraryRepository.applyScan(snapshot)` writes only changed rows in a single Room transaction, marks gone-but-was-here books `active = false` (soft-delete preserves bookmarks + position if the user re-adds the folder).
 - [ ] **D.5** Rescan triggers: manual (Settings → Rescan), on app foreground (debounced 30s), on persistable URI permission added/removed. **No `ContentObserver`** — SAF doesn't surface change events the same way `MediaStore` does; we rescan on signal, not on observation.
-- [ ] **D.6** `library-smoke-test.sh` — fetches two synthetic test books (one `SingleFolder` 3-chapter book, one `SingleFile` M4B with embedded chapters), pushes to `/sdcard/Audiobooks/lectern-test/`, points the SAF picker at it via the canonical onboarding flow, asserts both books land in Room with the right chapter counts.
+- [ ] **D.6** `library-smoke-test.sh` — fetches two synthetic test books (one `SingleFolder` 3-chapter book, one `SingleFile` M4B with embedded chapters), pushes to `/sdcard/Audiobooks/whisperboy-test/`, points the SAF picker at it via the canonical onboarding flow, asserts both books land in Room with the right chapter counts.
 
 ---
 
@@ -111,7 +111,7 @@ Goal: cover-grid library screen, three filter chips (Current / Not started / Com
 - [ ] **E.2** Filter chips row: Current / Not started / Completed. Filter is a sealed `BookFilter`; query plumbed through `BookSource.observeBooks(filter)`.
 - [ ] **E.3** Sort menu (Recent, Title, Author). Persisted in DataStore.
 - [ ] **E.4** Search — full-text over book title + author. Room FTS4 if it composes cleanly with the `BookEntity` shape, else `LIKE` fallback. Same pattern tonearm validated in C.4.
-- [ ] **E.5** Long-press → `BookActionSheet` (Rename, Change cover from device, Mark completed, Mark not started, Forget book record). "Forget" only deletes the row + bookmarks — does not delete files (lectern doesn't delete audiobook files; the user's library is precious).
+- [ ] **E.5** Long-press → `BookActionSheet` (Rename, Change cover from device, Mark completed, Mark not started, Forget book record). "Forget" only deletes the row + bookmarks — does not delete files (whisperboy doesn't delete audiobook files; the user's library is precious).
 - [ ] **E.6** Now-playing bar pinned to the bottom when something is playing — book title, chapter title, play/pause, taps through to the player screen (Phase F).
 
 ---
@@ -126,7 +126,7 @@ Goal: full-screen player. **Voice analog:** `:features:playbackScreen`.
 - [ ] **F.4** Auto-rewind on resume — when resuming after >5 minutes paused, rewind by `autoRewindSeconds` (configurable, default 5s). Implemented in `PlaybackController.onResume`.
 - [ ] **F.5** Chapter list — bottom sheet from the player overflow. Lists chapters with per-chapter progress, current chapter highlighted, tap → seek to chapter start.
 - [ ] **F.6** Background gradient tinted by the cover-art's extracted Palette swatch (Voice does this; mild but adds polish).
-- [ ] **F.7** Notification + lock-screen via `MediaStyle` notification, channel `lectern_playback` (IMPORTANCE_LOW, silent). Replaces Phase B's stub. Verified via `dumpsys media_session` and lock-screen screenshots.
+- [ ] **F.7** Notification + lock-screen via `MediaStyle` notification, channel `whisperboy_playback` (IMPORTANCE_LOW, silent). Replaces Phase B's stub. Verified via `dumpsys media_session` and lock-screen screenshots.
 
 ---
 
@@ -236,22 +236,22 @@ This is the payoff for picking `MediaLibraryService` in Phase B.2 instead of the
 
 Goal: a sideload-able APK on GitHub Releases. Mirror of tonearm's release pipeline almost exactly. **Voice analog:** none — Voice ships via Play + F-Droid.
 
-- [ ] **O.1** `scripts/build-release-apk.sh` — port from tonearm, swap `tonearm` → `lectern` in artefact names + tag prefixes.
+- [ ] **O.1** `scripts/build-release-apk.sh` — port from tonearm, swap `tonearm` → `whisperboy` in artefact names + tag prefixes.
 - [ ] **O.2** `.github/workflows/release.yml` — tag-only, self-disabling, mirror of tonearm's workflow. Zero CI minutes by default.
 - [ ] **O.3** First release `v0.1.0-<sha7>` — debug-signed, sideload via Obtainium, validate the install path end-to-end.
-- [ ] **O.4** Production-signed releases when keystore is in place — env vars `LECTERN_RELEASE_KEYSTORE` / `LECTERN_RELEASE_KEY_ALIAS` / `LECTERN_RELEASE_KEY_PASSWORD`.
+- [ ] **O.4** Production-signed releases when keystore is in place — env vars `WHISPERBOY_RELEASE_KEYSTORE` / `WHISPERBOY_RELEASE_KEY_ALIAS` / `WHISPERBOY_RELEASE_KEY_PASSWORD`.
 
 ---
 
 ## Phase P — polish + edge cases (the unglamorous one)
 
-Caught-once-then-fixed bugs and gnarly real-world cases that don't belong to any earlier phase. Lectern will accumulate these the same way tonearm did; this is the catch-bucket so they don't get filed under a wrong phase.
+Caught-once-then-fixed bugs and gnarly real-world cases that don't belong to any earlier phase. Whisperboy will accumulate these the same way tonearm did; this is the catch-bucket so they don't get filed under a wrong phase.
 
-- [ ] **P.1** Cold-start playback resumption — `MediaSession.Callback.onPlaybackResumption` returns last book + position. Verified via process-death simulation (`adb shell am force-stop com.eight87.lectern` while playing).
+- [ ] **P.1** Cold-start playback resumption — `MediaSession.Callback.onPlaybackResumption` returns last book + position. Verified via process-death simulation (`adb shell am force-stop com.eight87.whisperboy` while playing).
 - [ ] **P.2** Headset / Bluetooth controls — play, pause, prev-chapter (long-press prev), next-chapter (long-press next). Verified on AVD virtual headset + real BT headset.
 - [ ] **P.3** Process death during scan — partial scan is committed as a Room transaction per-book; killing the process mid-scan loses only the in-flight book.
 - [ ] **P.4** SAF permission revoked under us — when a tree's `Uri` becomes unreadable, all books from that tree are marked `active = false` (soft-delete) and a banner on the library screen offers to re-pick.
-- [ ] **P.5** Very large libraries — Voice has #3175 (OOM on huge libraries). Profile lectern at 500 books, 10000 chapters; if Room queries on the library screen are blocking, page with `Pager` from `androidx.paging`.
+- [ ] **P.5** Very large libraries — Voice has #3175 (OOM on huge libraries). Profile whisperboy at 500 books, 10000 chapters; if Room queries on the library screen are blocking, page with `Pager` from `androidx.paging`.
 - [ ] **P.6** Foreground service lifecycle on Android 14+ — `FOREGROUND_SERVICE_MEDIA_PLAYBACK` strictness around when the service can start in the background. Verify on API 34+ AVD.
 - [ ] **P.7** Position-save cadence — Voice's "experimental playback persistence" (26.4.3) saves on events not continuously, for battery. Mirror the pattern: save on chapter-end, on pause, on backgrounding, on shutdown — not on a 1Hz timer.
 
@@ -273,15 +273,15 @@ These are the differentiators identified in the Voice deconstruction (`docs/plan
 
 ## Subagent dispatching template
 
-Each subagent prompt for a lectern phase should include:
+Each subagent prompt for a whisperboy phase should include:
 
 ```
-You are picking up Phase <X> of lectern's main build plan.
+You are picking up Phase <X> of whisperboy's main build plan.
 
 Read these files first, in order:
-1. /home/laragana/workspace/lectern/CLAUDE.md
-2. /home/laragana/workspace/lectern/docs/plans/main.md (find Phase <X>)
-3. /home/laragana/workspace/lectern/docs/plans/sharing-analysis.md (skim — relevant if your phase touches a candidate-shareable surface)
+1. /home/laragana/workspace/whisperboy/CLAUDE.md
+2. /home/laragana/workspace/whisperboy/docs/plans/main.md (find Phase <X>)
+3. /home/laragana/workspace/whisperboy/docs/plans/sharing-analysis.md (skim — relevant if your phase touches a candidate-shareable surface)
 4. The Voice analog if mentioned in the phase header (browse-only via WebFetch — do not vendor any code).
 
 Your job:

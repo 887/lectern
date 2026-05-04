@@ -1,4 +1,4 @@
-package com.eight87.lectern.theme
+package com.eight87.whisperboy.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

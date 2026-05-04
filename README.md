@@ -1,10 +1,10 @@
-# lectern
+# whisperboy
 
 Modern Android audiobook player. Built on Jetpack Compose + Media3. Spiritual sibling to [Voice](https://github.com/PaulWoitaschek/Voice) — same feature surface (SAF folder libraries, embedded chapter parsing, sleep timer with fade-out and shake-to-resume, per-book speed and skip-silence, bookmarks, Android Auto via `MediaLibraryService`), rebuilt fresh in Kotlin + Compose with the same CLI-only build philosophy as [tonearm](https://github.com/887/tonearm).
 
 ## Status
 
-Pre-Phase 0. Repo skeleton + plans only. See [`docs/plans/main.md`](docs/plans/main.md) for the phased build plan and [`docs/plans/sharing-analysis.md`](docs/plans/sharing-analysis.md) for the tonearm/lectern shared-code analysis.
+Pre-Phase 0. Repo skeleton + plans only. See [`docs/plans/main.md`](docs/plans/main.md) for the phased build plan and [`docs/plans/sharing-analysis.md`](docs/plans/sharing-analysis.md) for the tonearm/whisperboy shared-code analysis.
 
 ## Goals
 
@@ -16,17 +16,19 @@ Pre-Phase 0. Repo skeleton + plans only. See [`docs/plans/main.md`](docs/plans/m
 ## Non-goals (v1)
 
 - Cloud sync / Audiobookshelf / Plex / Jellyfin server integration. (Tracked as a stretch differentiator in `docs/plans/main.md`.)
-- Podcast / RSS support. Lectern plays *audiobooks* — there is a separate [tonearm](https://github.com/887/tonearm) for music; podcasts can pick a third app.
+- Podcast / RSS support. Whisperboy plays *audiobooks* — there is a separate [tonearm](https://github.com/887/tonearm) for music; podcasts can pick a third app.
 - Cast / Wear OS / tablet-specific layouts (works on phone, scales later).
 - Online cover-art search. Local + embedded only in v1.
 
-## Why "lectern"?
+## Why "whisperboy"?
 
-The tonearm is the part of a turntable that holds the needle and reads the groove. The lectern is the wooden stand a reader stands at to read aloud. Both are concrete, slightly old-fashioned objects that *carry* a medium for a listener. Music + tonearm; spoken-word + lectern. The naming pair is the design statement: this is a sibling app, not a fork, and the two together cover the listening surface without overlap.
+Sister naming convention with the gallery app **shutterboy**: *<object-from-the-medium> + boy*. Shutter for cameras; whisper for audiobooks. An audiobook *is* a voice whispered into your ear at close range — that's the whole register: intimate, bedside, late-night. The "boy" suffix marks these apps as a family.
+
+Tonearm doesn't follow this convention — it predates it, and the tonearm-as-physical-object metaphor (the soft mechanical thing that touches the groove) still works in its own right. Sister-app naming starts with shutterboy and continues here.
 
 ## Why a sibling app, not a music+audiobook combo?
 
-Because the data model differs and forcing both into one app produces compromises in both. Music: many short tracks per album, queue-based, MediaStore-scanned, ReplayGain. Audiobooks: few long files per book, position-per-book, SAF-scanned, sleep timer, embedded chapter markers. Tonearm and lectern share Media3 + Compose + Room as a *stack*, not as a codebase. See [`docs/plans/sharing-analysis.md`](docs/plans/sharing-analysis.md) for the cost/benefit analysis of extracting a shared library between the two — the short answer is that the shareable wins are small (a few hundred LOC each) and the cost of a subrepo / separate versioning / change-coordination overhead currently outweighs them. Revisit after both apps ship 1.0.
+Because the data model differs and forcing both into one app produces compromises in both. Music: many short tracks per album, queue-based, MediaStore-scanned, ReplayGain. Audiobooks: few long files per book, position-per-book, SAF-scanned, sleep timer, embedded chapter markers. Tonearm and whisperboy share Media3 + Compose + Room as a *stack*, not as a codebase. See [`docs/plans/sharing-analysis.md`](docs/plans/sharing-analysis.md) for the cost/benefit analysis of extracting a shared library between the two — the short answer is that the shareable wins are small (a few hundred LOC each) and the cost of a subrepo / separate versioning / change-coordination overhead currently outweighs them. Revisit after both apps ship 1.0.
 
 ## Install on Android via Obtainium
 
@@ -35,14 +37,14 @@ app store that pulls APKs directly from GitHub Releases. No Play Store, no
 sideload dance, auto-update on every new release. Works on de-Googled Androids
 (GrapheneOS / CalyxOS / LineageOS).
 
-> **Note:** lectern has not shipped a release yet. The instructions below
+> **Note:** whisperboy has not shipped a release yet. The instructions below
 > describe the intended install path once Phase O lands.
 
 ### One-tap install (if Obtainium is already on your phone)
 
 Tap this link on your phone:
 
-[`obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Flectern`](obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Flectern)
+[`obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Fwhisperboy`](obtainium://add/https%3A%2F%2Fgithub.com%2F887%2Fwhisperboy)
 
 Obtainium opens, prefills the source, and shows **Add**.
 
@@ -53,7 +55,7 @@ Obtainium opens, prefills the source, and shows **Add**.
 2. In Obtainium, tap **Add App** → paste this **Source URL**:
 
    ```
-   https://github.com/887/lectern
+   https://github.com/887/whisperboy
    ```
 
 3. The other fields auto-detect, but if you need to set them by hand:
@@ -61,10 +63,10 @@ Obtainium opens, prefills the source, and shows **Add**.
    | Field            | Value                  |
    | ---------------- | ---------------------- |
    | Source type      | GitHub                 |
-   | APK filter regex | `^lectern-.*\.apk$`    |
+   | APK filter regex | `^whisperboy-.*\.apk$`    |
    | Update channel   | Releases               |
 
-4. Tap **Add**. Obtainium fetches `lectern-<version>-<sha7>.apk` from the latest release and offers Install. Future releases trigger an auto-update notification.
+4. Tap **Add**. Obtainium fetches `whisperboy-<version>-<sha7>.apk` from the latest release and offers Install. Future releases trigger an auto-update notification.
 
 ### Verifying a build
 
@@ -72,7 +74,7 @@ Each release ships a "Verify build" table in its notes with the APK SHA-256.
 After installing, confirm what you got matches:
 
 ```bash
-adb shell pm path com.eight87.lectern           # find the installed APK on your device
+adb shell pm path com.eight87.whisperboy           # find the installed APK on your device
 adb pull <path-from-above> /tmp/installed.apk   # pull it back
 sha256sum /tmp/installed.apk                    # compare to the release notes
 ```
@@ -136,14 +138,14 @@ android run --apks=app/build/outputs/apk/debug/app-debug.apk
 ## Build a release APK
 
 The canonical happy path is **"phone-vibing"**: you're on your phone, you tell
-Claude (in the Claude app) to ship a new build of lectern. Claude opens a
+Claude (in the Claude app) to ship a new build of whisperboy. Claude opens a
 session against this repo on your dev machine, runs:
 
 ```bash
 scripts/build-release-apk.sh --gh-release
 ```
 
-…and the new APK shows up on `https://github.com/887/lectern/releases/latest`.
+…and the new APK shows up on `https://github.com/887/whisperboy/releases/latest`.
 You then pull it to your phone via [Obtainium](#install-on-android-via-obtainium), which
 auto-detects the new release and offers an in-place update. No Play Store, no
 Android Studio, no manual `adb`.
@@ -151,7 +153,7 @@ Android Studio, no manual `adb`.
 The script supports three flags, individually or combined:
 
 ```bash
-# 1. Build only — APK lands at release/lectern-<version>-<sha7>.apk
+# 1. Build only — APK lands at release/whisperboy-<version>-<sha7>.apk
 scripts/build-release-apk.sh
 
 # 2. Build + upload to GitHub Releases (uses gh CLI; creates a vN.N.N-<sha7> tag)
@@ -174,8 +176,8 @@ scripts/build-release-apk.sh --gh-release --install
 
 By default the APK is signed with Gradle's debug keystore (good enough for
 personal sideload). For production-signed releases set the
-`LECTERN_RELEASE_KEYSTORE`, `LECTERN_RELEASE_KEY_ALIAS`, and
-`LECTERN_RELEASE_KEY_PASSWORD` environment variables before running, and the
+`WHISPERBOY_RELEASE_KEYSTORE`, `WHISPERBOY_RELEASE_KEY_ALIAS`, and
+`WHISPERBOY_RELEASE_KEY_PASSWORD` environment variables before running, and the
 script switches to `assembleRelease`.
 
 The `release/` directory is gitignored. Each build also writes a
@@ -189,7 +191,7 @@ web UI. It triggers **only** on `push: tags: [v*]`; it never runs on regular
 pushes, PRs, or schedule, so the default cost is zero CI minutes.
 
 The workflow is **self-disabling**: at the start of the job it queries the
-matching release; if any asset already matches `lectern-*.apk` (which is what
+matching release; if any asset already matches `whisperboy-*.apk` (which is what
 `scripts/build-release-apk.sh --gh-release` uploaded), it exits 0 without
 rebuilding. So for the normal local-build flow, even though the tag push
 triggers the workflow, no work happens.
@@ -228,8 +230,8 @@ scripts/push-test-audiobooks.sh            # pushes to the running AVD, points t
 scripts/fetch-test-audiobooks.sh --push    # fetch + push in one shot
 ```
 
-Tracks land at `/sdcard/Audiobooks/lectern-test/` on the device. After pushing,
-open lectern, go through the onboarding flow, and pick that folder as the
+Tracks land at `/sdcard/Audiobooks/whisperboy-test/` on the device. After pushing,
+open whisperboy, go through the onboarding flow, and pick that folder as the
 library root in `Author` mode — exercises the multi-author + multi-book scan
 path.
 
@@ -250,12 +252,12 @@ See [`CLAUDE.md`](CLAUDE.md) for the full Claude-driven test loop.
 
 ## Acknowledgements
 
-Lectern owes its feature surface and a fair bit of its UI vocabulary to
+Whisperboy owes its feature surface and a fair bit of its UI vocabulary to
 [Voice](https://github.com/PaulWoitaschek/Voice) by Paul Woitaschek (GPLv3).
-We don't fork or vendor any Voice code — lectern is written from scratch, MIT-licensed —
+We don't fork or vendor any Voice code — whisperboy is written from scratch, MIT-licensed —
 but the design space Voice mapped out (SAF-only, four folder modes, sleep timer
 with fade + shake, custom MP4 chapter parser, MediaLibraryService for Auto)
-is the design space lectern starts in.
+is the design space whisperboy starts in.
 
 ## License
 

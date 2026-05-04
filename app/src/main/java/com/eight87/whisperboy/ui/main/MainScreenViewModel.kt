@@ -1,9 +1,9 @@
-package com.eight87.lectern.ui.main
+package com.eight87.whisperboy.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.eight87.lectern.data.DataRepository
-import com.eight87.lectern.ui.main.MainScreenUiState.Success
+import com.eight87.whisperboy.data.DataRepository
+import com.eight87.whisperboy.ui.main.MainScreenUiState.Success
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch

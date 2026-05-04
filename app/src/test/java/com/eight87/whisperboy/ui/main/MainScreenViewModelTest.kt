@@ -1,6 +1,6 @@
-package com.eight87.lectern.ui.main
+package com.eight87.whisperboy.ui.main
 
-import com.eight87.lectern.data.DataRepository
+import com.eight87.whisperboy.data.DataRepository
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first

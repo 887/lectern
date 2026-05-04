@@ -1,4 +1,4 @@
-package com.eight87.lectern.data
+package com.eight87.whisperboy.data
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow

@@ -1,4 +1,4 @@
-package com.eight87.lectern.ui.main
+package com.eight87.whisperboy.ui.main
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
@@ -9,8 +9,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
-import com.eight87.lectern.data.DefaultDataRepository
-import com.eight87.lectern.theme.LecternTheme
+import com.eight87.whisperboy.data.DefaultDataRepository
+import com.eight87.whisperboy.theme.WhisperboyTheme
 
 @Composable
 fun MainScreen(
@@ -45,11 +45,11 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 @Preview(showBackground = true)
 @Composable
 fun MainScreenPreview() {
-  LecternTheme { MainScreen(listOf("Android")) }
+  WhisperboyTheme { MainScreen(listOf("Android")) }
 }
 
 @Preview(showBackground = true, widthDp = 340)
 @Composable
 fun MainScreenPortraitPreview() {
-  LecternTheme { MainScreen(listOf("Android")) }
+  WhisperboyTheme { MainScreen(listOf("Android")) }
 }

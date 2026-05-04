@@ -1,4 +1,4 @@
-package com.eight87.lectern.theme
+package com.eight87.whisperboy.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -30,7 +30,7 @@ private val LightColorScheme =
   )
 
 @Composable
-fun LecternTheme(
+fun WhisperboyTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
   // Dynamic color is available on Android 12+
   dynamicColor: Boolean = true,

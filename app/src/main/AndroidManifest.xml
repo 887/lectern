@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
-      Lectern is SAF-only — audiobooks live in folders the user explicitly opts into via
+      Whisperboy is SAF-only — audiobooks live in folders the user explicitly opts into via
       ACTION_OPEN_DOCUMENT_TREE. No READ_MEDIA_AUDIO, no READ_EXTERNAL_STORAGE.
       See CLAUDE.md "Why SAF (not MediaStore)" for the rationale.
     -->
@@ -18,7 +18,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:windowSoftInputMode="adjustResize"
-        android:theme="@style/Theme.Lectern">
+        android:theme="@style/Theme.Whisperboy">
         <activity
             android:name=".MainActivity"
             android:exported="true">
