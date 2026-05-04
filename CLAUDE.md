@@ -173,11 +173,14 @@ The codebase follows SOLID where it earns its keep. Kotlin + Compose change *how
 
 These are evaluation criteria, not religion — small ad-hoc helpers don't need their own interface, and one-off composables don't need to be split for principle's sake. But anything load-bearing (`LibraryRepository`, `PlaybackController`, `Scanner`, `SettingsRepository`, the chapter parsers) should pass all five.
 
+The forward-applied refactor discipline drawn from tonearmboy's shipped SOLID work lives at [`docs/plans/refactor-solid.md`](docs/plans/refactor-solid.md). Phase C–L commits tick the relevant patterns as the code that earns them lands.
+
 ## Plan files
 
 - [`docs/plans/main.md`](docs/plans/main.md) — phased build plan, per the user's global CLAUDE.md rule (numbered phases, sub-step checkboxes).
 - [`docs/plans/sharing-analysis.md`](docs/plans/sharing-analysis.md) — cost/benefit memo on extracting shared atomic libraries between tonearmboy and whisperboy. Decision: **don't share yet.** Revisit after both apps ship 1.0 if a load-bearing hotspot emerges.
 - [`docs/plans/translations.md`](docs/plans/translations.md) — i18n + l10n plan. Discipline-from-day-one (no retro extraction), user-+-Claude per-locale workflow, no third-party service, README progress table piggybacks on `--gh-release`. T.A + T.B foundational pieces shipped; T.C / T.D / T.E open as project ships UI.
+- [`docs/plans/refactor-solid.md`](docs/plans/refactor-solid.md) — forward-applied SOLID discipline drawn from tonearmboy's shipped R.A–R.F refactors. Whisperboy has no god-objects yet; the plan codifies the patterns as gates on every Phase C–L commit so it stays that way. R.F.1 (delete template ballast) is the only sub-step that ticks at a known phase (E); the rest tick as the relevant phase code lands.
 
 When working on a phase:
 
