@@ -2,6 +2,8 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
+  alias(libs.plugins.ksp)
+  alias(libs.plugins.room)
 }
 
 android {
@@ -40,6 +42,10 @@ android {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"
       }
     }
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 kotlin {
@@ -95,4 +101,10 @@ dependencies {
 
   // DataStore Preferences — persisted (treeUri → FolderType) mapping in Phase C, settings in Phase K.
   implementation(libs.androidx.datastore.preferences)
+
+  // Room — Phase D's library cache (BookEntity / ChapterEntity / BookmarkEntity).
+  implementation(libs.androidx.room.runtime)
+  implementation(libs.androidx.room.ktx)
+  ksp(libs.androidx.room.compiler)
+  testImplementation(libs.androidx.room.testing)
 }

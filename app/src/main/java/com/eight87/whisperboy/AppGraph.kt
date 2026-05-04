@@ -5,7 +5,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.room.Room
 import com.eight87.whisperboy.data.library.AndroidPersistedUriPermissionStore
+import com.eight87.whisperboy.data.library.LibraryDatabase
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
 import com.eight87.whisperboy.playback.PlayerHolder
 
@@ -27,6 +29,17 @@ class AppGraph(context: Context) {
 
     val persistedUriPermissionStore: PersistedUriPermissionStore =
         AndroidPersistedUriPermissionStore(appContext, libraryRootsDataStore)
+
+    /**
+     * Library cache database. Eagerly constructed so a misconfigured schema fails fast at app
+     * start rather than on first scan. Phase D.4's `LibraryRepository` wraps the DAOs behind
+     * the narrow `BookSource` / `ChapterSource` / `BookmarkSource` interfaces.
+     */
+    val libraryDatabase: LibraryDatabase = Room.databaseBuilder(
+        appContext,
+        LibraryDatabase::class.java,
+        "library.db",
+    ).build()
 
     fun release() {
         playerHolder.release()
