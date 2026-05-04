@@ -23,7 +23,30 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
     <string name="app_name">Whisperboy</string>
 
-    <!-- home_ — template-leftover home surface; Phase E replaces this with the library_ surface -->
-    <string name="home_greeting">Hello %1$s!</string>
-    <string name="home_error_loading">Error loading data: %1$s</string>
+    <!-- folder_ — SAF picker bridge + the four FolderType labels (Phase C) -->
+    <string name="folder_picker_empty_title">No audiobook folders yet</string>
+    <string name="folder_picker_empty_subtitle">Tap below to pick the folder where your audiobooks live. Whisperboy will only see what you point it at.</string>
+    <string name="folder_picker_cta">Pick an audiobook folder</string>
+    <string name="folder_picker_add_another">Add another folder</string>
+
+    <string name="folder_type_dialog_title">How is this folder organized?</string>
+    <string name="folder_type_singlefile_title">Single file</string>
+    <string name="folder_type_singlefile_subtitle">One audio file is one book.</string>
+    <string name="folder_type_singlefolder_title">Single folder</string>
+    <string name="folder_type_singlefolder_subtitle">One folder of audio files is one book; chapters are the files in alphabetical order.</string>
+    <string name="folder_type_root_title">Root</string>
+    <string name="folder_type_root_subtitle">Each subfolder inside is a separate book.</string>
+    <string name="folder_type_author_title">Author</string>
+    <string name="folder_type_author_subtitle">First level is the author, second level is the book.</string>
+
+    <string name="folder_remove_action">Remove</string>
+    <string name="folder_section_title">Audiobook folders</string>
+
+    <!-- dialog_ — generic dialog buttons -->
+    <string name="dialog_cancel">Cancel</string>
+
+    <plurals name="folder_count">
+        <item quantity="one">%1$d audiobook folder configured</item>
+        <item quantity="other">%1$d audiobook folders configured</item>
+    </plurals>
 </resources>

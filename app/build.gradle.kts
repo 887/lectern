@@ -89,4 +89,10 @@ dependencies {
   implementation(libs.androidx.media3.exoplayer)
   implementation(libs.androidx.media3.session)
   implementation(libs.androidx.media3.ui)
+
+  // SAF — DocumentFile wrapper for the picked-tree URIs (Phase C wraps this in CachedDocumentFile).
+  implementation(libs.androidx.documentfile)
+
+  // DataStore Preferences — persisted (treeUri → FolderType) mapping in Phase C, settings in Phase K.
+  implementation(libs.androidx.datastore.preferences)
 }
