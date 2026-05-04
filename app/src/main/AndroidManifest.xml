@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
+        android:name=".WhisperboyApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -27,6 +28,34 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          Foreground audio service. Both action filters are declared because Media3's
+          discovery mechanism varies by client surface (MediaLibraryService for Auto / Wear-OS
+          browse, MediaSessionService for direct controllers).
+        -->
+        <service
+            android:name=".playback.PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaLibraryService" />
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
+
+        <!--
+          Debug smoke entry point — accepts a `path` extra and asks ExoPlayer to load it.
+          Logs STATE_* to logcat under the "whisperboy.smoke" tag for scripts/smoke-test.sh.
+          Will move to a debug-variant sourceset once Phase O introduces signing + variants.
+        -->
+        <receiver
+            android:name=".playback.SmokePlayReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.eight87.whisperboy.action.SMOKE_PLAY" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
