@@ -37,7 +37,7 @@ The concrete `LibraryRepository` (or whatever it ends up named — could be spli
 
 **Sub-steps (tick when the phase that owns the file lands):**
 
-- [x] **R.A.1** Phase D.1 defines the narrow interfaces above (or whatever subset the work-in-flight needs) in `data/` *before* defining the concrete repository. — `BookSource`, `ChapterSource`, `BookmarkSource` shipped in `data/library/` as part of D.1 (no concrete impl yet — D.4 lands `LibraryRepository` implementing all three). `LibraryScanner` shipped in D.2 with `SafLibraryScanner` impl. `BookSettings` interface will land alongside Phase J's per-book settings work.
+- [x] **R.A.1** Phase D.1 defines the narrow interfaces above (or whatever subset the work-in-flight needs) in `data/` *before* defining the concrete repository. — `BookSource`, `ChapterSource`, `BookmarkSource` shipped in `data/library/` as part of D.1 (no concrete impl yet — D.4 lands `LibraryRepository` implementing all three). `LibraryScanner` shipped in D.2 with `SafLibraryScanner` impl. `MediaAnalyzer` shipped in D.3 with `Media3MediaAnalyzer` impl. `BookSettings` interface will land alongside Phase J's per-book settings work.
 - [ ] **R.A.2** Phase D's concrete repository implements all of them. `AppGraph` exposes each interface separately, marks the concrete class internal where the language allows.
 - [ ] **R.A.3** Phase E composables take `BookSource`, `BookmarkSource`, etc. — never the concrete repo.
 - [ ] **R.A.4** Phase F's `PlaybackController` does not import `LibraryRepository` (it takes `BookSource` + `ChapterSource` + `BookSettings`).
