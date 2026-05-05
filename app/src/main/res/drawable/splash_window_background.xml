@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cold-start splash background.
+
+  The Android 12+ SplashScreen system slot for windowSplashScreenAnimatedIcon is a
+  hard-coded circle, which clips our square ic_launcher_foreground PNG so only the
+  centre microphone shows. We sidestep that by overriding android:windowBackground
+  on the launch theme: a flat colour layer plus the full square foreground bitmap
+  centred on top. The whole launcher artwork is visible during cold start.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launcher_background" />
+    <item>
+        <bitmap
+            android:src="@mipmap/ic_launcher_foreground"
+            android:gravity="center" />
+    </item>
+</layer-list>

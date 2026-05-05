@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.Whisperboy" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+      Application theme. The android:windowBackground override controls the cold-start
+      splash artwork on Android 12+: the system would otherwise drop ic_launcher into
+      its circular splash icon slot, clipping the square microphone PNG. The layer-list
+      drawable centres the full square foreground on the launcher background colour,
+      so the whole artwork is visible during cold start.
+    -->
+    <style name="Theme.Whisperboy" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_window_background</item>
+    </style>
 </resources>
