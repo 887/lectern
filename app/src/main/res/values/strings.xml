@@ -21,11 +21,11 @@
     cd_           content descriptions (transport buttons, cover art alt text)
 -->
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
-    <string name="app_name">Whisperboy</string>
+    <string name="app_name">whisperboy</string>
 
     <!-- folder_ — SAF picker bridge + the four FolderType labels (Phase C) -->
     <string name="folder_picker_empty_title">No audiobook folders yet</string>
-    <string name="folder_picker_empty_subtitle">Tap below to pick the folder where your audiobooks live. Whisperboy will only see what you point it at.</string>
+    <string name="folder_picker_empty_subtitle">Tap below to pick the folder where your audiobooks live. whisperboy will only see what you point it at.</string>
     <string name="folder_picker_cta">Pick an audiobook folder</string>
     <string name="folder_picker_add_another">Add another folder</string>
 
