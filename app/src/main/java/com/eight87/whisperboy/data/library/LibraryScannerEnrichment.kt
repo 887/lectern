@@ -58,11 +58,13 @@ class LibraryScannerEnrichment(
         // Roll up book-level fields.
         val rolledAuthor = book.author ?: perChapterMetadata.firstNotNullOfOrNull { it?.author }
         val rolledDuration = enrichedChapters.sumOf { it.durationMs }
+        val firstEmbeddedCover = perChapterMetadata.firstNotNullOfOrNull { it?.embeddedCoverBytes }
 
         return book.copy(
             chapters = enrichedChapters,
             author = rolledAuthor,
             durationMs = rolledDuration,
+            embeddedCoverBytes = firstEmbeddedCover,
         )
     }
 }

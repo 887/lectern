@@ -25,6 +25,9 @@ interface BookmarkDao {
     @Update
     suspend fun update(bookmark: BookmarkEntity)
 
+    @Query("UPDATE bookmarks SET title = :title WHERE bookmarkId = :id")
+    suspend fun rename(id: String, title: String?)
+
     @Query("DELETE FROM bookmarks WHERE bookmarkId = :id")
     suspend fun deleteById(id: String)
 }

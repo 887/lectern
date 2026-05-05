@@ -7,14 +7,20 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import com.eight87.whisperboy.data.library.AndroidPersistedUriPermissionStore
+import com.eight87.whisperboy.data.library.BookSource
+import com.eight87.whisperboy.data.library.BookmarkSource
+import com.eight87.whisperboy.data.library.ChapterSource
+import com.eight87.whisperboy.data.library.CoverStore
 import com.eight87.whisperboy.data.library.FolderCoverFinder
 import com.eight87.whisperboy.data.library.LibraryDatabase
+import com.eight87.whisperboy.data.library.LibraryRepository
 import com.eight87.whisperboy.data.library.LibraryScanner
 import com.eight87.whisperboy.data.library.LibraryScannerEnrichment
 import com.eight87.whisperboy.data.library.Media3MediaAnalyzer
 import com.eight87.whisperboy.data.library.MediaAnalyzer
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
 import com.eight87.whisperboy.data.library.SafLibraryScanner
+import com.eight87.whisperboy.data.library.ScanWriter
 import com.eight87.whisperboy.playback.PlayerHolder
 
 /**
@@ -69,6 +75,35 @@ class AppGraph(context: Context) {
         mediaAnalyzer = mediaAnalyzer,
         folderCoverFinder = FolderCoverFinder(),
     )
+
+    /** Phase D.4 — atomic cover-bytes-to-disk store at `<filesDir>/covers/<bookId>`. */
+    val coverStore: CoverStore = CoverStore(appContext)
+
+    /**
+     * Phase D.4's [LibraryRepository] — the concrete implementation behind every narrow data
+     * interface in `data/library/`. Held privately; only the narrow handles below are
+     * exposed to the rest of the app, per R.A.2.
+     */
+    private val libraryRepository: LibraryRepository = LibraryRepository(
+        database = libraryDatabase,
+        coverStore = coverStore,
+    )
+
+    /** Read-only book catalog (active books only). Composables consume this, not the repo. */
+    val bookSource: BookSource = libraryRepository
+
+    /** Read-only chapter access scoped to a book. */
+    val chapterSource: ChapterSource = libraryRepository
+
+    /** Bookmark CRUD scoped to a book. */
+    val bookmarkSource: BookmarkSource = libraryRepository
+
+    /**
+     * Write side of the scan pipeline. Phase D.5's rescan triggers and Phase E's
+     * library-loaded entrypoint call this; nothing else. Cover writes happen inside the
+     * implementation, atomically before the Room transaction commits the rows.
+     */
+    val scanWriter: ScanWriter = libraryRepository
 
     fun release() {
         playerHolder.release()
