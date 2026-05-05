@@ -41,6 +41,9 @@
 
     <string name="folder_remove_action">Remove</string>
     <string name="folder_section_title">Audiobook folders</string>
+    <string name="folder_rescan_action">Rescan now</string>
+    <string name="folder_rescan_state_running">Scanning your library…</string>
+    <string name="folder_rescan_state_failed">Scan failed — tap to retry</string>
 
     <!-- dialog_ — generic dialog buttons -->
     <string name="dialog_cancel">Cancel</string>

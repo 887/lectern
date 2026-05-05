@@ -23,6 +23,7 @@ fun WhisperboyApp() {
             entry<HomeRoute> {
                 HomeScreen(
                     persistedUriPermissionStore = graph.persistedUriPermissionStore,
+                    libraryRescanCoordinator = graph.libraryRescanCoordinator,
                     modifier = Modifier.safeDrawingPadding().padding(16.dp),
                 )
             }

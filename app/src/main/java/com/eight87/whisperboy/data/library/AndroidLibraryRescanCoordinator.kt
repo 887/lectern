@@ -1,0 +1,105 @@
+package com.eight87.whisperboy.data.library
+
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.consumeAsFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+
+/**
+ * Android-side implementation of [LibraryRescanCoordinator].
+ *
+ * Wires three trigger paths into one conflated [Channel] of rescan signals:
+ *
+ * 1. **Manual** — [requestRescan] sends to the channel. Settings (Phase K) and the
+ *    HomeScreen Rescan-now button both call this.
+ * 2. **Foreground** — registers a [DefaultLifecycleObserver] on [ProcessLifecycleOwner];
+ *    `onStart` fires a [requestRescan] call, debounced so two foregrounds within
+ *    [foregroundDebounceMs] don't double-scan.
+ * 3. **Root-change** — collects [PersistedUriPermissionStore.observeRoots] mapped to the
+ *    set of `treeUri`s, runs through `distinctUntilChanged`, fires a [requestRescan] on
+ *    each change. The initial emission also fires — that's the cold-start scan.
+ *
+ * Why a conflated channel: signals are coalesced, so spam clicks of the manual button
+ * don't queue up an unbounded backlog. At most one scan runs and at most one is queued
+ * behind it; subsequent triggers while one is queued are dropped. Each scan picks up the
+ * **latest** set of roots via `observeRoots().first()` so a root added between the
+ * manual press and the channel pickup still gets scanned.
+ *
+ * Suspend throughout. R.F.3 holds — no `runBlocking` on the scan path.
+ */
+internal class AndroidLibraryRescanCoordinator(
+    private val persistedUriPermissionStore: PersistedUriPermissionStore,
+    private val libraryScanner: LibraryScanner,
+    private val libraryScannerEnrichment: LibraryScannerEnrichment,
+    private val scanWriter: ScanWriter,
+    private val applicationScope: CoroutineScope,
+    private val lifecycle: Lifecycle = ProcessLifecycleOwner.get().lifecycle,
+    private val foregroundDebounceMs: Long = DEFAULT_FOREGROUND_DEBOUNCE_MS,
+    private val clock: () -> Long = System::currentTimeMillis,
+) : LibraryRescanCoordinator {
+
+    private val _state = MutableStateFlow<RescanState>(RescanState.Idle)
+    override val state: StateFlow<RescanState> = _state.asStateFlow()
+
+    private val rescanChannel: Channel<Unit> = Channel(capacity = Channel.CONFLATED)
+    private var lastForegroundRescan: Long = 0L
+
+    private val foregroundObserver = object : DefaultLifecycleObserver {
+        override fun onStart(owner: LifecycleOwner) {
+            val now = clock()
+            if (now - lastForegroundRescan >= foregroundDebounceMs) {
+                lastForegroundRescan = now
+                requestRescan()
+            }
+        }
+    }
+
+    init {
+        // 1. Wire the foreground hook.
+        lifecycle.addObserver(foregroundObserver)
+
+        // 2. Wire the root-change collector.
+        applicationScope.launch {
+            persistedUriPermissionStore.observeRoots()
+                .map { roots -> roots.map { it.treeUri.toString() }.toSet() }
+                .distinctUntilChanged()
+                .collect { _ -> requestRescan() }
+        }
+
+        // 3. Drain the channel — one scan at a time, picks up the latest roots each time.
+        applicationScope.launch {
+            rescanChannel.consumeAsFlow().collect { _ -> runScan() }
+        }
+    }
+
+    override fun requestRescan() {
+        rescanChannel.trySend(Unit)
+    }
+
+    private suspend fun runScan() {
+        _state.value = RescanState.Running
+        try {
+            val roots = persistedUriPermissionStore.observeRoots().first()
+            val structural = libraryScanner.scan(roots)
+            val enriched = libraryScannerEnrichment.enrich(structural)
+            scanWriter.applyScan(enriched)
+            _state.value = RescanState.Idle
+        } catch (t: Throwable) {
+            _state.value = RescanState.Failed(t)
+        }
+    }
+
+    companion object {
+        const val DEFAULT_FOREGROUND_DEBOUNCE_MS: Long = 30_000L
+    }
+}

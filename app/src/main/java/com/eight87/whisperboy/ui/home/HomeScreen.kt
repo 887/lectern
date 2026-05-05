@@ -38,8 +38,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eight87.whisperboy.R
 import com.eight87.whisperboy.data.library.FolderType
+import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.LibraryRoot
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
+import com.eight87.whisperboy.data.library.RescanState
 import kotlinx.coroutines.launch
 
 /**
@@ -59,10 +61,12 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     persistedUriPermissionStore: PersistedUriPermissionStore,
+    libraryRescanCoordinator: LibraryRescanCoordinator,
     modifier: Modifier = Modifier,
 ) {
     val roots by persistedUriPermissionStore.observeRoots()
         .collectAsStateWithLifecycle(initialValue = emptyList<LibraryRoot>())
+    val rescanState by libraryRescanCoordinator.state.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
 
     // After the picker returns, we hold the URI here while the user picks a FolderType.
@@ -80,7 +84,9 @@ fun HomeScreen(
         } else {
             ConfiguredLibraryState(
                 roots = roots,
+                rescanState = rescanState,
                 onPickAnother = { launcher.launch(null) },
+                onRescan = { libraryRescanCoordinator.requestRescan() },
                 onRemove = { uri ->
                     coroutineScope.launch { persistedUriPermissionStore.removeRoot(uri) }
                 },
@@ -132,7 +138,9 @@ private fun EmptyLibraryState(
 @Composable
 private fun ConfiguredLibraryState(
     roots: List<LibraryRoot>,
+    rescanState: RescanState,
     onPickAnother: () -> Unit,
+    onRescan: () -> Unit,
     onRemove: (Uri) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -147,6 +155,7 @@ private fun ConfiguredLibraryState(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        RescanStateBadge(rescanState)
         Spacer(Modifier.height(12.dp))
         LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f, fill = true)) {
             items(roots, key = { it.treeUri.toString() }) { root ->
@@ -155,9 +164,38 @@ private fun ConfiguredLibraryState(
             }
         }
         Spacer(Modifier.height(12.dp))
+        OutlinedButton(
+            onClick = onRescan,
+            enabled = rescanState !is RescanState.Running,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.folder_rescan_action))
+        }
+        Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onPickAnother, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.folder_picker_add_another))
         }
+    }
+}
+
+@Composable
+private fun RescanStateBadge(state: RescanState) {
+    val text = when (state) {
+        RescanState.Idle -> null
+        RescanState.Running -> stringResource(R.string.folder_rescan_state_running)
+        is RescanState.Failed -> stringResource(R.string.folder_rescan_state_failed)
+    }
+    if (text != null) {
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (state is RescanState.Failed) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.primary
+            },
+        )
     }
 }
 

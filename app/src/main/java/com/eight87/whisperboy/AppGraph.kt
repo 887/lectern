@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
+import com.eight87.whisperboy.data.library.AndroidLibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.AndroidPersistedUriPermissionStore
 import com.eight87.whisperboy.data.library.BookSource
 import com.eight87.whisperboy.data.library.BookmarkSource
@@ -14,6 +15,7 @@ import com.eight87.whisperboy.data.library.CoverStore
 import com.eight87.whisperboy.data.library.FolderCoverFinder
 import com.eight87.whisperboy.data.library.LibraryDatabase
 import com.eight87.whisperboy.data.library.LibraryRepository
+import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.LibraryScanner
 import com.eight87.whisperboy.data.library.LibraryScannerEnrichment
 import com.eight87.whisperboy.data.library.Media3MediaAnalyzer
@@ -22,6 +24,9 @@ import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
 import com.eight87.whisperboy.data.library.SafLibraryScanner
 import com.eight87.whisperboy.data.library.ScanWriter
 import com.eight87.whisperboy.playback.PlayerHolder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /**
  * Composition root. The only place in the app that knows concrete types for long-lived singletons.
@@ -104,6 +109,30 @@ class AppGraph(context: Context) {
      * implementation, atomically before the Room transaction commits the rows.
      */
     val scanWriter: ScanWriter = libraryRepository
+
+    /**
+     * Application-scoped coroutine scope for long-lived collectors (Phase D.5's rescan
+     * coordinator; future Phase F's playback session listener; etc.). `SupervisorJob` so
+     * one collector's failure doesn't cancel its siblings; `Dispatchers.IO` because every
+     * known consumer is IO-bound (SAF reads, Room writes, file IO). Composables use
+     * `viewModelScope` / `rememberCoroutineScope` instead.
+     */
+    private val applicationScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /**
+     * Phase D.5 — coordinates rescan triggers. Three trigger paths wire in inside the
+     * concrete impl: manual, foreground (debounced 30s via `ProcessLifecycleOwner`), and
+     * root-set-change (driven by `persistedUriPermissionStore.observeRoots()`). Composables
+     * see only the narrow [LibraryRescanCoordinator] interface — `requestRescan()` plus the
+     * `state: StateFlow<RescanState>`.
+     */
+    val libraryRescanCoordinator: LibraryRescanCoordinator = AndroidLibraryRescanCoordinator(
+        persistedUriPermissionStore = persistedUriPermissionStore,
+        libraryScanner = libraryScanner,
+        libraryScannerEnrichment = libraryScannerEnrichment,
+        scanWriter = scanWriter,
+        applicationScope = applicationScope,
+    )
 
     fun release() {
         playerHolder.release()
