@@ -1,6 +1,64 @@
 # whisperboy — Material 3 Expressive (M3E) starter plan
 
-## Status: PLANNED
+## Status: PLANNED — but read the tonearmboy findings before starting
+
+## Findings shipped in tonearmboy (apply here too)
+
+tonearmboy ran ahead and shipped Phases A–C; capture the gotchas
+before whisperboy repeats the same mistakes. Source-of-truth plan:
+`tonearmboy/docs/plans/m3-expressive.md`. Commits: `54eaa85`
+(opt-in + initial splash), `4bae805` (Phase B+C + first splash
+shrink), `2bb042e` (auto-accent + retune splash to 60 %).
+
+1. **`material3:1.4.0` keeps `MaterialExpressiveTheme` /
+   `expressive*ColorScheme` `internal`.** The Compose BOM
+   `2026.03.01` resolves there but you cannot call the expressive
+   APIs from 1.4.0 stable — Kotlin metadata marks them `internal`
+   even though the JVM bytecode is public. Override in
+   `gradle/libs.versions.toml` with `composeMaterial3 = "1.5.0-alpha18"`
+   (the alpha that promoted them). Note: `expressiveDarkColorScheme()`
+   does NOT exist in 1.5.0-alpha18 — only the light factory ships;
+   dark stays on `darkColorScheme(...)` and inherits the surface
+   ladder.
+2. **`surfaceContainer` is too quiet on AMOLED-leaning dark
+   palettes.** Use `surfaceContainerHigh` for the card container
+   colour. Light mode at `surfaceContainer` is fine; revisit if/when
+   whisperboy gets a light-mode polish pass.
+3. **Auto-derive accent from row `id` at the row composable.** Don't
+   pass `accent = ...` from every catalog binding + screen — the
+   moment a hand-rolled screen (About / Licenses / equivalents)
+   bypasses the binding system, it goes monochrome. Default `accent`
+   to null at the row signature and resolve
+   `accent ?: id?.let { accentFor(it) }` inside the body. Every
+   caller wins for free.
+4. **Android 12+ splash icon is hard circle-clipped, period.** The
+   layer-list `android:windowBackground` workaround does NOT work —
+   `windowSplashScreenBackground` paints over the whole window.
+   Working approach: ship a dedicated `mipmap-<d>/ic_launcher_splash.png`
+   per density, where the design is shrunk to **60 %** with
+   transparent padding back to the source canvas size. tonearmboy's
+   first attempt at 70.7 % left corners grazing the mask; 60 % gives
+   proper headroom. Wire as
+   `windowSplashScreenAnimatedIcon = @mipmap/ic_launcher_splash` +
+   `windowSplashScreenIconBackgroundColor = @color/launcher_background`
+   (the bigger 240-dp icon area). Whisperboy's earlier 70.7 % ship
+   in `14a2f48` should be retuned to 60 %.
+5. **Auto-derive accent already covers `SettingsRow` callers.**
+   Custom Compose surfaces (e.g. a Player chapter list, the bookmark
+   sheet) that want the same coloured accent should call
+   `accentFor(id)` directly — keep the function exported.
+
+## Scope: "all the views"
+
+User feedback after tonearmboy shipped Settings + About:
+> "we want all the views updated/modernized"
+
+Phase D below sweeps the WHOLE app, not just Settings. The
+auto-accent fix takes care of any settings-shaped screen for free;
+the rest (Library grid, Player, sleep-timer sheet, chapter list,
+bookmarks, AAOS Compose surfaces) needs explicit work —
+surface-tier discipline + `MaterialExpressiveTheme` opt-in cascade
+through the same way.
 
 ## Why this exists
 
