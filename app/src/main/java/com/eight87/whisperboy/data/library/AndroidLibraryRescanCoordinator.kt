@@ -1,5 +1,6 @@
 package com.eight87.whisperboy.data.library
 
+import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -93,13 +94,20 @@ internal class AndroidLibraryRescanCoordinator(
             val structural = libraryScanner.scan(roots)
             val enriched = libraryScannerEnrichment.enrich(structural)
             scanWriter.applyScan(enriched)
+            // Smoke-test marker (D.6): emit book + chapter counts so a smoke script can
+            // poll logcat for scan completion + assert the result. Cheap; one line per scan.
+            val books = enriched.books.size
+            val chapters = enriched.books.sumOf { it.chapters.size }
+            Log.i(SMOKE_TAG, "SCAN_COMPLETE roots=${roots.size} books=$books chapters=$chapters")
             _state.value = RescanState.Idle
         } catch (t: Throwable) {
+            Log.e(SMOKE_TAG, "SCAN_FAILED ${t.javaClass.simpleName}: ${t.message}", t)
             _state.value = RescanState.Failed(t)
         }
     }
 
     companion object {
         const val DEFAULT_FOREGROUND_DEBOUNCE_MS: Long = 30_000L
+        private const val SMOKE_TAG: String = "whisperboy.scan"
     }
 }
