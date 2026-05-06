@@ -113,6 +113,8 @@ Goal: walk every root, classify folders by `FolderType`, materialize Book / Chap
 
 Goal: cover-grid library screen, three filter chips (Current / Not started / Completed), sort menu, search bar, long-press → bottom sheet (rename, change cover, mark completed, delete book record). **Voice analog:** `:features:bookOverview`.
 
+> **Read [`cold-start-perf.md`](cold-start-perf.md) before starting.** Phase E is the first surface that mounts a `LazyVerticalGrid` + filter Flows + sort-menu state — exactly the shape tonearmboy's perf session had to claw back. Specifically: `collectAsStateWithLifecycle` (B.1) for the book Flow, stable `key = { it.id }` (E.1) on the grid `items(...)`, `contentType = { ... }` (E.2) when E.1 lands a list-toggle alongside the grid, `Modifier.graphicsLayer { alpha = ... }` (C.2) for the cover progress overlay if it animates. Also: R.F.1 (template-ballast purge) ticks here, per `refactor-solid.md`.
+
 - [ ] **E.1** `LibraryScreen` composable — cover-forward grid, default columns auto-sized to width, list-toggle in the top app bar (`GridMode` sealed type). Each cover renders the book title underneath + a thin progress bar overlay along the bottom edge of the cover (% of total duration listened).
 - [ ] **E.2** Filter chips row: Current / Not started / Completed. Filter is a sealed `BookFilter`; query plumbed through `BookSource.observeBooks(filter)`.
 - [ ] **E.3** Sort menu (Recent, Title, Author). Persisted in DataStore.
@@ -125,6 +127,8 @@ Goal: cover-grid library screen, three filter chips (Current / Not started / Com
 ## Phase F — playback screen (now-playing)
 
 Goal: full-screen player. **Voice analog:** `:features:playbackScreen`.
+
+> **Read [`cold-start-perf.md`](cold-start-perf.md) before starting.** The player is the highest-frequency-recomposition surface in the app — the position ticker (F.2) fires every ~250ms while playing. Critical guards: `collectAsStateWithLifecycle` (B.1) on `PlaybackUiState` so collection defers to `Lifecycle.STARTED`; `Modifier.offset { IntOffset(...) }` (C.1) for the scrubber thumb so the State read happens in layout, not composition; `Modifier.graphicsLayer { alpha = ... }` (C.2) for the Palette-tinted background gradient (F.6) so its animated alpha doesn't trigger recomposition each frame; do NOT use `BoxWithConstraints` (B.3) for the cover-square sizing — read `LocalConfiguration.current` instead.
 
 - [ ] **F.1** `PlaybackScreen` composable — large centered square cover dominates the top half; book title + chapter title stacked below; scrubber with current-position / chapter-duration timestamps; transport row (prev-chapter, rewind-N-seconds, play/pause, forward-N-seconds, next-chapter); top app bar with back, sleep-timer button, bookmark button, overflow.
 - [ ] **F.2** `PlaybackController` (UI-side wrapper around `MediaController`) exposes `StateFlow<PlaybackUiState>` (book, chapter, position, playing, speed, skipSilence, gain). UI consumes via `collectAsStateWithLifecycle`. Position ticker runs at ~250ms while playing, off when paused.
@@ -246,6 +250,7 @@ Goal: a sideload-able APK on GitHub Releases. Mirror of tonearmboy's release pip
 - [ ] **O.2** `.github/workflows/release.yml` — tag-only, self-disabling, mirror of tonearmboy's workflow. Zero CI minutes by default.
 - [ ] **O.3** First release `v0.1.0-<sha7>` — debug-signed, sideload via Obtainium, validate the install path end-to-end.
 - [ ] **O.4** Production-signed releases when keystore is in place — env vars `WHISPERBOY_RELEASE_KEYSTORE` / `WHISPERBOY_RELEASE_KEY_ALIAS` / `WHISPERBOY_RELEASE_KEY_PASSWORD`.
+- [ ] **O.5** Wire Baseline Profile generation into `scripts/build-release-apk.sh` (cold-start-perf F.4). Profile generation is the only delta-of-work piece in [`cold-start-perf.md`](cold-start-perf.md) — F.1 plugin + sibling `:baselineprofile` module, F.2 record cold-boot path via `MacrobenchmarkRule`, F.3 `androidx.profileinstaller` in app module, F.4 hook into the release script so every shipped APK includes the profile. Worth more than every other cold-start guard combined (~25–35% off cold start).
 
 ---
 
@@ -288,7 +293,8 @@ Read these files first, in order:
 1. /home/laragana/workspace/whisperboy/CLAUDE.md
 2. /home/laragana/workspace/whisperboy/docs/plans/main.md (find Phase <X>)
 3. /home/laragana/workspace/whisperboy/docs/plans/sharing-analysis.md (skim — relevant if your phase touches a candidate-shareable surface)
-4. The Voice analog if mentioned in the phase header (browse-only via WebFetch — do not vendor any code).
+4. /home/laragana/workspace/whisperboy/docs/plans/cold-start-perf.md (REQUIRED for any UI-touching phase — E, F, G's bottom sheet, K's settings list, L's onboarding, M's widget — preventive guards, not optional)
+5. The Voice analog if mentioned in the phase header (browse-only via WebFetch — do not vendor any code).
 
 Your job:
 - Land sub-steps <X.1> through <X.N>.
