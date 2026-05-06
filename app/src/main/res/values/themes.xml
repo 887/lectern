@@ -2,13 +2,33 @@
 <resources>
 
     <!--
-      Application theme. The android:windowBackground override controls the cold-start
-      splash artwork on Android 12+: the system would otherwise drop ic_launcher into
-      its circular splash icon slot, clipping the square microphone PNG. The layer-list
-      drawable centres the full square foreground on the launcher background colour,
-      so the whole artwork is visible during cold start.
+        Whisperboy launch theme. Android 12+'s SplashScreen API hard-
+        clips `windowSplashScreenAnimatedIcon` to a circle — there is
+        no system attribute to opt out. Earlier attempts (313b4be3)
+        used a layer-list `android:windowBackground` to draw the full
+        square launcher artwork, but the system paints
+        `windowSplashScreenBackground` over the full window during
+        cold start, hiding the layer-list bitmap.
+
+        Working approach: ship a dedicated splash icon
+        (`@mipmap/ic_launcher_splash`) that pre-shrinks the design to
+        ~70.7 % (1/√2) inside a transparent canvas. The system circle
+        with diameter equal to the canvas inscribes the full shrunk
+        design, so the user sees the complete microphone composition
+        during cold start instead of a centre-cropped circle.
+        `windowSplashScreenIconBackgroundColor` is set so the system
+        uses its larger 240-dp icon area (bigger visible circle =
+        bigger visible design).
+
+        Drop the splash-icon path and the system reverts to the
+        launcher tile, which gets cropped again. Don't drop it.
     -->
-    <style name="Theme.Whisperboy" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@drawable/splash_window_background</item>
+    <style name="Theme.Whisperboy" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/launcher_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_splash</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/launcher_background</item>
+        <item name="postSplashScreenTheme">@style/Theme.Whisperboy.Main</item>
     </style>
+
+    <style name="Theme.Whisperboy.Main" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>
