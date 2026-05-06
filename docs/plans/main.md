@@ -115,6 +115,8 @@ Goal: cover-grid library screen, three filter chips (Current / Not started / Com
 
 > **Read [`cold-start-perf.md`](cold-start-perf.md) before starting.** Phase E is the first surface that mounts a `LazyVerticalGrid` + filter Flows + sort-menu state — exactly the shape tonearmboy's perf session had to claw back. Specifically: `collectAsStateWithLifecycle` (B.1) for the book Flow, stable `key = { it.id }` (E.1) on the grid `items(...)`, `contentType = { ... }` (E.2) when E.1 lands a list-toggle alongside the grid, `Modifier.graphicsLayer { alpha = ... }` (C.2) for the cover progress overlay if it animates. Also: R.F.1 (template-ballast purge) ticks here, per `refactor-solid.md`.
 
+> **Read [`m3-expressive.md`](m3-expressive.md) before starting.** Phase E is the first surface that mounts visible chrome, so the M3E foundation lands here too: bump `material3` to `1.5.0-alpha18` (gotcha #1: stable 1.4.0 keeps the expressive APIs `internal`), wrap the theme entry in `MaterialExpressiveTheme(...)` (m3e A.3), switch to `expressiveDarkColorScheme()` (m3e A.4 — note `expressiveLightColorScheme()` only; no dark factory in alpha18), audit page bg vs card bg (m3e B.1 — `surface` vs `surfaceContainerHigh` on AMOLED dark). The library grid itself is m3e D.1.
+
 - [ ] **E.1** `LibraryScreen` composable — cover-forward grid, default columns auto-sized to width, list-toggle in the top app bar (`GridMode` sealed type). Each cover renders the book title underneath + a thin progress bar overlay along the bottom edge of the cover (% of total duration listened).
 - [ ] **E.2** Filter chips row: Current / Not started / Completed. Filter is a sealed `BookFilter`; query plumbed through `BookSource.observeBooks(filter)`.
 - [ ] **E.3** Sort menu (Recent, Title, Author). Persisted in DataStore.
@@ -196,6 +198,8 @@ Goal: per-book speed (0.5x–3.5x), skip silence, volume gain in dB. **Voice ana
 
 Goal: full settings tree. **Voice analog:** `:features:settings`.
 
+> **Read [`m3-expressive.md`](m3-expressive.md) before starting.** This is the phase that fully cashes in the M3E plan: the C-series steps (`CategoryAccent` data class, ~5–6 hand-picked accent pairs for whisperboy's category split — Appearance / Library / Playback / Sleep timer / Bookmarks / About — and the `SettingsCategoryIcon` composable wiring filled glyph icons into coloured circular avatars per row). Auto-derive `accent` from row `id` at the row composable (gotcha #3) so any future hand-rolled screen — License sub-page, About — picks up colour for free instead of going monochrome. `RoundedCornerShape(28.dp)` + `defaultElevation = 0.dp` + divider-less `Arrangement.spacedBy(2.dp)` for the in-card row stack. K.6 (About → Open-source licenses link) ties into [`oss-licenses.md`](oss-licenses.md).
+
 - [ ] **K.1** `SettingsScreen` — Material 3 settings list. Sections: Playback, Sleep timer, Library, Theme, About.
 - [ ] **K.2** Playback section: default speed, default skip silence, default gain, rewind/forward seconds, auto-rewind seconds, equalizer launcher (`AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL` system intent — same pattern as Voice).
 - [ ] **K.3** Sleep timer section: default duration, fade-out duration, shake-to-resume on/off, auto-arm window.
@@ -232,6 +236,8 @@ Goal: now-playing widget. **Voice analog:** `:features:widget`.
 Goal: the browse tree shows up in Android Auto, voice search resolves to a book and starts playback. **Voice analog:** `:core:playback` (`LibrarySessionCallback`, `BookSearchHandler`, `BookSearchParser`, `VoiceSearch`, `CustomCommand`).
 
 This is the payoff for picking `MediaLibraryService` in Phase B.2 instead of the simpler `MediaSessionService`.
+
+> **M3E note for Phase N (per [`m3-expressive.md`](m3-expressive.md) D.4):** the AAOS car system theme dominates the browse-tree rendering, so the M3E surface ladder doesn't reach inside Auto's chrome. But any custom in-car activity reachable from the car launcher (a settings activity, a confirmation screen) MUST go through the same `MaterialExpressiveTheme` entry — otherwise the car-side surfaces will read flat against the M3E phone-side ones.
 
 - [ ] **N.1** Manifest declarations — `automotiveApp`, allowed-package metadata for `com.google.android.projection.gearhead`.
 - [ ] **N.2** `LibrarySessionCallback.onGetLibraryRoot` returns the root browseable node.
@@ -294,7 +300,8 @@ Read these files first, in order:
 2. /home/laragana/workspace/whisperboy/docs/plans/main.md (find Phase <X>)
 3. /home/laragana/workspace/whisperboy/docs/plans/sharing-analysis.md (skim — relevant if your phase touches a candidate-shareable surface)
 4. /home/laragana/workspace/whisperboy/docs/plans/cold-start-perf.md (REQUIRED for any UI-touching phase — E, F, G's bottom sheet, K's settings list, L's onboarding, M's widget — preventive guards, not optional)
-5. The Voice analog if mentioned in the phase header (browse-only via WebFetch — do not vendor any code).
+5. /home/laragana/workspace/whisperboy/docs/plans/m3-expressive.md (REQUIRED for any UI-touching phase — Phase E lands the M3E foundation, Phase K cashes in the catalog avatars, Phase N propagates the theme into AAOS surfaces; gotchas #1–#5 prevent re-running tonearmboy's discovery cycle)
+6. The Voice analog if mentioned in the phase header (browse-only via WebFetch — do not vendor any code).
 
 Your job:
 - Land sub-steps <X.1> through <X.N>.
