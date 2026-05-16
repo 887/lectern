@@ -104,6 +104,10 @@ dependencies {
   // SAF — DocumentFile wrapper for the picked-tree URIs (Phase C wraps this in CachedDocumentFile).
   implementation(libs.androidx.documentfile)
 
+  // Palette — extract a dominant swatch from the cover bitmap for the F.6 player background
+  // gradient. Apache-2.0, decode happens off-main (Dispatchers.IO in PaletteTint.kt).
+  implementation(libs.androidx.palette)
+
   // Coil — cover-art tile loading (cover-art.md Phase A.5). Local files only; no
   // coil-network-okhttp dep — network image search is cover-art.md Phase B work.
   implementation(libs.coil.compose)
