@@ -16,11 +16,22 @@ import kotlinx.coroutines.withContext
  * titles from metadata, author from metadata, and embedded cover bytes; that enrichment
  * also drives `positionInBookMs` since cumulative position requires per-chapter durations.
  *
+ * Cover-art Phase A also rides this walk: while we're already inside each book's folder we
+ * call [FolderCoverFinder] to look for a sidecar `cover.jpg` / `folder.jpg` / `albumart.png`
+ * etc. and stash the bytes on [ScannedBook.embeddedCoverBytes]. This is local-first preference
+ * #2 from `docs/plans/cover-art.md` — between "saved cover already on disk" (handled by
+ * [LibraryRepository.applyScan] only writing when bytes are present) and "extracted from the
+ * audio container" (filled later by [LibraryScannerEnrichment]). Folder-found bytes win over
+ * embedded bytes because enrichment only fills the field if the scanner left it null.
+ *
  * Stable identifiers: [bookIdFor] hashes `<treeUriString>#<relativePath>` so the same book
  * at the same path keeps its row across rescans. [chapterIdFor] hashes `<bookId>@<index>`
  * so re-running the scan yields the same chapter ids when the file order is unchanged.
  */
-class SafLibraryScanner(private val context: Context) : LibraryScanner {
+class SafLibraryScanner(
+    private val context: Context,
+    private val folderCoverFinder: FolderCoverFinder = FolderCoverFinder(),
+) : LibraryScanner {
 
     override suspend fun scan(roots: List<LibraryRoot>): ScanSnapshot = withContext(Dispatchers.IO) {
         val books = roots.flatMap { scanRoot(it) }
@@ -117,6 +128,18 @@ class SafLibraryScanner(private val context: Context) : LibraryScanner {
                 positionInBookMs = 0L,
             )
         }
+
+        // Cover-art Phase A local-first preference #2: look for a folder-level sidecar cover
+        // image (`cover.jpg`, `folder.png`, `albumart.webp`, etc.) alongside the audio. Bytes
+        // are read inline via contentResolver — cheap, and we're already on Dispatchers.IO
+        // from `scan`'s `withContext`. A broken stream / missing file becomes `null` and
+        // falls through to embedded extraction in Phase D.3 enrichment.
+        val folderCoverBytes: ByteArray? = folderCoverFinder.findCover(folder)?.let { coverDoc ->
+            runCatching {
+                context.contentResolver.openInputStream(coverDoc.uri)?.use { it.readBytes() }
+            }.getOrNull()
+        }
+
         return listOf(
             ScannedBook(
                 bookId = bookId,
@@ -125,6 +148,7 @@ class SafLibraryScanner(private val context: Context) : LibraryScanner {
                 title = folder.name ?: effectiveRelativePath,
                 author = author,
                 chapters = chapters,
+                embeddedCoverBytes = folderCoverBytes,
             )
         )
     }

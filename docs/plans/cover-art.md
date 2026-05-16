@@ -38,17 +38,20 @@ License: Voice is **GPLv3**. We do not copy code. We re-implement the same shape
 
 Goal: every cover the user already has on disk renders correctly, automatically, with zero settings.
 
-- [ ] **A.1** `CoverSaver` — owns `app/files/covers/<bookId>.jpg`. Methods: `newBookCoverFile(): File`, `setBookCover(file: File, bookId: BookId)`, `coverFor(bookId): File?`.
-- [ ] **A.2** `CoverScanner` (mirror of Voice's `CoverScanner.kt`) — `suspend fun scan(books: List<Book>)`. For each book:
+- [x] **A.1** `CoverSaver` — owns `app/files/covers/<bookId>.jpg`. Methods: `newBookCoverFile(): File`, `setBookCover(file: File, bookId: BookId)`, `coverFor(bookId): File?`. *Shipped as `CoverStore` (atomic `writeCover(bookId, bytes)` / `deleteCover(bookId)` / `pathFor(bookId)`, file at `<filesDir>/covers/<bookId>`, no extension — Coil sniffs the format).* 
+- [x] **A.2** `CoverScanner` (mirror of Voice's `CoverScanner.kt`) — `suspend fun scan(books: List<Book>)`. For each book:
   - If `book.coverPath` exists on disk → skip
   - Try `findAndSaveCoverFromDisc(book)` — `DocumentFile.fromTreeUri(book.id.toUri())`, `.listFiles()`, first `image/*` MIME type wins, copy bytes via `contentResolver.openInputStream`
   - Otherwise `scanForEmbeddedCover(book)` — iterate `book.chapters.take(5)`, call `coverExtractor.extractCover(chapterUri, outputFile)`, first success wins
+  *Shipped as a folded pipeline rather than a separate `CoverScanner` class: `SafLibraryScanner` does the folder walk and pulls sidecar bytes via `FolderCoverFinder` (preference #2, by-filename `cover.*` / `folder.*` / `albumart.*` rather than the more permissive `image/*` MIME — Voice's "first image wins" rule trades determinism for breadth and we chose determinism); `LibraryScannerEnrichment` does the embedded-cover fallback from the first chapter's metadata (preference #3 — A.3 will extend to the first 5 chapters when the dedicated extractors land); `LibraryRepository.applyScan` writes via `CoverStore`.*
 - [ ] **A.3** `CoverExtractor` interface; two impls:
   - `Mp4CoverExtractor` — reads the M4B `udta.meta.ilst.covr` atom + MP3 `APIC` frame (Phase I's MP4 box parser will already be walking this tree; reuse it). For MP3, `MetadataRetriever` or a tiny ID3v2 parser.
   - `MatroskaCoverExtractor` — walks EBML, finds `Attachments\AttachedFile` with `image/*` MIME, writes bytes. (Voice analog: `MatroskaCoverExtractor.kt`.)
-- [ ] **A.4** Wire `CoverScanner.scan(...)` into Phase D's scanner pass — after `LibraryRepository` commits a batch of `BookEntity` rows, call `coverScanner.scan(newBooks)`. Ticks `BookEntity.coverPath` to the on-disk path.
-- [ ] **A.5** `CoverArt` composable — Coil-based, takes a `BookId` (resolves `coverPath` via `CoverSaver`). Placeholder is the M3E book glyph. **Decode-size discipline**: tiles request `Size(coverSizePx, coverSizePx)`, full-screen player requests `Size.ORIGINAL` only at the player surface (tonearmboy `8d8c1a4` "Balanced load speed" lesson).
+- [x] **A.4** Wire `CoverScanner.scan(...)` into Phase D's scanner pass — after `LibraryRepository` commits a batch of `BookEntity` rows, call `coverScanner.scan(newBooks)`. Ticks `BookEntity.coverPath` to the on-disk path. *Shipped inline: `SafLibraryScanner.scanFolderAsBook` calls `FolderCoverFinder.findCover` mid-walk and reads bytes via `contentResolver.openInputStream`; `LibraryScannerEnrichment` only fills `embeddedCoverBytes` when the scanner didn't already (preference order preserved); `applyScan` writes via `CoverStore` and stores the path on `BookEntity.coverPath`.*
+- [x] **A.5** `CoverArt` composable — Coil-based, takes a `BookId` (resolves `coverPath` via `CoverSaver`). Placeholder is the M3E book glyph. **Decode-size discipline**: tiles request `Size(coverSizePx, coverSizePx)`, full-screen player requests `Size.ORIGINAL` only at the player surface (tonearmboy `8d8c1a4` "Balanced load speed" lesson). *Shipped with `SubcomposeAsyncImage` loading `File(coverPath)`; the book-glyph placeholder is the loading/error/null fallback; no explicit size override (Coil derives from Box constraints — correct for grid tiles).*
 - [ ] **A.6** Per-book overflow action "Use custom cover from device" — `OPEN_DOCUMENT` for `image/*`, copy bytes via `CoverSaver`, mark with a flag (`coverSource = Custom`) so a later rescan doesn't overwrite the user's pick.
+
+**Shipped:** A.1, A.2, A.4, A.5 in commit `05217dd`. A.3 + A.6 stay open.
 
 ## Phase B — user-initiated DuckDuckGo search
 

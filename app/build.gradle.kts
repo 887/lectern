@@ -104,6 +104,10 @@ dependencies {
   // SAF — DocumentFile wrapper for the picked-tree URIs (Phase C wraps this in CachedDocumentFile).
   implementation(libs.androidx.documentfile)
 
+  // Coil — cover-art tile loading (cover-art.md Phase A.5). Local files only; no
+  // coil-network-okhttp dep — network image search is cover-art.md Phase B work.
+  implementation(libs.coil.compose)
+
   // DataStore Preferences — persisted (treeUri → FolderType) mapping in Phase C, settings in Phase K.
   implementation(libs.androidx.datastore.preferences)
 

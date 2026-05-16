@@ -12,18 +12,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import coil3.compose.SubcomposeAsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.eight87.whisperboy.R
+import java.io.File
 
 /**
- * Placeholder cover surface. Cover-art Phase A (CoverScanner) will replace the inner content
- * with a Coil-loaded `AsyncImage` of `coverPath` when present; for now every tile shows the
- * M3E book glyph in a `surfaceContainer` square.
+ * Cover surface. Renders the book's on-disk cover via Coil when [coverPath] is non-null;
+ * otherwise (and on Coil load failure) renders the M3E book-glyph placeholder in a
+ * `surfaceContainerHigh` square.
  *
- * Tile decode discipline (tonearmboy `8d8c1a4`): once Coil lands, the model size MUST be
- * `Size(coverSizePx, coverSizePx)` for grid tiles — never `Size.ORIGINAL`. Defer that to
- * cover-art.md Phase A.5 where the Coil dep enters.
+ * Tile decode discipline (tonearmboy `8d8c1a4` "Balanced load speed"): we deliberately do not
+ * pass `Size.ORIGINAL` here. Coil derives the request size from the Box constraints, which is
+ * the right behaviour for grid tiles. A full-screen player surface (cover-art.md Phase F) is
+ * the only place that should override the size.
  */
 @Composable
 fun CoverArt(
@@ -36,14 +43,30 @@ fun CoverArt(
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
     ) {
-        // coverPath is unused until Coil lands (cover-art Phase A); the parameter exists now so
-        // call sites don't change shape when the AsyncImage swap happens.
-        @Suppress("UNUSED_EXPRESSION") coverPath
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.MenuBook,
-            contentDescription = stringResource(R.string.library_cover_placeholder_cd),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.fillMaxSize(0.45f),
-        )
+        if (coverPath != null) {
+            SubcomposeAsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(File(coverPath))
+                    .crossfade(true)
+                    .build(),
+                contentDescription = stringResource(R.string.library_cover_placeholder_cd),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+                loading = { CoverPlaceholder() },
+                error = { CoverPlaceholder() },
+            )
+        } else {
+            CoverPlaceholder()
+        }
     }
+}
+
+@Composable
+private fun CoverPlaceholder() {
+    Icon(
+        imageVector = Icons.AutoMirrored.Filled.MenuBook,
+        contentDescription = stringResource(R.string.library_cover_placeholder_cd),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.fillMaxSize(0.45f),
+    )
 }

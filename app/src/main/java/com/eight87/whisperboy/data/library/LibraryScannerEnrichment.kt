@@ -58,13 +58,18 @@ class LibraryScannerEnrichment(
         // Roll up book-level fields.
         val rolledAuthor = book.author ?: perChapterMetadata.firstNotNullOfOrNull { it?.author }
         val rolledDuration = enrichedChapters.sumOf { it.durationMs }
-        val firstEmbeddedCover = perChapterMetadata.firstNotNullOfOrNull { it?.embeddedCoverBytes }
+        // Cover-art Phase A local-first preference order: folder-level bytes from
+        // SafLibraryScanner / FolderCoverFinder win; only fall back to embedded extraction
+        // when the scanner didn't already find a sidecar image. Mirrors Voice's order
+        // (folder file > embedded). See `docs/plans/cover-art.md` doctrine #1.
+        val resolvedCover = book.embeddedCoverBytes
+            ?: perChapterMetadata.firstNotNullOfOrNull { it?.embeddedCoverBytes }
 
         return book.copy(
             chapters = enrichedChapters,
             author = rolledAuthor,
             durationMs = rolledDuration,
-            embeddedCoverBytes = firstEmbeddedCover,
+            embeddedCoverBytes = resolvedCover,
         )
     }
 }

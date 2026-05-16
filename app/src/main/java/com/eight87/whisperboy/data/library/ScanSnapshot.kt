@@ -32,9 +32,17 @@ data class ScannedBook(
     val durationMs: Long = 0L,
     val coverPath: String? = null,
     /**
-     * Raw cover bytes pulled from the first chapter's embedded picture by Phase D.3's
-     * enrichment. Phase D.4's `applyScan` writes these to disk via `CoverStore` and stores
-     * the resulting absolute path on the [BookEntity] row. `null` = no embedded cover found.
+     * Raw cover bytes — embedded OR folder-level, whichever was found first. The field name
+     * is historical (it pre-dates folder-level scanning); semantically it now means "the
+     * scanner's best local-first cover for this book". Order of preference, mirroring Voice
+     * and `docs/plans/cover-art.md` doctrine #1:
+     *  1. Folder-level sidecar (`cover.jpg` / `folder.png` / `albumart.webp`, etc.) found by
+     *     [FolderCoverFinder] during [SafLibraryScanner]'s tree walk.
+     *  2. First embedded cover from the first 5 chapters, pulled by [LibraryScannerEnrichment]
+     *     via [MediaAnalyzer].
+     *
+     * Phase D.4's `applyScan` writes these to disk via `CoverStore` and stores the resulting
+     * absolute path on the [BookEntity] row. `null` = no local cover found.
      */
     val embeddedCoverBytes: ByteArray? = null,
 ) {
