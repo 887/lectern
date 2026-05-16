@@ -40,6 +40,7 @@ fun WhisperboyApp() {
                 PlaybackScreen(
                     state = graph.nowPlayingState,
                     transport = graph.transportCommands,
+                    chapterSource = graph.chapterSource,
                     onBack = { backStack.removeLastOrNull() },
                     modifier = Modifier.safeDrawingPadding(),
                 )

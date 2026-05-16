@@ -14,9 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Forward30
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay30
@@ -34,7 +34,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -43,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eight87.whisperboy.R
+import com.eight87.whisperboy.data.library.ChapterSource
 import com.eight87.whisperboy.playback.NowPlayingState
 import com.eight87.whisperboy.playback.PlaybackUiState
 import com.eight87.whisperboy.playback.TransportCommands
@@ -67,10 +71,13 @@ import kotlinx.coroutines.launch
 fun PlaybackScreen(
     state: NowPlayingState,
     transport: TransportCommands,
+    chapterSource: ChapterSource,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState by state.state.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    var chapterSheetOpen by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxSize()) {
         TopAppBar(
@@ -100,10 +107,13 @@ fun PlaybackScreen(
                         contentDescription = stringResource(R.string.player_bookmark_cd),
                     )
                 }
-                IconButton(onClick = { /* Phase F follow-up */ }) {
+                IconButton(
+                    onClick = { chapterSheetOpen = true },
+                    enabled = uiState is PlaybackUiState.Loaded,
+                ) {
                     Icon(
-                        imageVector = Icons.Filled.MoreVert,
-                        contentDescription = stringResource(R.string.player_overflow_cd),
+                        imageVector = Icons.AutoMirrored.Filled.List,
+                        contentDescription = stringResource(R.string.player_chapter_list_cd),
                     )
                 }
             },
@@ -119,6 +129,23 @@ fun PlaybackScreen(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
         }
+    }
+
+    // Lazy-mount: the chapter list LazyColumn is only composed while the sheet is open. Per
+    // cold-start-perf A.5, sheet-only data (the full chapter list) does NOT ride in
+    // PlaybackUiState.Loaded — the sheet fetches via ChapterSource the first time it opens.
+    val loaded = uiState as? PlaybackUiState.Loaded
+    if (chapterSheetOpen && loaded != null) {
+        ChapterListSheet(
+            bookId = loaded.book.bookId,
+            currentChapterIndex = loaded.currentChapter?.chapterIndex ?: -1,
+            chapterSource = chapterSource,
+            onChapterTap = { positionInBookMs ->
+                scope.launch { transport.seekTo(positionInBookMs) }
+                chapterSheetOpen = false
+            },
+            onDismiss = { chapterSheetOpen = false },
+        )
     }
 }
 
@@ -324,9 +351,3 @@ private fun positionInChapter(state: PlaybackUiState.Loaded): Long {
     return (state.positionInBookMs - chapterStart).coerceAtLeast(0L)
 }
 
-private fun formatMmSs(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return "%d:%02d".format(minutes, seconds)
-}
