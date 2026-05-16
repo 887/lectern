@@ -13,6 +13,7 @@ class LibrarySortingTest {
         title: String,
         author: String? = null,
         lastPlayedAt: Long? = null,
+        completedAt: Long? = null,
     ): BookEntity = BookEntity(
         bookId = bookId,
         treeUriString = "content://x",
@@ -21,6 +22,7 @@ class LibrarySortingTest {
         author = author,
         durationMs = 1000L,
         lastPlayedAt = lastPlayedAt,
+        completedAt = completedAt,
     )
 
     @Test
@@ -136,16 +138,44 @@ class LibrarySortingTest {
     }
 
     @Test
-    fun `filterBooks NotStarted keeps only books with null lastPlayedAt`() {
+    fun `filterBooks NotStarted keeps null lastPlayedAt AND null completedAt`() {
         val out = filterBooks(
             listOf(
                 book("a", "A", lastPlayedAt = null),
                 book("b", "B", lastPlayedAt = 100L),
-                book("c", "C", lastPlayedAt = null),
+                book("c", "C", lastPlayedAt = null, completedAt = 50L),
+                book("d", "D", lastPlayedAt = null),
             ),
             BookFilter.NotStarted,
         )
-        assertEquals(listOf("A", "C"), out.map { it.title })
+        // Books C is "completed but never played" — semantically not "not started"
+        assertEquals(listOf("A", "D"), out.map { it.title })
+    }
+
+    @Test
+    fun `filterBooks Current excludes completed books even if lastPlayedAt set`() {
+        val out = filterBooks(
+            listOf(
+                book("a", "A", lastPlayedAt = 100L),
+                book("b", "B", lastPlayedAt = 200L, completedAt = 300L),
+                book("c", "C", lastPlayedAt = null),
+            ),
+            BookFilter.Current,
+        )
+        assertEquals(listOf("A"), out.map { it.title })
+    }
+
+    @Test
+    fun `filterBooks Completed keeps only books with non-null completedAt`() {
+        val out = filterBooks(
+            listOf(
+                book("a", "A", lastPlayedAt = 100L),
+                book("b", "B", completedAt = 200L),
+                book("c", "C", lastPlayedAt = 50L, completedAt = 300L),
+            ),
+            BookFilter.Completed,
+        )
+        assertEquals(listOf("B", "C"), out.map { it.title })
     }
 
     @Test

@@ -19,4 +19,19 @@ interface BookSource {
     fun observeBook(id: String): Flow<BookEntity?>
 
     suspend fun search(query: String): List<BookEntity>
+
+    /**
+     * Phase E.5 — book actions. Mark / unmark completion (sets / clears `completedAt`),
+     * forget a book entirely (deletes the row + cascading bookmarks/chapters via FK).
+     *
+     * Kept on the same interface for now — splitting into a separate `BookCommandSource`
+     * facet earns its keep when a second consumer (e.g. multi-select bar) appears that
+     * wants write access without read access. Currently both consumers also read books,
+     * so the single interface is fine.
+     */
+    suspend fun markCompleted(bookId: String)
+
+    suspend fun markNotStarted(bookId: String)
+
+    suspend fun forgetBook(bookId: String)
 }

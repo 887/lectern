@@ -16,6 +16,7 @@ import com.eight87.whisperboy.data.library.ChapterSource
 import com.eight87.whisperboy.data.library.CoverStore
 import com.eight87.whisperboy.data.library.LibraryDatabase
 import com.eight87.whisperboy.data.library.LibraryRepository
+import com.eight87.whisperboy.data.library.MIGRATION_1_2
 import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.LibraryScanner
 import com.eight87.whisperboy.data.library.LibraryScannerEnrichment
@@ -73,7 +74,9 @@ class AppGraph(context: Context) {
         appContext,
         LibraryDatabase::class.java,
         "library.db",
-    ).build()
+    )
+        .addMigrations(MIGRATION_1_2)
+        .build()
 
     /**
      * Phase D.2's SAF tree walker. Composables / future settings / Phase D.5 rescan triggers

@@ -40,6 +40,12 @@ interface BookDao {
     @Query("UPDATE books SET active = 0 WHERE bookId IN (:ids)")
     suspend fun markInactiveByIds(ids: List<String>)
 
+    @Query("UPDATE books SET completedAt = :timestamp WHERE bookId = :id")
+    suspend fun setCompletedAt(id: String, timestamp: Long?)
+
+    @Query("UPDATE books SET lastPlayedAt = :timestamp WHERE bookId = :id")
+    suspend fun setLastPlayedAt(id: String, timestamp: Long?)
+
     @Query("DELETE FROM books WHERE bookId = :id")
     suspend fun deleteById(id: String)
 }

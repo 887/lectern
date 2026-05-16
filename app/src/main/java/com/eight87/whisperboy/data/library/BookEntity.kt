@@ -53,6 +53,15 @@ data class BookEntity(
     val lastPlayedAt: Long? = null,
 
     /**
+     * Epoch ms when the user explicitly marked this book as completed via the long-press
+     * action sheet (Phase E.5). `null` = not completed. Voice's pattern — explicit flag rather
+     * than inferring from position-equals-duration; users want to mark books done before
+     * actually playing to the literal end, and conversely sometimes the file ends a few
+     * seconds short.
+     */
+    val completedAt: Long? = null,
+
+    /**
      * Soft-delete flag. Set to `false` when the book disappears from the source on rescan;
      * preserves bookmarks and position so a re-add of the same folder restores everything.
      */

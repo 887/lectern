@@ -19,8 +19,9 @@ import java.util.Locale
 
 fun filterBooks(books: List<BookEntity>, filter: BookFilter): List<BookEntity> = when (filter) {
     BookFilter.All -> books
-    BookFilter.Current -> books.filter { it.lastPlayedAt != null }
-    BookFilter.NotStarted -> books.filter { it.lastPlayedAt == null }
+    BookFilter.Current -> books.filter { it.lastPlayedAt != null && it.completedAt == null }
+    BookFilter.NotStarted -> books.filter { it.lastPlayedAt == null && it.completedAt == null }
+    BookFilter.Completed -> books.filter { it.completedAt != null }
 }
 
 /**

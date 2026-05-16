@@ -30,6 +30,26 @@ internal class LibraryRepository(
 
     override suspend fun search(query: String): List<BookEntity> = bookDao.search(query)
 
+    override suspend fun markCompleted(bookId: String) {
+        bookDao.setCompletedAt(bookId, System.currentTimeMillis())
+    }
+
+    override suspend fun markNotStarted(bookId: String) {
+        // "Not started" semantically clears both completion AND last-played; the book returns
+        // to the NotStarted filter bucket. Position is left intact — re-marking played picks up
+        // where the user was, which is friendlier than wiping progress.
+        bookDao.setCompletedAt(bookId, null)
+        bookDao.setLastPlayedAt(bookId, null)
+    }
+
+    override suspend fun forgetBook(bookId: String) {
+        // Phase E.5 contract: "Forget" deletes the row + bookmarks (FK CASCADE handles chapters
+        // and bookmarks). It does NOT delete the audio files — whisperboy never touches the
+        // user's library on disk. On a subsequent rescan the book reappears with default state.
+        database.withTransaction { bookDao.deleteById(bookId) }
+        coverStore.deleteCover(bookId)
+    }
+
     // ---- ChapterSource ----
 
     override fun observeChaptersForBook(bookId: String): Flow<List<ChapterEntity>> =

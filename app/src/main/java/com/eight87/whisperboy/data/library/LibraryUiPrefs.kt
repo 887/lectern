@@ -26,8 +26,9 @@ enum class BookSortKey { Recent, Title, Author }
 /**
  * Filter chips above the library grid.
  *
- * `Completed` is deliberately absent until E.5's "Mark completed" action lands — without
- * an explicit user-set completion flag, "completed" can only be inferred from position
- * math which is unreliable before the user has actually played to the end.
+ * - [All] — every active book
+ * - [Current] — started (`lastPlayedAt != null`) and not yet completed
+ * - [NotStarted] — never played AND not marked completed
+ * - [Completed] — explicitly marked completed via the long-press action sheet (Phase E.5)
  */
-enum class BookFilter { All, Current, NotStarted }
+enum class BookFilter { All, Current, NotStarted, Completed }

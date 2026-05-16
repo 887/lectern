@@ -22,7 +22,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -123,6 +125,8 @@ fun LibraryScreen(
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
     var searchMode by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    var actionSheetBookId by remember { mutableStateOf<String?>(null) }
+    var forgetConfirmBookId by remember { mutableStateOf<String?>(null) }
 
     val filteredBooks = remember(books, filter) { filterBooks(books, filter) }
     val searchedBooks = remember(filteredBooks, searchQuery) {
@@ -266,12 +270,14 @@ fun LibraryScreen(
                     books = sortedBooks,
                     sectionStarts = sectionStarts,
                     onBookTap = onBookTap,
+                    onBookLongPress = { actionSheetBookId = it },
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
                 GridMode.List -> LibraryCoverList(
                     books = sortedBooks,
                     sectionStarts = sectionStarts,
                     onBookTap = onBookTap,
+                    onBookLongPress = { actionSheetBookId = it },
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
             }
@@ -300,6 +306,120 @@ fun LibraryScreen(
             onDismiss = { manageFoldersOpen = false },
         )
     }
+
+    val actionBookId = actionSheetBookId
+    if (actionBookId != null) {
+        val actionBook = remember(books, actionBookId) { books.find { it.bookId == actionBookId } }
+        if (actionBook != null) {
+            BookActionSheet(
+                book = actionBook,
+                onDismiss = { actionSheetBookId = null },
+                onMarkCompleted = {
+                    coroutineScope.launch { bookSource.markCompleted(actionBook.bookId) }
+                    actionSheetBookId = null
+                },
+                onMarkNotStarted = {
+                    coroutineScope.launch { bookSource.markNotStarted(actionBook.bookId) }
+                    actionSheetBookId = null
+                },
+                onForget = {
+                    forgetConfirmBookId = actionBook.bookId
+                    actionSheetBookId = null
+                },
+            )
+        } else {
+            // Book vanished from the catalog while the sheet was open (e.g. rescan dropped it).
+            // Just dismiss silently.
+            actionSheetBookId = null
+        }
+    }
+
+    val forgetBookId = forgetConfirmBookId
+    if (forgetBookId != null) {
+        BookForgetConfirmDialog(
+            onDismiss = { forgetConfirmBookId = null },
+            onConfirm = {
+                coroutineScope.launch { bookSource.forgetBook(forgetBookId) }
+                forgetConfirmBookId = null
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BookActionSheet(
+    book: BookEntity,
+    onDismiss: () -> Unit,
+    onMarkCompleted: () -> Unit,
+    onMarkNotStarted: () -> Unit,
+    onForget: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val isCompleted = book.completedAt != null
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text(
+                text = stringResource(R.string.library_book_action_sheet_title, book.title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(12.dp))
+            if (isCompleted) {
+                TextButton(onClick = onMarkNotStarted, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(R.string.library_book_action_mark_not_started),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else {
+                TextButton(onClick = onMarkCompleted, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(R.string.library_book_action_mark_completed),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+            TextButton(onClick = onForget, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.library_book_action_forget),
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun BookForgetConfirmDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.library_book_action_forget_confirm_title)) },
+        text = {
+            Text(
+                stringResource(R.string.library_book_action_forget_confirm_body),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(
+                    text = stringResource(R.string.library_book_action_forget_confirm_yes),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.dialog_cancel))
+            }
+        },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -397,6 +517,7 @@ private fun LibraryCoverGrid(
     books: List<BookEntity>,
     sectionStarts: List<Pair<Int, String>>,
     onBookTap: (String) -> Unit,
+    onBookLongPress: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val gridState = rememberLazyGridState()
@@ -411,7 +532,11 @@ private fun LibraryCoverGrid(
             modifier = Modifier.fillMaxSize(),
         ) {
             items(items = books, key = { "book:${it.bookId}" }) { book ->
-                BookGridTile(book, onTap = { onBookTap(book.bookId) })
+                BookGridTile(
+                    book = book,
+                    onTap = { onBookTap(book.bookId) },
+                    onLongPress = { onBookLongPress(book.bookId) },
+                )
             }
         }
 
@@ -428,6 +553,7 @@ private fun LibraryCoverList(
     books: List<BookEntity>,
     sectionStarts: List<Pair<Int, String>>,
     onBookTap: (String) -> Unit,
+    onBookLongPress: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -440,7 +566,11 @@ private fun LibraryCoverList(
             modifier = Modifier.fillMaxSize(),
         ) {
             items(items = books, key = { "book:${it.bookId}" }) { book ->
-                BookListRow(book, onTap = { onBookTap(book.bookId) })
+                BookListRow(
+                    book = book,
+                    onTap = { onBookTap(book.bookId) },
+                    onLongPress = { onBookLongPress(book.bookId) },
+                )
             }
         }
 
@@ -452,9 +582,18 @@ private fun LibraryCoverList(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun BookGridTile(book: BookEntity, onTap: () -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().clickable(onClick = onTap)) {
+private fun BookGridTile(
+    book: BookEntity,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = onTap, onLongClick = onLongPress),
+    ) {
         CoverArt(
             coverPath = book.coverPath,
             modifier = Modifier
@@ -479,10 +618,18 @@ private fun BookGridTile(book: BookEntity, onTap: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun BookListRow(book: BookEntity, onTap: () -> Unit) {
+private fun BookListRow(
+    book: BookEntity,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit,
+) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onTap).padding(vertical = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = onTap, onLongClick = onLongPress)
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverArt(
@@ -519,6 +666,7 @@ private fun filterLabel(filter: BookFilter): Int = when (filter) {
     BookFilter.All -> R.string.library_filter_all
     BookFilter.Current -> R.string.library_filter_current
     BookFilter.NotStarted -> R.string.library_filter_not_started
+    BookFilter.Completed -> R.string.library_filter_completed
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

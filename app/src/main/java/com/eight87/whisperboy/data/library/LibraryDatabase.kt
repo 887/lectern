@@ -2,6 +2,8 @@ package com.eight87.whisperboy.data.library
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
  * Room database holding the library cache: books / chapters / bookmarks.
@@ -18,7 +20,7 @@ import androidx.room.RoomDatabase
         ChapterEntity::class,
         BookmarkEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class LibraryDatabase : RoomDatabase() {
@@ -28,4 +30,14 @@ abstract class LibraryDatabase : RoomDatabase() {
     abstract fun chapterDao(): ChapterDao
 
     abstract fun bookmarkDao(): BookmarkDao
+}
+
+/**
+ * v1 → v2: add `completedAt` column to `books` for Phase E.5's "Mark completed" action.
+ * Nullable Long; existing rows default to null (book not completed).
+ */
+val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE books ADD COLUMN completedAt INTEGER")
+    }
 }
