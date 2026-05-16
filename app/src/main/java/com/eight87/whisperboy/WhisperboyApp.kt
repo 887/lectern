@@ -74,8 +74,6 @@ fun WhisperboyApp() {
                         bookId = route.bookId,
                         coverApi = graph.coverApi,
                         bookSource = graph.bookSource,
-                        coverStore = graph.coverStore,
-                        okHttpClient = graph.okHttpClient,
                         onClose = { backStack.removeLastOrNull() },
                         modifier = Modifier.safeDrawingPadding(),
                     )

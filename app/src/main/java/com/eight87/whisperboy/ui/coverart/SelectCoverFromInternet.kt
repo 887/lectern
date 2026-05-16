@@ -59,12 +59,10 @@ import com.eight87.whisperboy.data.coverart.CoverApi
 import com.eight87.whisperboy.data.coverart.ImageSearchPagingSource
 import com.eight87.whisperboy.data.coverart.SearchResponse
 import com.eight87.whisperboy.data.library.BookSource
-import com.eight87.whisperboy.data.library.CoverStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
 
 /**
  * User-initiated DuckDuckGo image-search surface (cover-art.md Phase B.5–B.7).
@@ -90,8 +88,6 @@ fun SelectCoverFromInternet(
     bookId: String,
     coverApi: CoverApi,
     bookSource: BookSource,
-    coverStore: CoverStore,
-    okHttpClient: OkHttpClient,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -322,15 +318,3 @@ private fun ContentGrid(
     }
 }
 
-/**
- * Phase C wedge: full-image fetch + JPEG encode moved into [EditCoverDialog] (which uses
- * the [coil3.SingletonImageLoader] and the user's crop rect). The previous OkHttp helper
- * is intentionally retired. The `okHttpClient` / `coverStore` constructor parameters
- * stay because [com.eight87.whisperboy.WhisperboyApp] wires them in and the call site
- * is owned by a coexisting subagent — once that lands, both can be removed.
- */
-@Suppress("unused", "UNUSED_PARAMETER")
-private fun retainedPhaseBPickPathRemoved(okHttpClient: OkHttpClient, coverStore: CoverStore) {
-    // Intentionally empty — placeholder so static analyzers don't drop the imports while
-    // the public composable's parameter list is the binary surface another inch reads.
-}

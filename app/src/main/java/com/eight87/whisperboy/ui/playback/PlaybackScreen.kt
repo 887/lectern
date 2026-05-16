@@ -1,6 +1,8 @@
 package com.eight87.whisperboy.ui.playback
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +47,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -96,12 +101,40 @@ fun PlaybackScreen(
     val scope = rememberCoroutineScope()
     var chapterSheetOpen by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    // F.6 — extract a single dominant accent color from the current book's cover.
+    // Off-main (Dispatchers.IO inside extractTint). Re-keys on the cover path so a
+    // book switch retriggers extraction; nulls out cleanly when there's no cover.
+    val coverPath = (uiState as? PlaybackUiState.Loaded)?.book?.coverPath
+    var tint by remember { mutableStateOf<Color?>(null) }
+    LaunchedEffect(coverPath) {
+        tint = extractTint(coverPath)
+    }
+    val surface = MaterialTheme.colorScheme.surface
+    // Animate the top-of-gradient color so book changes cross-fade instead of snap.
+    // Single per-screen animation (not a 9-call theme crossfade — see cold-start-perf B.2);
+    // the alpha multiply is folded into the target so we don't allocate a second `Color`.
+    val animatedTop by animateColorAsState(
+        targetValue = (tint ?: surface).copy(alpha = 0.4f),
+        label = "playerTintTop",
+    )
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(animatedTop, surface),
+                ),
+            ),
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text(text = playerTitle(uiState)) },
             expandedHeight = 32.dp,
+            // Transparent container so the F.6 Palette-tinted gradient painted on the
+            // wrapping Box shows through the app-bar band at the top of the screen.
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface,
+                containerColor = Color.Transparent,
             ),
             navigationIcon = {
                 IconButton(onClick = onBack) {
@@ -146,6 +179,7 @@ fun PlaybackScreen(
                 playbackSettings = playbackSettings,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
+        }
         }
     }
 
