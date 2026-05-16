@@ -25,6 +25,7 @@ fun WhisperboyApp() {
                     persistedUriPermissionStore = graph.persistedUriPermissionStore,
                     libraryRescanCoordinator = graph.libraryRescanCoordinator,
                     bookSource = graph.bookSource,
+                    libraryUiSettings = graph.libraryUiSettings,
                     modifier = Modifier.safeDrawingPadding(),
                 )
             }

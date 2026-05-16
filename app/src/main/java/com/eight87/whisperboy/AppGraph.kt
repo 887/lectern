@@ -7,7 +7,9 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import com.eight87.whisperboy.data.library.AndroidLibraryRescanCoordinator
+import com.eight87.whisperboy.data.library.AndroidLibraryUiSettings
 import com.eight87.whisperboy.data.library.AndroidPersistedUriPermissionStore
+import com.eight87.whisperboy.data.library.LibraryUiSettings
 import com.eight87.whisperboy.data.library.BookSource
 import com.eight87.whisperboy.data.library.BookmarkSource
 import com.eight87.whisperboy.data.library.ChapterSource
@@ -46,6 +48,18 @@ class AppGraph(context: Context) {
 
     val persistedUriPermissionStore: PersistedUriPermissionStore =
         AndroidPersistedUriPermissionStore(appContext, libraryRootsDataStore)
+
+    /**
+     * Phase E.3 follow-up — persisted library-screen UI prefs (grid mode / sort key / filter).
+     * Backed by its own `library_ui` Preferences file so it stays decoupled from the
+     * `library_roots` store above; deleting one (e.g. on a settings reset) doesn't nuke the other.
+     */
+    private val libraryUiDataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
+        produceFile = { appContext.preferencesDataStoreFile("library_ui") }
+    )
+
+    val libraryUiSettings: LibraryUiSettings =
+        AndroidLibraryUiSettings(libraryUiDataStore)
 
     /**
      * Library cache database. Eagerly constructed so a misconfigured schema fails fast at app
