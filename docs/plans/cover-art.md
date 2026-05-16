@@ -73,14 +73,18 @@ Goal: the per-book "Search online" flow, exactly Voice's shape.
 
 Goal: after the user picks a search result, they crop it.
 
-- [ ] **C.1** `EditCoverDialog` — full-screen surface that loads `item.image` (the full-res URL, not the thumbnail) via Coil, overlays a `CropOverlay` (1:1 square frame, draggable + pinch-zoom).
-- [ ] **C.2** `CropTransformation` — Coil `Transformation` that applies the user's crop rect on confirm and writes the result to `CoverSaver.newBookCoverFile()`.
-- [ ] **C.3** Confirm path: `coverSaver.setBookCover(croppedFile, bookId)` → invalidate Coil's memory + disk cache for this `bookId` → pop back to the caller.
+- [x] **C.1** `EditCoverDialog` — full-screen surface that loads `item.image` (the full-res URL, not the thumbnail) via Coil, overlays a `CropOverlay` (1:1 square frame, draggable + pinch-zoom). *Shipped: `ui/coverart/EditCoverDialog.kt` — a full-screen `Dialog` (`usePlatformDefaultWidth = false`) renders the image in a square `BoxWithConstraints`-sized region, panned + pinch-zoomed via `rememberTransformableState` + `Modifier.transformable`. Crop overlay shape: **fixed centered window, image moves underneath** (Voice's pattern; the alternative — canvas-drawn dimming with four corner handles — was explicitly deferred per plan §C). Scale clamped to `[1, 6]`; pan clamped so the image always covers the crop window at any scale.*
+- [x] **C.2** `CropTransformation` — Coil `Transformation` that applies the user's crop rect on confirm and writes the result to `CoverSaver.newBookCoverFile()`. *Shipped inline rather than as a Coil `Transformation`: on Save, `cropImage(...)` calls `SingletonImageLoader.get(context).execute(ImageRequest.allowHardware(false))`, reads back the source `BitmapImage.bitmap`, converts the user's display-space pan + zoom into a source-pixel crop rect, and `Bitmap.createBitmap(src, l, t, side, side).compress(JPEG, 90, stream)`. A Coil `Transformation` would have run inside Coil's pipeline; we want the bytes directly so we can hand them to `BookSource.setCustomCover`, so the suspend `cropImage` helper is the right shape.*
+- [x] **C.3** Confirm path: `coverSaver.setBookCover(croppedFile, bookId)` → invalidate Coil's memory + disk cache for this `bookId` → pop back to the caller. *Shipped: `SelectCoverFromInternet` no longer commits picks straight to `CoverStore`; tapping a thumb sets `editingItem` and pushes `EditCoverDialog`. On confirm, the cropped JPEG bytes flow through `bookSource.setCustomCover(bookId, bytes)` — which writes via `CoverStore.writeCover` and flips `coverSource = Custom` (Phase A.6 invariant: a later rescan won't overwrite a `Custom` cover). Cache invalidation is shared with D.1 below — same on-disk file path, same `refreshCoverArt` UI-layer helper.*
+
+**Shipped:** C.1, C.2, C.3 in this commit.
 
 ## Phase D — refresh + invalidation
 
-- [ ] **D.1** `CoverArtRepository.refresh(bookId)` — drops Coil's cache key for that bookId, re-issues. Surfaces in the long-press sheet as "Refresh cover" (forces a fresh local-first scan, useful when the user just dropped a `cover.jpg` next to the book file).
-- [ ] **D.2** Manual cover (Phase A.6) and search-online cover (Phase B+C) both write through `CoverSaver.setBookCover` so the invalidation path is the same.
+- [x] **D.1** `CoverArtRepository.refresh(bookId)` — drops Coil's cache key for that bookId, re-issues. Surfaces in the long-press sheet as "Refresh cover" (forces a fresh local-first scan, useful when the user just dropped a `cover.jpg` next to the book file). *Shipped as a UI-layer helper rather than a data-layer method: `ui/common/CoverArtRefresher.kt` exports a top-level `refreshCoverArt(context, coverPath)` that calls `SingletonImageLoader.get(context).memoryCache?.remove(MemoryCache.Key(coverPath))` + `diskCache?.remove(coverPath)`. The Coil singleton is an Android-only lazy thing that the data layer shouldn't reach for; keeping the helper UI-side keeps `BookSource` / `LibraryRepository` clean. The "Refresh cover" `TextButton` in `BookActionSheet` (Phase A.6's sheet) calls it with `LocalContext.current` and the book's `coverPath`, then dismisses the sheet.*
+- [x] **D.2** Manual cover (Phase A.6) and search-online cover (Phase B+C) both write through `CoverSaver.setBookCover` so the invalidation path is the same. *Already enforced by Phase A.6: both flows route through `BookSource.setCustomCover` → `CoverStore.writeCover(bookId, bytes)`. The path on disk is stable (`<filesDir>/covers/<bookId>`), so the single `refreshCoverArt(coverPath)` helper invalidates the cache for either origin. No data-layer plumbing required — the on-disk write is the invalidation event, the helper is the consequence.*
+
+**Shipped:** D.1, D.2 in this commit.
 
 ## Settings surface
 

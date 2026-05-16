@@ -76,6 +76,7 @@ import com.eight87.whisperboy.data.library.RescanState
 import com.eight87.whisperboy.playback.NowPlayingState
 import com.eight87.whisperboy.playback.TransportCommands
 import com.eight87.whisperboy.ui.common.CoverArt
+import com.eight87.whisperboy.ui.common.refreshCoverArt
 import com.eight87.whisperboy.ui.common.FastScrollbar
 import kotlinx.coroutines.launch
 
@@ -396,6 +397,7 @@ private fun BookActionSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val isCompleted = book.completedAt != null
+    val refreshContext = LocalContext.current
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(
@@ -410,6 +412,23 @@ private fun BookActionSheet(
             TextButton(onClick = onPickCustomCover, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = stringResource(R.string.library_book_action_custom_cover),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            // cover-art.md Phase D.1 — drop Coil's memory + disk cache key for this
+            // book's cover so the next composition re-reads fresh bytes from disk.
+            // Useful after the user drops a `cover.jpg` next to the audio file and
+            // a rescan has now copied it into `<filesDir>/covers/<bookId>` but the
+            // grid is still showing the previous bitmap.
+            TextButton(
+                onClick = {
+                    refreshCoverArt(refreshContext, book.coverPath)
+                    onDismiss()
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(R.string.library_book_action_refresh_cover),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
