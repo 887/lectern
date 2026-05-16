@@ -1,27 +1,21 @@
 package com.eight87.whisperboy.ui.library
 
 import com.eight87.whisperboy.data.library.BookEntity
+import com.eight87.whisperboy.data.library.BookFilter
+import com.eight87.whisperboy.data.library.BookSortKey
 import java.text.Collator
 import java.util.Locale
 
 /**
- * Phase E.3 — sort keys for the library grid / list.
+ * Phase E.2 / E.3 — pure-function predicates and comparators for the library grid / list.
  *
- * Lives in a pure-Kotlin file (no Compose imports) so it's unit-testable without
- * `createComposeRule()` (R.D.3 discipline).
- */
-enum class BookSortKey { Recent, Title, Author }
-
-/**
- * Phase E.2 — filter chips above the library grid.
+ * The enums ([BookSortKey], [BookFilter], [com.eight87.whisperboy.data.library.GridMode])
+ * live in `data/library/` so the persisted [com.eight87.whisperboy.data.library.LibraryUiSettings]
+ * facet can reference them without inverting the dependency direction. These functions stay
+ * here — they're consumed by the composable and have no business in the data layer.
  *
- * `Completed` is deliberately absent until E.5's "Mark completed" action lands — without an
- * explicit user-set completion flag, "completed" can only be inferred from position math
- * (`currentChapterIndex` + `positionInChapterMs` against `durationMs`) which is unreliable
- * before the user has actually played to the end. Voice ships an explicit flag; we will too
- * when E.5 lands the schema migration.
+ * No Compose imports, so unit-testable without `createComposeRule()` (R.D.3 discipline).
  */
-enum class BookFilter { All, Current, NotStarted }
 
 fun filterBooks(books: List<BookEntity>, filter: BookFilter): List<BookEntity> = when (filter) {
     BookFilter.All -> books

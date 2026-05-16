@@ -1,6 +1,8 @@
 package com.eight87.whisperboy.ui.library
 
 import com.eight87.whisperboy.data.library.BookEntity
+import com.eight87.whisperboy.data.library.BookFilter
+import com.eight87.whisperboy.data.library.BookSortKey
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

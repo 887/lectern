@@ -59,17 +59,18 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eight87.whisperboy.R
 import com.eight87.whisperboy.data.library.BookEntity
+import com.eight87.whisperboy.data.library.BookFilter
+import com.eight87.whisperboy.data.library.BookSortKey
 import com.eight87.whisperboy.data.library.BookSource
+import com.eight87.whisperboy.data.library.GridMode
 import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.LibraryRoot
+import com.eight87.whisperboy.data.library.LibraryUiSettings
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
 import com.eight87.whisperboy.data.library.RescanState
 import com.eight87.whisperboy.ui.common.CoverArt
 import com.eight87.whisperboy.ui.common.FastScrollbar
 import kotlinx.coroutines.launch
-
-/** Phase E.1 — grid vs list rendering mode for the library. Persisted later in Phase E.3. */
-enum class GridMode { Grid, List }
 
 /**
  * Phase E.1 — the library screen.
@@ -91,6 +92,7 @@ fun LibraryScreen(
     bookSource: BookSource,
     persistedUriPermissionStore: PersistedUriPermissionStore,
     libraryRescanCoordinator: LibraryRescanCoordinator,
+    libraryUiSettings: LibraryUiSettings,
     modifier: Modifier = Modifier,
 ) {
     val books by bookSource.observeBooks()
@@ -100,9 +102,16 @@ fun LibraryScreen(
         .collectAsStateWithLifecycle(initialValue = emptyList<LibraryRoot>())
     val coroutineScope = rememberCoroutineScope()
 
-    var gridMode by remember { mutableStateOf(GridMode.Grid) }
-    var sortKey by remember { mutableStateOf(BookSortKey.Title) }
-    var filter by remember { mutableStateOf(BookFilter.All) }
+    // Phase E.3 follow-up — persisted via DataStore (`library_ui`). `collectAsStateWithLifecycle`
+    // (cold-start-perf.md B.1) defers collection to Lifecycle.STARTED so the first emission
+    // doesn't fire during composition. Initial values match the defaults the impl coerces to,
+    // so the screen renders consistently before the Flow's first emission lands.
+    val gridMode by libraryUiSettings.gridMode
+        .collectAsStateWithLifecycle(initialValue = GridMode.Grid)
+    val sortKey by libraryUiSettings.sortKey
+        .collectAsStateWithLifecycle(initialValue = BookSortKey.Title)
+    val filter by libraryUiSettings.filter
+        .collectAsStateWithLifecycle(initialValue = BookFilter.All)
     var sortMenuOpen by remember { mutableStateOf(false) }
     var overflowOpen by remember { mutableStateOf(false) }
     var manageFoldersOpen by remember { mutableStateOf(false) }
@@ -147,7 +156,7 @@ fun LibraryScreen(
                                     }
                                 } else null,
                                 onClick = {
-                                    sortKey = option
+                                    coroutineScope.launch { libraryUiSettings.setSortKey(option) }
                                     sortMenuOpen = false
                                 },
                             )
@@ -155,7 +164,8 @@ fun LibraryScreen(
                     }
                 }
                 IconButton(onClick = {
-                    gridMode = if (gridMode == GridMode.Grid) GridMode.List else GridMode.Grid
+                    val next = if (gridMode == GridMode.Grid) GridMode.List else GridMode.Grid
+                    coroutineScope.launch { libraryUiSettings.setGridMode(next) }
                 }) {
                     val (icon, cd) = when (gridMode) {
                         GridMode.Grid -> Icons.AutoMirrored.Filled.ViewList to
@@ -206,7 +216,9 @@ fun LibraryScreen(
         if (books.isNotEmpty()) {
             LibraryFilterChips(
                 filter = filter,
-                onFilterChange = { filter = it },
+                onFilterChange = { next ->
+                    coroutineScope.launch { libraryUiSettings.setFilter(next) }
+                },
                 modifier = Modifier.fillMaxWidth(),
             )
         }

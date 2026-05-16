@@ -33,6 +33,7 @@ import com.eight87.whisperboy.data.library.BookSource
 import com.eight87.whisperboy.data.library.FolderType
 import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.LibraryRoot
+import com.eight87.whisperboy.data.library.LibraryUiSettings
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
 import com.eight87.whisperboy.ui.library.LibraryScreen
 import kotlinx.coroutines.launch
@@ -53,6 +54,7 @@ fun HomeScreen(
     persistedUriPermissionStore: PersistedUriPermissionStore,
     libraryRescanCoordinator: LibraryRescanCoordinator,
     bookSource: BookSource,
+    libraryUiSettings: LibraryUiSettings,
     modifier: Modifier = Modifier,
 ) {
     val roots by persistedUriPermissionStore.observeRoots()
@@ -68,6 +70,7 @@ fun HomeScreen(
             bookSource = bookSource,
             persistedUriPermissionStore = persistedUriPermissionStore,
             libraryRescanCoordinator = libraryRescanCoordinator,
+            libraryUiSettings = libraryUiSettings,
             modifier = modifier,
         )
     }
