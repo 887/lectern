@@ -16,6 +16,8 @@ import androidx.navigation3.ui.NavDisplay
 import com.eight87.whisperboy.ui.coverart.SelectCoverFromInternet
 import com.eight87.whisperboy.ui.home.HomeScreen
 import com.eight87.whisperboy.ui.playback.NowPlayingSheet
+import com.eight87.whisperboy.ui.settings.AboutScreen
+import com.eight87.whisperboy.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
 /**
@@ -65,6 +67,26 @@ fun WhisperboyApp() {
                             scope.launch { graph.bookCommands.playBook(bookId) }
                             openSheet()
                         },
+                        onSettingsClick = { backStack.add(SettingsRoute) },
+                        modifier = Modifier.safeDrawingPadding(),
+                    )
+                }
+                entry<SettingsRoute> {
+                    // Phase K.1 — settings root. Subcategory navigation
+                    // (Playback / Sleep timer / Library / Theme) lands
+                    // when K.2 / K.3 / K.4 / K.5 ship; until then the
+                    // SettingsScreen surfaces a "Coming soon" snackbar
+                    // for those rows internally.
+                    SettingsScreen(
+                        onBack = { backStack.removeLastOrNull() },
+                        onAboutClick = { backStack.add(AboutRoute) },
+                        modifier = Modifier.safeDrawingPadding(),
+                    )
+                }
+                entry<AboutRoute> {
+                    // Phase K.6 — About sub-page.
+                    AboutScreen(
+                        onBack = { backStack.removeLastOrNull() },
                         modifier = Modifier.safeDrawingPadding(),
                     )
                 }

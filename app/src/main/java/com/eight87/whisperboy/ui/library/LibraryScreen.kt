@@ -100,6 +100,7 @@ fun LibraryScreen(
     libraryRescanCoordinator: LibraryRescanCoordinator,
     libraryUiSettings: LibraryUiSettings,
     onBookTap: (String) -> Unit,
+    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val books by bookSource.observeBooks()
@@ -240,6 +241,13 @@ fun LibraryScreen(
                         expanded = overflowOpen,
                         onDismissRequest = { overflowOpen = false },
                     ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.library_overflow_settings)) },
+                            onClick = {
+                                onSettingsClick()
+                                overflowOpen = false
+                            },
+                        )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.library_overflow_rescan)) },
                             enabled = rescanState !is RescanState.Running,

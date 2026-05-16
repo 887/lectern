@@ -198,18 +198,18 @@ Goal: per-book speed (0.5x–3.5x), skip silence, volume gain in dB. **Voice ana
 
 ---
 
-## Phase K — settings screen
+## Phase K — settings screen — partial; K.1 scaffold + K.6 shipped in commit `fddbd17`
 
 Goal: full settings tree. **Voice analog:** `:features:settings`.
 
 > **Read [`m3-expressive.md`](m3-expressive.md) before starting.** This is the phase that fully cashes in the M3E plan: the C-series steps (`CategoryAccent` data class, ~5–6 hand-picked accent pairs for whisperboy's category split — Appearance / Library / Playback / Sleep timer / Bookmarks / About — and the `SettingsCategoryIcon` composable wiring filled glyph icons into coloured circular avatars per row). Auto-derive `accent` from row `id` at the row composable (gotcha #3) so any future hand-rolled screen — License sub-page, About — picks up colour for free instead of going monochrome. `RoundedCornerShape(28.dp)` + `defaultElevation = 0.dp` + divider-less `Arrangement.spacedBy(2.dp)` for the in-card row stack. K.6 (About → Open-source licenses link) ties into [`oss-licenses.md`](oss-licenses.md).
 
-- [ ] **K.1** `SettingsScreen` — Material 3 settings list. Sections: Playback, Sleep timer, Library, Theme, About.
+- [x] **K.1** `SettingsScreen` — Material 3 settings list. Sections: Playback, Sleep timer, Library, Theme, About. _Scaffold shipped — top-app-bar + grouped cards + five category rows + back nav + library overflow "Settings" entry. Subcategory destinations for Playback / Sleep timer / Library / Theme stub a "Coming soon" snackbar until K.2 / K.3 / K.4 / K.5 land. Row composable deliberately whisperboy-fresh (not ported from tonearmboy's catalog) so the Phase C inch of [`m3-expressive.md`](m3-expressive.md) can drop in `CategoryAccent` coloured circular avatars by editing one composable._
 - [ ] **K.2** Playback section: default speed, default skip silence, default gain, rewind/forward seconds, auto-rewind seconds, equalizer launcher (`AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL` system intent — same pattern as Voice).
 - [ ] **K.3** Sleep timer section: default duration, fade-out duration, shake-to-resume on/off, auto-arm window.
 - [ ] **K.4** Library section: list of roots with `FolderType` + remove + add-new; manual rescan button.
 - [ ] **K.5** Theme section: light / dark / follow-system; dynamic color toggle (Material You). **Custom chrome tint picker** (tonearmboy `82d6248`) — optional override of the Palette-extracted accent for users who want a fixed app-wide tint instead of cover-driven.
-- [ ] **K.6** About section: version, build hash, license, link to GitHub repo. Build metadata captured at compile time (same pattern tonearmboy validated). **Clean-room credits clarification** (tonearmboy `765c545`): the About text explicitly states that the relationship with Voice is "spiritual sibling" — UI design-space inspiration only, no code copy, MIT vs GPLv3 — so anyone reading the credits doesn't infer a fork.
+- [x] **K.6** About section: version, build hash, license, link to GitHub repo. Build metadata captured at compile time (same pattern tonearmboy validated). **Clean-room credits clarification** (tonearmboy `765c545`): the About text explicitly states that the relationship with Voice is "spiritual sibling" — UI design-space inspiration only, no code copy, MIT vs GPLv3 — so anyone reading the credits doesn't infer a fork. _Shipped — AboutScreen renders app icon + version + MIT license + GitHub link + clean-room sibling credit + OSS licenses TODO row (wired to placeholder snackbar until [`oss-licenses.md`](oss-licenses.md) ships). Version + git-sha are hard-coded today because `buildConfig = false` in `app/build.gradle.kts`; a follow-up inch will flip `buildConfig = true` + add `buildConfigField` for `VERSION_NAME` / `GIT_SHA` and replace the constants in `AboutScreen.kt`._
 _No K.7. Cover-art has no settings surface — see [`cover-art.md`](cover-art.md) "Settings surface" section. Voice doesn't expose cover-art settings, and we don't either; the "Search online" action is per-book in the long-press sheet (Phase E.5)._
 
 ---
