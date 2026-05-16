@@ -35,8 +35,6 @@ import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.LibraryRoot
 import com.eight87.whisperboy.data.library.LibraryUiSettings
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
-import com.eight87.whisperboy.playback.NowPlayingState
-import com.eight87.whisperboy.playback.TransportCommands
 import com.eight87.whisperboy.ui.library.LibraryScreen
 import kotlinx.coroutines.launch
 
@@ -57,8 +55,6 @@ fun HomeScreen(
     libraryRescanCoordinator: LibraryRescanCoordinator,
     bookSource: BookSource,
     libraryUiSettings: LibraryUiSettings,
-    nowPlayingState: NowPlayingState,
-    transportCommands: TransportCommands,
     onBookTap: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -76,8 +72,6 @@ fun HomeScreen(
             persistedUriPermissionStore = persistedUriPermissionStore,
             libraryRescanCoordinator = libraryRescanCoordinator,
             libraryUiSettings = libraryUiSettings,
-            nowPlayingState = nowPlayingState,
-            transportCommands = transportCommands,
             onBookTap = onBookTap,
             modifier = modifier,
         )

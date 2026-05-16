@@ -80,6 +80,17 @@ fun PlaybackScreen(
     playbackSettings: PlaybackSettings,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Optional list state for an inner LazyColumn (e.g. a future queue / chapter
+     * list mounted directly in the player body) so a host that wants to drive
+     * overscroll-down → sheet-collapse can wire a `NestedScrollConnection` against
+     * it. Currently unused — the chapter list lives inside `ChapterListSheet`
+     * (a ModalBottomSheet), not in the player body, so there is no inner Lazy
+     * column to drive. Left as a stub so the sheet host's nested-scroll wiring
+     * has a place to plug in without a second signature change.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    chapterListState: androidx.compose.foundation.lazy.LazyListState? = null,
 ) {
     val uiState by state.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()

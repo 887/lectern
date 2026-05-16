@@ -73,8 +73,6 @@ import com.eight87.whisperboy.data.library.LibraryRoot
 import com.eight87.whisperboy.data.library.LibraryUiSettings
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
 import com.eight87.whisperboy.data.library.RescanState
-import com.eight87.whisperboy.playback.NowPlayingState
-import com.eight87.whisperboy.playback.TransportCommands
 import com.eight87.whisperboy.ui.common.CoverArt
 import com.eight87.whisperboy.ui.common.FastScrollbar
 import kotlinx.coroutines.launch
@@ -100,8 +98,6 @@ fun LibraryScreen(
     persistedUriPermissionStore: PersistedUriPermissionStore,
     libraryRescanCoordinator: LibraryRescanCoordinator,
     libraryUiSettings: LibraryUiSettings,
-    nowPlayingState: NowPlayingState,
-    transportCommands: TransportCommands,
     onBookTap: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -308,13 +304,11 @@ fun LibraryScreen(
             }
         }
 
-        // Phase E.6 — pinned now-playing bar. Self-hides when no Loaded state; no slot
-        // reserved when nothing is playing. Tapping opens the player route.
-        NowPlayingBar(
-            nowPlayingState = nowPlayingState,
-            transport = transportCommands,
-            onTap = onBookTap,
-        )
+        // Phase E.6 — pinned now-playing bar (mini-player) is mounted by
+        // `NowPlayingSheet` at the WhisperboyApp root, NOT here. Hosting
+        // it at the root lets the bar double as the peek of the swipe-up
+        // sheet (Auxio-style) and keeps the fast-ticking sheet-progress
+        // animation off the library's recomposition path.
     }
 
     val pending = pendingUri

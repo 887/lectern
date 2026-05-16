@@ -2,7 +2,7 @@ package com.eight87.whisperboy.ui.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +25,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,28 +39,37 @@ import com.eight87.whisperboy.ui.common.CoverArt
 import kotlinx.coroutines.launch
 
 /**
- * Phase E.6 — slim now-playing bar pinned to the bottom of the library screen.
+ * Phase E.6 — slim now-playing bar pinned to the bottom.
  *
- * Visible only when [PlaybackUiState] is `Loaded`. When idle / not-yet-connected the composable
- * returns immediately so nothing reserves layout space. Lazy-mount discipline
- * (cold-start-perf.md A.5): the full player surface lives on a separate route — this bar is the
- * slim collapsed state, not a hidden expanded sheet, so there's no heavy composable to gate.
+ * Used as the **peek** of [com.eight87.whisperboy.ui.playback.NowPlayingSheet]:
+ * tapping anywhere outside the play / pause button calls [onExpand], which the
+ * host animates into the full-screen player by driving `sheetProgress` 0 → 1.
+ * Vertical drag gestures on the outer Row are forwarded to the host via
+ * [onSheetDragDelta] / [onSheetDragSettle], so the user can drag the sheet open
+ * with a finger from anywhere on the bar (Auxio-style).
  *
- * Tapping the bar (anywhere outside the play/pause button) navigates to the full player via
- * the [onTap] callback (the parent owns the nav3 push). The play/pause button toggles transport
- * without leaving the library — Voice does the same.
+ * Visible only when [PlaybackUiState] is `Loaded`. When idle / not-yet-connected
+ * the composable returns immediately so nothing reserves layout space.
  *
- * 2dp thin progress line (Auxio-style, tonearmboy `82d6248`) along the bottom edge tracks
- * `position / duration` across the whole book. `Modifier.graphicsLayer { scaleX = fraction }`
- * (cold-start-perf C.2) defers the state read to draw — the fast-ticking position field
- * doesn't trigger composition each tick.
+ * 2dp thin progress line along the bottom edge tracks `position / duration`
+ * across the whole book. `Modifier.graphicsLayer { scaleX = fraction }`
+ * (cold-start-perf C.2) defers the state read to draw — the fast-ticking
+ * position field doesn't trigger composition each tick.
  */
 @Composable
 fun NowPlayingBar(
     nowPlayingState: NowPlayingState,
     transport: TransportCommands,
-    onTap: (bookId: String) -> Unit,
+    onExpand: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Sheet-drag forwarder. Each vertical drag delta on the outer Row arrives
+     * here as a Y-pixel offset (negative = swipe up). Default no-op keeps
+     * standalone callers / preview / tests working without the sheet plumbing.
+     */
+    onSheetDragDelta: (Float) -> Unit = {},
+    /** Fired when the drag gesture ends (release or cancel). */
+    onSheetDragSettle: () -> Unit = {},
 ) {
     val state by nowPlayingState.state.collectAsStateWithLifecycle()
     val loaded = state as? PlaybackUiState.Loaded ?: return
@@ -71,11 +81,19 @@ fun NowPlayingBar(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable { onTap(loaded.book.bookId) },
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onExpand() }
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragEnd = { onSheetDragSettle() },
+                        onDragCancel = { onSheetDragSettle() },
+                    ) { _, delta -> onSheetDragDelta(delta) }
+                }
+                .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             CoverArt(
