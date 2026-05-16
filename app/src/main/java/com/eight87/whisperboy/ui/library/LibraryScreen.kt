@@ -27,8 +27,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,6 +41,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -116,9 +119,14 @@ fun LibraryScreen(
     var overflowOpen by remember { mutableStateOf(false) }
     var manageFoldersOpen by remember { mutableStateOf(false) }
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
+    var searchMode by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
     val filteredBooks = remember(books, filter) { filterBooks(books, filter) }
-    val sortedBooks = remember(filteredBooks, sortKey) { sortedBooks(filteredBooks, sortKey) }
+    val searchedBooks = remember(filteredBooks, searchQuery) {
+        searchBooks(filteredBooks, searchQuery)
+    }
+    val sortedBooks = remember(searchedBooks, sortKey) { sortedBooks(searchedBooks, sortKey) }
     val sectionStarts = remember(sortedBooks, sortKey) { sectionStartsFor(sortedBooks, sortKey) }
 
     val pickFolder = rememberLauncherForActivityResult(
@@ -126,6 +134,17 @@ fun LibraryScreen(
     ) { uri -> if (uri != null) pendingUri = uri }
 
     Column(modifier = modifier.fillMaxSize()) {
+        if (searchMode) {
+            LibrarySearchBar(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it },
+                onClose = {
+                    searchMode = false
+                    searchQuery = ""
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
         TopAppBar(
             title = { Text(stringResource(R.string.library_title)) },
             expandedHeight = 32.dp,
@@ -133,6 +152,12 @@ fun LibraryScreen(
                 containerColor = MaterialTheme.colorScheme.surface,
             ),
             actions = {
+                IconButton(onClick = { searchMode = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.Search,
+                        contentDescription = stringResource(R.string.library_search_cd),
+                    )
+                }
                 Box {
                     IconButton(onClick = { sortMenuOpen = true }) {
                         Icon(
@@ -212,8 +237,9 @@ fun LibraryScreen(
                 }
             },
         )
+        }
 
-        if (books.isNotEmpty()) {
+        if (books.isNotEmpty() && !searchMode) {
             LibraryFilterChips(
                 filter = filter,
                 onFilterChange = { next ->
@@ -224,7 +250,14 @@ fun LibraryScreen(
         }
 
         if (sortedBooks.isEmpty()) {
-            LibraryEmptyState(modifier = Modifier.weight(1f).fillMaxWidth())
+            if (searchMode && searchQuery.isNotBlank()) {
+                LibrarySearchNoResults(
+                    query = searchQuery,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                )
+            } else {
+                LibraryEmptyState(modifier = Modifier.weight(1f).fillMaxWidth())
+            }
         } else {
             when (gridMode) {
                 GridMode.Grid -> LibraryCoverGrid(
@@ -261,6 +294,53 @@ fun LibraryScreen(
                 coroutineScope.launch { persistedUriPermissionStore.removeRoot(uri) }
             },
             onDismiss = { manageFoldersOpen = false },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LibrarySearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onClose) {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = stringResource(R.string.library_search_close_cd),
+            )
+        }
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            placeholder = { Text(stringResource(R.string.library_search_hint)) },
+            singleLine = true,
+            modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun LibrarySearchNoResults(
+    query: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = stringResource(R.string.library_search_no_results, query),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

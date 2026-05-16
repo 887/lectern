@@ -24,6 +24,23 @@ fun filterBooks(books: List<BookEntity>, filter: BookFilter): List<BookEntity> =
 }
 
 /**
+ * Phase E.4 — in-memory search over title + author.
+ *
+ * Case-insensitive substring match. Empty / blank query returns the input unchanged (no
+ * filtering). Same call tonearmboy made for its library tabs — DB-side FTS4 becomes meaningful
+ * at library sizes much larger than the typical user collection; revisit if a user with 1000+
+ * books reports typing lag.
+ */
+fun searchBooks(books: List<BookEntity>, query: String): List<BookEntity> {
+    val trimmed = query.trim()
+    if (trimmed.isEmpty()) return books
+    return books.filter { book ->
+        book.title.contains(trimmed, ignoreCase = true) ||
+            (book.author?.contains(trimmed, ignoreCase = true) == true)
+    }
+}
+
+/**
  * Pure-function sort. The comparator instances are constructed per-call so they pick up
  * the current default locale (R.A.Q for collation across languages — Voice does the same).
  */

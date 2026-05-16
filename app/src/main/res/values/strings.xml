@@ -67,6 +67,10 @@
     <string name="library_filter_all">All</string>
     <string name="library_filter_current">Current</string>
     <string name="library_filter_not_started">Not started</string>
+    <string name="library_search_cd">Search library</string>
+    <string name="library_search_close_cd">Close search</string>
+    <string name="library_search_hint">Search title or author</string>
+    <string name="library_search_no_results">No books match \"%1$s\"</string>
 
     <plurals name="folder_count">
         <item quantity="one">%1$d audiobook folder configured</item>

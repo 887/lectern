@@ -147,4 +147,46 @@ class LibrarySortingTest {
         )
         assertEquals(listOf("A", "C"), out.map { it.title })
     }
+
+    @Test
+    fun `searchBooks empty query returns input unchanged`() {
+        val input = listOf(book("a", "A"), book("b", "B"))
+        assertEquals(input, searchBooks(input, ""))
+        assertEquals(input, searchBooks(input, "   "))
+    }
+
+    @Test
+    fun `searchBooks matches title substring case-insensitive`() {
+        val out = searchBooks(
+            listOf(
+                book("a", "The Hobbit"),
+                book("b", "Lord of the Rings"),
+                book("c", "Foundation"),
+            ),
+            "the",
+        )
+        assertEquals(listOf("The Hobbit", "Lord of the Rings"), out.map { it.title })
+    }
+
+    @Test
+    fun `searchBooks matches author substring`() {
+        val out = searchBooks(
+            listOf(
+                book("a", "A", author = "Asimov"),
+                book("b", "B", author = "Bradbury"),
+                book("c", "C", author = null),
+            ),
+            "brad",
+        )
+        assertEquals(listOf("B"), out.map { it.title })
+    }
+
+    @Test
+    fun `searchBooks trims query whitespace`() {
+        val out = searchBooks(
+            listOf(book("a", "Alpha"), book("b", "Bravo")),
+            "  alpha  ",
+        )
+        assertEquals(listOf("Alpha"), out.map { it.title })
+    }
 }
