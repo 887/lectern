@@ -3,6 +3,7 @@ package com.eight87.whisperboy.ui.library
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,36 +19,39 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,11 +72,9 @@ import com.eight87.whisperboy.data.library.BookFilter
 import com.eight87.whisperboy.data.library.BookSortKey
 import com.eight87.whisperboy.data.library.BookSource
 import com.eight87.whisperboy.data.library.GridMode
-import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.LibraryRoot
 import com.eight87.whisperboy.data.library.LibraryUiSettings
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
-import com.eight87.whisperboy.data.library.RescanState
 import com.eight87.whisperboy.ui.common.CoverArt
 import com.eight87.whisperboy.ui.common.refreshCoverArt
 import com.eight87.whisperboy.ui.common.FastScrollbar
@@ -82,12 +84,17 @@ import kotlinx.coroutines.launch
  * Phase E.1 — the library screen.
  *
  * Takes only narrow data interfaces (R.A discipline): [BookSource] for the catalog flow,
- * [PersistedUriPermissionStore] + [LibraryRescanCoordinator] for the overflow-menu folder
- * management (interim home until Phase K's settings tree lands).
+ * [PersistedUriPermissionStore] for the "Add folder" FAB (the SAF picker still attaches a
+ * `FolderType` here; rescan + manage live in Settings → Library folders).
  *
- * Top app bar at `expandedHeight = 32dp` (m3-expressive gotcha #6, validated in tonearmboy
- * across 11 screens). Cover grid wrapped in [FastScrollbar] — section-letter chips along the
- * right edge appear when scrolling/dragging, 800ms linger fade-out (tonearmboy `4e2ff73`).
+ * Top app bar uses the M3 default expanded height (64dp). An earlier draft of m3-expressive
+ * gotcha #6 claimed tonearmboy converged on 32dp — that claim was incorrect; tonearmboy uses
+ * the M3 default everywhere. Cover grid wrapped in [FastScrollbar] — section-letter chips along
+ * the right edge appear when scrolling/dragging, 800ms linger fade-out (tonearmboy `4e2ff73`).
+ *
+ * Folder management lives in Settings → Library folders (Phase K.4 partial). The library
+ * top app bar exposes search / sort / grid-toggle / settings (gear) icons; "Add folder" is a
+ * floating action button at the bottom-right when at least one root exists.
  *
  * Filter chips (E.2), sort menu + sort-aware section keys (E.3), search (E.4), long-press
  * action sheet + multi-select (E.5), and now-playing bar (E.6) land in follow-up commits.
@@ -97,7 +104,6 @@ import kotlinx.coroutines.launch
 fun LibraryScreen(
     bookSource: BookSource,
     persistedUriPermissionStore: PersistedUriPermissionStore,
-    libraryRescanCoordinator: LibraryRescanCoordinator,
     libraryUiSettings: LibraryUiSettings,
     onBookTap: (String) -> Unit,
     onSettingsClick: () -> Unit,
@@ -105,7 +111,6 @@ fun LibraryScreen(
 ) {
     val books by bookSource.observeBooks()
         .collectAsStateWithLifecycle(initialValue = emptyList<BookEntity>())
-    val rescanState by libraryRescanCoordinator.state.collectAsStateWithLifecycle()
     val roots by persistedUriPermissionStore.observeRoots()
         .collectAsStateWithLifecycle(initialValue = emptyList<LibraryRoot>())
     val coroutineScope = rememberCoroutineScope()
@@ -121,8 +126,6 @@ fun LibraryScreen(
     val filter by libraryUiSettings.filter
         .collectAsStateWithLifecycle(initialValue = BookFilter.All)
     var sortMenuOpen by remember { mutableStateOf(false) }
-    var overflowOpen by remember { mutableStateOf(false) }
-    var manageFoldersOpen by remember { mutableStateOf(false) }
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
     var searchMode by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -163,7 +166,8 @@ fun LibraryScreen(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
         if (searchMode) {
             LibrarySearchBar(
                 query = searchQuery,
@@ -177,7 +181,6 @@ fun LibraryScreen(
         } else {
         TopAppBar(
             title = { Text(stringResource(R.string.library_title)) },
-            expandedHeight = 32.dp,
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.surface,
             ),
@@ -230,47 +233,11 @@ fun LibraryScreen(
                     }
                     Icon(imageVector = icon, contentDescription = stringResource(cd))
                 }
-                Box {
-                    IconButton(onClick = { overflowOpen = true }) {
-                        Icon(
-                            imageVector = Icons.Filled.MoreVert,
-                            contentDescription = stringResource(R.string.library_overflow_cd),
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = overflowOpen,
-                        onDismissRequest = { overflowOpen = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.library_overflow_settings)) },
-                            onClick = {
-                                onSettingsClick()
-                                overflowOpen = false
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.library_overflow_rescan)) },
-                            enabled = rescanState !is RescanState.Running,
-                            onClick = {
-                                libraryRescanCoordinator.requestRescan()
-                                overflowOpen = false
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.library_overflow_add_folder)) },
-                            onClick = {
-                                pickFolder.launch(null)
-                                overflowOpen = false
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.library_overflow_manage_folders)) },
-                            onClick = {
-                                manageFoldersOpen = true
-                                overflowOpen = false
-                            },
-                        )
-                    }
+                IconButton(onClick = onSettingsClick) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = stringResource(R.string.library_settings_cd),
+                    )
                 }
             },
         )
@@ -320,6 +287,25 @@ fun LibraryScreen(
         // animation off the library's recomposition path.
     }
 
+    // FAB — "Add folder". Visible whenever the library has at least one root and we're
+    // not in search mode. Same SAF launcher pattern the old overflow dropdown used.
+    // Sits above the grid area; the NowPlayingBar (peek of the playback sheet) draws
+    // on top of this Box from `WhisperboyApp` so the FAB never overlaps the mini-player.
+    if (roots.isNotEmpty() && !searchMode) {
+        FloatingActionButton(
+            onClick = { pickFolder.launch(null) },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = stringResource(R.string.library_fab_add_folder_cd),
+            )
+        }
+    }
+    }
+
     val pending = pendingUri
     if (pending != null) {
         ManageFoldersFolderTypeSheet(
@@ -330,16 +316,6 @@ fun LibraryScreen(
                     pendingUri = null
                 }
             },
-        )
-    }
-
-    if (manageFoldersOpen) {
-        ManageFoldersSheet(
-            roots = roots,
-            onRemove = { uri ->
-                coroutineScope.launch { persistedUriPermissionStore.removeRoot(uri) }
-            },
-            onDismiss = { manageFoldersOpen = false },
         )
     }
 
@@ -604,22 +580,35 @@ private fun LibraryCoverGrid(
     modifier: Modifier = Modifier,
 ) {
     val gridState = rememberLazyGridState()
+    // Section header index → label, for O(1) lookup while walking books.
+    val headerByIndex = remember(sectionStarts) { sectionStarts.toMap() }
 
     Box(modifier = modifier) {
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 140.dp),
+            columns = GridCells.Adaptive(minSize = 160.dp),
             state = gridState,
-            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 96.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 96.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            items(items = books, key = { "book:${it.bookId}" }) { book ->
-                BookGridTile(
-                    book = book,
-                    onTap = { onBookTap(book.bookId) },
-                    onLongPress = { onBookLongPress(book.bookId) },
-                )
+            books.forEachIndexed { index, book ->
+                val header = headerByIndex[index]
+                if (header != null) {
+                    item(
+                        key = "section:$header",
+                        span = { GridItemSpan(maxLineSpan) },
+                    ) {
+                        SectionHeader(label = header)
+                    }
+                }
+                item(key = "book:${book.bookId}") {
+                    BookGridTile(
+                        book = book,
+                        onTap = { onBookTap(book.bookId) },
+                        onLongPress = { onBookLongPress(book.bookId) },
+                    )
+                }
             }
         }
 
@@ -627,6 +616,22 @@ private fun LibraryCoverGrid(
             state = gridState,
             sectionStarts = sectionStarts,
             modifier = Modifier.align(Alignment.TopEnd),
+        )
+    }
+}
+
+@Composable
+private fun SectionHeader(label: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
@@ -640,20 +645,29 @@ private fun LibraryCoverList(
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
+    val headerByIndex = remember(sectionStarts) { sectionStarts.toMap() }
 
     Box(modifier = modifier) {
         LazyColumn(
             state = listState,
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            items(items = books, key = { "book:${it.bookId}" }) { book ->
-                BookListRow(
-                    book = book,
-                    onTap = { onBookTap(book.bookId) },
-                    onLongPress = { onBookLongPress(book.bookId) },
-                )
+            books.forEachIndexed { index, book ->
+                val header = headerByIndex[index]
+                if (header != null) {
+                    item(key = "section:$header") {
+                        SectionHeader(label = header)
+                    }
+                }
+                item(key = "book:${book.bookId}") {
+                    BookListRow(
+                        book = book,
+                        onTap = { onBookTap(book.bookId) },
+                        onLongPress = { onBookLongPress(book.bookId) },
+                    )
+                }
             }
         }
 
@@ -711,13 +725,15 @@ private fun BookListRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .combinedClickable(onClick = onTap, onLongClick = onLongPress)
-            .padding(vertical = 4.dp),
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverArt(
             coverPath = book.coverPath,
-            modifier = Modifier.size(56.dp),
+            modifier = Modifier.size(64.dp),
         )
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -786,48 +802,7 @@ private fun ManageFoldersFolderTypeSheet(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ManageFoldersSheet(
-    roots: List<LibraryRoot>,
-    onRemove: (Uri) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.folder_section_title),
-                style = MaterialTheme.typography.titleLarge,
-            )
-            Spacer(Modifier.height(12.dp))
-            roots.forEach { root ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = root.displayName, fontWeight = FontWeight.Medium)
-                        Text(
-                            text = stringResource(folderTypeTitle(root.folderType)),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    TextButton(onClick = { onRemove(root.treeUri) }) {
-                        Text(stringResource(R.string.folder_remove_action))
-                    }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.dialog_cancel))
-            }
-        }
-    }
-}
-
-private fun folderTypeTitle(type: com.eight87.whisperboy.data.library.FolderType): Int = when (type) {
+internal fun folderTypeTitle(type: com.eight87.whisperboy.data.library.FolderType): Int = when (type) {
     com.eight87.whisperboy.data.library.FolderType.SingleFile -> R.string.folder_type_singlefile_title
     com.eight87.whisperboy.data.library.FolderType.SingleFolder -> R.string.folder_type_singlefolder_title
     com.eight87.whisperboy.data.library.FolderType.Root -> R.string.folder_type_root_title

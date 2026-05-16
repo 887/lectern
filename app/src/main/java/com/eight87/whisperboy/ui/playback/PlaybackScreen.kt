@@ -130,7 +130,6 @@ fun PlaybackScreen(
         Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text(text = playerTitle(uiState)) },
-            expandedHeight = 32.dp,
             // Transparent container so the F.6 Palette-tinted gradient painted on the
             // wrapping Box shows through the app-bar band at the top of the screen.
             colors = TopAppBarDefaults.topAppBarColors(
