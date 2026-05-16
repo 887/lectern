@@ -121,7 +121,7 @@ Two supporting niceties:
   = Arrangement.spacedBy(2.dp))`. The surface-tier gap between
   cards does the visual separation; in-card rows just stack.
 
-## Phase A — dependency + theme entry — shipped in change `<HEAD>`
+## Phase A — dependency + theme entry — shipped in change `e9ab4cd`
 
 - [x] **A.1** Bump `androidx.compose.material3:material3` to
   `1.5.0-alpha18` via an artifact-level override
@@ -141,7 +141,7 @@ Two supporting niceties:
   (`expressiveDarkColorScheme()` does not exist in alpha18). Both
   factories produce the full surface-tier ladder.
 
-## Phase B — surface-tier discipline — shipped in change `<HEAD>`
+## Phase B — surface-tier discipline — shipped in change `e9ab4cd`
 
 - [x] **B.1** Audited every `colorScheme.surface` /
   `colorScheme.background` call site. As of this commit the only UI
