@@ -25,6 +25,8 @@ import com.eight87.whisperboy.data.library.MediaAnalyzer
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
 import com.eight87.whisperboy.data.library.SafLibraryScanner
 import com.eight87.whisperboy.data.library.ScanWriter
+import com.eight87.whisperboy.data.playback.AndroidPlaybackSettings
+import com.eight87.whisperboy.data.playback.PlaybackSettings
 import com.eight87.whisperboy.playback.BookCommands
 import com.eight87.whisperboy.playback.NowPlayingState
 import com.eight87.whisperboy.playback.PlaybackController
@@ -64,6 +66,18 @@ class AppGraph(context: Context) {
 
     val libraryUiSettings: LibraryUiSettings =
         AndroidLibraryUiSettings(libraryUiDataStore)
+
+    /**
+     * Phase F.3 + F.4 — persisted player tunables (rewind / forward / auto-rewind seconds). Its
+     * own DataStore file (`playback_settings`) so a future "reset playback prefs" affordance can
+     * delete this without touching the library UI store. R.B (store split) pattern.
+     */
+    private val playbackSettingsDataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
+        produceFile = { appContext.preferencesDataStoreFile("playback_settings") }
+    )
+
+    val playbackSettings: PlaybackSettings =
+        AndroidPlaybackSettings(playbackSettingsDataStore)
 
     /**
      * Library cache database. Eagerly constructed so a misconfigured schema fails fast at app
@@ -162,6 +176,7 @@ class AppGraph(context: Context) {
         context = appContext,
         bookSource = bookSource,
         chapterSource = chapterSource,
+        playbackSettings = playbackSettings,
         applicationScope = applicationScope,
     )
 

@@ -11,6 +11,7 @@ import com.eight87.whisperboy.data.library.BookEntity
 import com.eight87.whisperboy.data.library.BookSource
 import com.eight87.whisperboy.data.library.ChapterEntity
 import com.eight87.whisperboy.data.library.ChapterSource
+import com.eight87.whisperboy.data.playback.PlaybackSettings
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -46,14 +47,15 @@ interface NowPlayingState {
  * exclusively for user actions; the controller resolves each call against the live
  * [androidx.media3.session.MediaController] when connected, and no-ops cleanly when not.
  *
- * Rewind / forward defaults are hardcoded 30s for Phase F.1; configurable defaults land in F.3.
+ * Rewind / forward seek by a user-configurable number of seconds (Phase F.3, defaults 30s);
+ * actual values flow through [PlaybackSettings].
  */
 interface TransportCommands {
     suspend fun play()
     suspend fun pause()
     suspend fun seekTo(positionInBookMs: Long)
-    suspend fun rewind30()
-    suspend fun forward30()
+    suspend fun rewind()
+    suspend fun forward()
     suspend fun nextChapter()
     suspend fun prevChapter()
     suspend fun setSpeed(speed: Float)
@@ -96,6 +98,7 @@ internal class PlaybackController(
     context: Context,
     private val bookSource: BookSource,
     private val chapterSource: ChapterSource,
+    private val playbackSettings: PlaybackSettings,
     private val applicationScope: CoroutineScope,
 ) : NowPlayingState, TransportCommands, BookCommands, SleepTimerCommands {
 
@@ -122,9 +125,32 @@ internal class PlaybackController(
     /** Position ticker output. Decoupled from [playerSnapshot] so chapter projection doesn't churn. */
     private val positionMs = MutableStateFlow(0L)
 
+    /**
+     * Current values for the three user-tunable seek knobs (F.3 + F.4). Updated by a settings
+     * collector started in [init]; read on the Main thread inside [rewind] / [forward] / [play].
+     * `@Volatile` is enough — these are written by a single collector coroutine, read by the
+     * transport coroutines, and tearing a 32-bit Int read on Dalvik / ART is not a concern.
+     */
+    @Volatile private var rewindMs: Long = DEFAULT_SEEK_MS
+    @Volatile private var forwardMs: Long = DEFAULT_SEEK_MS
+    @Volatile private var autoRewindMs: Long = DEFAULT_AUTO_REWIND_MS
+
+    /**
+     * Epoch-ms at which the player most recently transitioned playing→paused. Cleared on the
+     * next [play] call. Drives Phase F.4: if the gap exceeds [AUTO_REWIND_THRESHOLD_MS] when the
+     * user resumes, [play] silently rewinds by [autoRewindMs] before issuing `c.play()`.
+     */
+    @Volatile private var pausedAtEpochMs: Long? = null
+
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             playerSnapshot.update { it.copy(isPlaying = isPlaying) }
+            if (!isPlaying) {
+                // Going playing→paused: record the timestamp so a >5min idle bump on resume can
+                // trigger the auto-rewind (F.4). We use `System.currentTimeMillis()` for the
+                // wall-clock delta because the threshold is in real seconds, not media time.
+                pausedAtEpochMs = System.currentTimeMillis()
+            }
             // Re-arm or stop the ticker on play state changes.
             restartTickerIfNeeded()
         }
@@ -146,6 +172,25 @@ internal class PlaybackController(
     }
 
     init {
+        // F.3 + F.4 — keep the three seek-seconds knobs synced from DataStore. Cold-path values
+        // that change rarely; a single collector per field is plenty (no need to combine() into a
+        // hot Flow that would re-emit on every position tick).
+        applicationScope.launch {
+            playbackSettings.rewindSeconds.collect { seconds ->
+                rewindMs = seconds.toLong() * 1000L
+            }
+        }
+        applicationScope.launch {
+            playbackSettings.forwardSeconds.collect { seconds ->
+                forwardMs = seconds.toLong() * 1000L
+            }
+        }
+        applicationScope.launch {
+            playbackSettings.autoRewindSeconds.collect { seconds ->
+                autoRewindMs = seconds.toLong() * 1000L
+            }
+        }
+
         val builderFuture = MediaController.Builder(appContext, sessionToken).buildAsync()
         builderFuture.addListener(
             {
@@ -253,7 +298,21 @@ internal class PlaybackController(
 
     // ---------------------------------------------------------------- TransportCommands
 
-    override suspend fun play() = onMain { it.play() }
+    override suspend fun play() = onMain { c ->
+        // F.4 — if the player has been paused for more than the auto-rewind threshold, nudge the
+        // playhead back by `autoRewindMs` before resuming. Coerces at 0 so books that paused near
+        // the start don't seek negative.
+        val pausedAt = pausedAtEpochMs
+        pausedAtEpochMs = null
+        if (pausedAt != null && !c.isPlaying) {
+            val idleMs = System.currentTimeMillis() - pausedAt
+            if (idleMs > AUTO_REWIND_THRESHOLD_MS && autoRewindMs > 0L) {
+                val target = (c.currentPosition - autoRewindMs).coerceAtLeast(0L)
+                c.seekTo(target)
+            }
+        }
+        c.play()
+    }
     override suspend fun pause() = onMain { it.pause() }
 
     override suspend fun seekTo(positionInBookMs: Long) = onMain { c ->
@@ -287,13 +346,13 @@ internal class PlaybackController(
         positionMs.value = positionInBookMs
     }
 
-    override suspend fun rewind30() = onMain { c ->
-        val target = (c.currentPosition - REWIND_FORWARD_MS).coerceAtLeast(0L)
+    override suspend fun rewind() = onMain { c ->
+        val target = (c.currentPosition - rewindMs).coerceAtLeast(0L)
         c.seekTo(target)
     }
 
-    override suspend fun forward30() = onMain { c ->
-        val target = c.currentPosition + REWIND_FORWARD_MS
+    override suspend fun forward() = onMain { c ->
+        val target = c.currentPosition + forwardMs
         c.seekTo(target)
     }
 
@@ -413,6 +472,14 @@ internal class PlaybackController(
 
     private companion object {
         const val TICKER_INTERVAL_MS = 250L
-        const val REWIND_FORWARD_MS = 30_000L
+
+        /** Default rewind / forward seek length (F.3 fallback before the settings collector emits). */
+        const val DEFAULT_SEEK_MS = 30_000L
+
+        /** Default auto-rewind length on long-pause resume (F.4 fallback). */
+        const val DEFAULT_AUTO_REWIND_MS = 5_000L
+
+        /** Auto-rewind triggers when the pause→resume gap exceeds this. Voice uses 5min. */
+        const val AUTO_REWIND_THRESHOLD_MS = 5 * 60 * 1000L
     }
 }
