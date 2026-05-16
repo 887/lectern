@@ -26,6 +26,8 @@ fun WhisperboyApp() {
                     libraryRescanCoordinator = graph.libraryRescanCoordinator,
                     bookSource = graph.bookSource,
                     libraryUiSettings = graph.libraryUiSettings,
+                    nowPlayingState = graph.nowPlayingState,
+                    transportCommands = graph.transportCommands,
                     onBookTap = { bookId -> backStack.add(PlaybackRoute(bookId)) },
                     modifier = Modifier.safeDrawingPadding(),
                 )
