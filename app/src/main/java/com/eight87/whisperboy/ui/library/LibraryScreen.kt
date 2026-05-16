@@ -24,7 +24,9 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
@@ -97,9 +99,14 @@ fun LibraryScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var gridMode by remember { mutableStateOf(GridMode.Grid) }
+    var sortKey by remember { mutableStateOf(BookSortKey.Title) }
+    var sortMenuOpen by remember { mutableStateOf(false) }
     var overflowOpen by remember { mutableStateOf(false) }
     var manageFoldersOpen by remember { mutableStateOf(false) }
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
+
+    val sortedBooks = remember(books, sortKey) { sortedBooks(books, sortKey) }
+    val sectionStarts = remember(sortedBooks, sortKey) { sectionStartsFor(sortedBooks, sortKey) }
 
     val pickFolder = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
@@ -113,6 +120,36 @@ fun LibraryScreen(
                 containerColor = MaterialTheme.colorScheme.surface,
             ),
             actions = {
+                Box {
+                    IconButton(onClick = { sortMenuOpen = true }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Sort,
+                            contentDescription = stringResource(R.string.library_sort_cd),
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = sortMenuOpen,
+                        onDismissRequest = { sortMenuOpen = false },
+                    ) {
+                        BookSortKey.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(sortKeyLabel(option))) },
+                                leadingIcon = if (option == sortKey) {
+                                    {
+                                        Icon(
+                                            imageVector = Icons.Filled.Check,
+                                            contentDescription = null,
+                                        )
+                                    }
+                                } else null,
+                                onClick = {
+                                    sortKey = option
+                                    sortMenuOpen = false
+                                },
+                            )
+                        }
+                    }
+                }
                 IconButton(onClick = {
                     gridMode = if (gridMode == GridMode.Grid) GridMode.List else GridMode.Grid
                 }) {
@@ -162,16 +199,18 @@ fun LibraryScreen(
             },
         )
 
-        if (books.isEmpty()) {
+        if (sortedBooks.isEmpty()) {
             LibraryEmptyState(modifier = Modifier.weight(1f).fillMaxWidth())
         } else {
             when (gridMode) {
                 GridMode.Grid -> LibraryCoverGrid(
-                    books = books,
+                    books = sortedBooks,
+                    sectionStarts = sectionStarts,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
                 GridMode.List -> LibraryCoverList(
-                    books = books,
+                    books = sortedBooks,
+                    sectionStarts = sectionStarts,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
             }
@@ -225,10 +264,10 @@ private fun LibraryEmptyState(modifier: Modifier = Modifier) {
 @Composable
 private fun LibraryCoverGrid(
     books: List<BookEntity>,
+    sectionStarts: List<Pair<Int, String>>,
     modifier: Modifier = Modifier,
 ) {
     val gridState = rememberLazyGridState()
-    val sectionStarts = remember(books) { titleSectionStarts(books) }
 
     Box(modifier = modifier) {
         LazyVerticalGrid(
@@ -255,10 +294,10 @@ private fun LibraryCoverGrid(
 @Composable
 private fun LibraryCoverList(
     books: List<BookEntity>,
+    sectionStarts: List<Pair<Int, String>>,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
-    val sectionStarts = remember(books) { titleSectionStarts(books) }
 
     Box(modifier = modifier) {
         LazyColumn(
@@ -337,25 +376,10 @@ private fun BookListRow(book: BookEntity) {
     }
 }
 
-/**
- * Phase E.3 prep — sort-aware section starts for [FastScrollbar]. Returns `(itemIndex, letter)`
- * pairs marking where each first-letter group begins. When sort lands (E.3), this swaps based
- * on the active sort key (Title → alphabet, Author → author letter, Recent → date bucket).
- *
- * Duplicate-key crash gotcha (tonearmboy `d75b542`): if a header item type is ever added to
- * the same grid as the book tiles, the header key MUST be `"section:$letter"` not just the
- * letter, so it can't collide with a `"book:..."` id. Currently no header items in the grid;
- * the section labels live on the scrollbar track only.
- */
-private fun titleSectionStarts(books: List<BookEntity>): List<Pair<Int, String>> {
-    if (books.isEmpty()) return emptyList()
-    val seen = mutableSetOf<String>()
-    val out = mutableListOf<Pair<Int, String>>()
-    books.forEachIndexed { index, book ->
-        val letter = book.title.firstOrNull()?.uppercaseChar()?.toString()?.takeIf { it[0].isLetter() } ?: "#"
-        if (seen.add(letter)) out += index to letter
-    }
-    return out
+private fun sortKeyLabel(key: BookSortKey): Int = when (key) {
+    BookSortKey.Recent -> R.string.library_sort_recent
+    BookSortKey.Title -> R.string.library_sort_title
+    BookSortKey.Author -> R.string.library_sort_author
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

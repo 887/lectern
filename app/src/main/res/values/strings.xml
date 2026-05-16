@@ -60,6 +60,10 @@
     <string name="library_overflow_rescan">Rescan now</string>
     <string name="library_cover_placeholder_cd">Cover art placeholder</string>
     <string name="library_book_unknown_author">Unknown author</string>
+    <string name="library_sort_cd">Sort books</string>
+    <string name="library_sort_recent">Recent</string>
+    <string name="library_sort_title">Title</string>
+    <string name="library_sort_author">Author</string>
 
     <plurals name="folder_count">
         <item quantity="one">%1$d audiobook folder configured</item>
