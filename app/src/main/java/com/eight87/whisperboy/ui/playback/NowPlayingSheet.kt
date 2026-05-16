@@ -182,15 +182,14 @@ fun NowPlayingSheet(
             }
         }
     }
-    // NOTE: nested-scroll connection from the inner LazyColumn → sheet
-    // (Auxio "pull-down to collapse" once the chapter list is at top)
-    // is intentionally deferred. The chapter list lives inside a
-    // ModalBottomSheet (ChapterListSheet) launched from PlaybackScreen,
-    // not directly in the sheet body, so it has no overscroll interplay
-    // with this host. Users collapse by dragging the cover / transport
-    // area (caught by the parent `.draggable` above) or via system back
-    // (BackHandler in WhisperboyApp). Revisit when a queue or chapter
-    // list mounts directly in the sheet body.
+    // NOTE: nested-scroll connection from the inline chapter queue inside
+    // PlaybackScreen → sheet (Auxio "pull-down to collapse" once the
+    // chapter list is at the top) is intentionally deferred. PlaybackScreen
+    // exposes the queue's `LazyListState` via its `chapterListState`
+    // parameter so a host that wants to wire a `NestedScrollConnection`
+    // against it has a hook. Users collapse by dragging the cover /
+    // transport area (caught by the parent `.draggable` above) or via
+    // system back (BackHandler in WhisperboyApp).
 }
 
 /**
