@@ -136,33 +136,51 @@ Two supporting niceties:
   = Arrangement.spacedBy(2.dp))`. The surface-tier gap between
   cards does the visual separation; in-card rows just stack.
 
-## Phase A — dependency + theme entry
+## Phase A — dependency + theme entry — shipped in change `e9ab4cd`
 
-- [ ] **A.1** Bump `androidx.compose.material3:material3` to `1.4.0`
-  (or later). Verify Licensee allowlist still passes — see
-  `CLAUDE.md` license workflow.
-- [ ] **A.2** Add explicit
+- [x] **A.1** Bump `androidx.compose.material3:material3` to
+  `1.5.0-alpha18` via an artifact-level override
+  (`composeMaterial3 = "1.5.0-alpha18"` in `libs.versions.toml`); the
+  Compose BOM still governs every other Compose artifact. Note the
+  promoted-from-internal API caveat captured in gotcha #1 above.
+- [x] **A.2** Added explicit
   `androidx.compose.material:material-icons-extended` dep — no
-  longer transitive in `material3:1.4.0+`.
-- [ ] **A.3** At the app theme entry, wrap the root in
+  longer transitive in `material3:1.4.0+`. Phase E+ chrome can pull
+  `Icons.Filled.*` / `Icons.Outlined.*` without surprises.
+- [x] **A.3** At the app theme entry, wrap the root in
   `MaterialExpressiveTheme(...)` instead of `MaterialTheme(...)`.
-  Add `@OptIn(ExperimentalMaterial3ExpressiveApi::class)` at the
-  file level once.
-- [ ] **A.4** Switch `darkColorScheme()` /  `lightColorScheme()`
-  calls to `expressiveDarkColorScheme()` / `expressiveLightColorScheme()`.
+  Added `@OptIn(ExperimentalMaterial3ExpressiveApi::class)` at the
+  file level (file-level `@file:OptIn`).
+- [x] **A.4** Light mode uses `expressiveLightColorScheme()`; dark
+  mode stays on `darkColorScheme(...)` per gotcha #1
+  (`expressiveDarkColorScheme()` does not exist in alpha18). Both
+  factories produce the full surface-tier ladder.
 
-## Phase B — surface-tier discipline
+## Phase B — surface-tier discipline — shipped in change `e9ab4cd`
 
-- [ ] **B.1** Audit every `colorScheme.surface` /
-  `colorScheme.background` call site. Page-level callers stay on
-  `surface`; card-level callers move to `surfaceContainer`.
-- [ ] **B.2** Audit every `Card` / `Surface` / equivalent grouped
-  list-row container. Each must use `containerColor =
-  surfaceContainer`, `defaultElevation = 0.dp`,
-  `RoundedCornerShape(28.dp)`.
-- [ ] **B.3** Add a unit test asserting
-  `darkColorScheme.surface != darkColorScheme.surfaceContainer` —
-  cheap regression guard.
+- [x] **B.1** Audited every `colorScheme.surface` /
+  `colorScheme.background` call site. As of this commit the only UI
+  file is `ui/home/HomeScreen.kt` (Phase C bridge); its `colorScheme`
+  reads are `onSurfaceVariant` / `error` / `primary` — none on the
+  `surface` / `surfaceContainer` tier — so there is no surface-tier
+  mis-assignment to fix. The audit is a forward-applied gate: every
+  new screen lands with `surface` = page bg and
+  `surfaceContainerHigh` = grouped cards / mini-player peek / sheet
+  body on dark (per gotcha #2). Library / Player / NowPlayingSheet /
+  mini-player surfaces tick this sub-step retroactively when they
+  ship.
+- [x] **B.2** No `Card` / `Surface` grouped list-row container
+  exists yet; the rule is documented for when Phase E lands the
+  Library cover grid and any Phase F card chrome (chapter list
+  cards / sleep-timer sheet). Each must use
+  `containerColor = surfaceContainerHigh`,
+  `defaultElevation = 0.dp`, `RoundedCornerShape(28.dp)`.
+- [x] **B.3** Shipped `SurfaceTierLadderTest` — asserts
+  `DarkColorScheme.surface != DarkColorScheme.surfaceContainer`,
+  `DarkColorScheme.surface != DarkColorScheme.surfaceContainerHigh`,
+  and `LightColorScheme.surface != LightColorScheme.surfaceContainer`.
+  Cheap regression guard for the M3 alpha churn re-collapsing the
+  ladder.
 
 ## Phase C — `CategoryAccent` + per-row avatars
 
