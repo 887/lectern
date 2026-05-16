@@ -72,6 +72,24 @@
     <string name="library_search_hint">Search title or author</string>
     <string name="library_search_no_results">No books match \"%1$s\"</string>
 
+    <!-- player_ — full-screen now-playing surface (Phase F.1) -->
+    <string name="player_back_cd">Back</string>
+    <string name="player_play_cd">Play</string>
+    <string name="player_pause_cd">Pause</string>
+    <string name="player_skip_prev_cd">Previous chapter</string>
+    <string name="player_skip_next_cd">Next chapter</string>
+    <string name="player_rewind_30_cd">Rewind 30 seconds</string>
+    <string name="player_forward_30_cd">Forward 30 seconds</string>
+    <string name="player_sleep_timer_cd">Sleep timer</string>
+    <string name="player_bookmark_cd">Add bookmark</string>
+    <string name="player_overflow_cd">More actions</string>
+    <string name="player_cover_cd">Cover art</string>
+    <string name="player_position_format">%1$s / %2$s</string>
+    <string name="player_unknown_chapter">Chapter %1$d</string>
+    <string name="player_loading">Connecting to player…</string>
+    <string name="player_book_not_found_title">Book not found</string>
+    <string name="player_book_not_found_subtitle">whisperboy can\'t find this book anymore. It may have been moved or removed from your library.</string>
+
     <plurals name="folder_count">
         <item quantity="one">%1$d audiobook folder configured</item>
         <item quantity="other">%1$d audiobook folders configured</item>

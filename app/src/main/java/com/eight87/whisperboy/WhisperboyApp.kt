@@ -1,15 +1,15 @@
 package com.eight87.whisperboy
 
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.eight87.whisperboy.ui.home.HomeScreen
+import com.eight87.whisperboy.ui.playback.PlaybackScreen
 
 @Composable
 fun WhisperboyApp() {
@@ -26,6 +26,21 @@ fun WhisperboyApp() {
                     libraryRescanCoordinator = graph.libraryRescanCoordinator,
                     bookSource = graph.bookSource,
                     libraryUiSettings = graph.libraryUiSettings,
+                    onBookTap = { bookId -> backStack.add(PlaybackRoute(bookId)) },
+                    modifier = Modifier.safeDrawingPadding(),
+                )
+            }
+            entry<PlaybackRoute> { route ->
+                // When the route lands, kick off playback for the target bookId. The controller's
+                // `playBook` is idempotent against re-entry on the same bookId because the underlying
+                // MediaController only restarts when the media set actually changes.
+                LaunchedEffect(route.bookId) {
+                    graph.bookCommands.playBook(route.bookId)
+                }
+                PlaybackScreen(
+                    state = graph.nowPlayingState,
+                    transport = graph.transportCommands,
+                    onBack = { backStack.removeLastOrNull() },
                     modifier = Modifier.safeDrawingPadding(),
                 )
             }

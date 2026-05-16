@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -96,6 +97,7 @@ fun LibraryScreen(
     persistedUriPermissionStore: PersistedUriPermissionStore,
     libraryRescanCoordinator: LibraryRescanCoordinator,
     libraryUiSettings: LibraryUiSettings,
+    onBookTap: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val books by bookSource.observeBooks()
@@ -263,11 +265,13 @@ fun LibraryScreen(
                 GridMode.Grid -> LibraryCoverGrid(
                     books = sortedBooks,
                     sectionStarts = sectionStarts,
+                    onBookTap = onBookTap,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
                 GridMode.List -> LibraryCoverList(
                     books = sortedBooks,
                     sectionStarts = sectionStarts,
+                    onBookTap = onBookTap,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
             }
@@ -392,6 +396,7 @@ private fun LibraryEmptyState(modifier: Modifier = Modifier) {
 private fun LibraryCoverGrid(
     books: List<BookEntity>,
     sectionStarts: List<Pair<Int, String>>,
+    onBookTap: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val gridState = rememberLazyGridState()
@@ -406,7 +411,7 @@ private fun LibraryCoverGrid(
             modifier = Modifier.fillMaxSize(),
         ) {
             items(items = books, key = { "book:${it.bookId}" }) { book ->
-                BookGridTile(book)
+                BookGridTile(book, onTap = { onBookTap(book.bookId) })
             }
         }
 
@@ -422,6 +427,7 @@ private fun LibraryCoverGrid(
 private fun LibraryCoverList(
     books: List<BookEntity>,
     sectionStarts: List<Pair<Int, String>>,
+    onBookTap: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -434,7 +440,7 @@ private fun LibraryCoverList(
             modifier = Modifier.fillMaxSize(),
         ) {
             items(items = books, key = { "book:${it.bookId}" }) { book ->
-                BookListRow(book)
+                BookListRow(book, onTap = { onBookTap(book.bookId) })
             }
         }
 
@@ -447,8 +453,8 @@ private fun LibraryCoverList(
 }
 
 @Composable
-private fun BookGridTile(book: BookEntity) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+private fun BookGridTile(book: BookEntity, onTap: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().clickable(onClick = onTap)) {
         CoverArt(
             coverPath = book.coverPath,
             modifier = Modifier
@@ -474,9 +480,9 @@ private fun BookGridTile(book: BookEntity) {
 }
 
 @Composable
-private fun BookListRow(book: BookEntity) {
+private fun BookListRow(book: BookEntity, onTap: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onTap).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverArt(

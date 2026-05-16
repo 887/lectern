@@ -24,7 +24,11 @@ import com.eight87.whisperboy.data.library.MediaAnalyzer
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
 import com.eight87.whisperboy.data.library.SafLibraryScanner
 import com.eight87.whisperboy.data.library.ScanWriter
+import com.eight87.whisperboy.playback.BookCommands
+import com.eight87.whisperboy.playback.NowPlayingState
+import com.eight87.whisperboy.playback.PlaybackController
 import com.eight87.whisperboy.playback.PlayerHolder
+import com.eight87.whisperboy.playback.TransportCommands
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -146,7 +150,24 @@ class AppGraph(context: Context) {
         applicationScope = applicationScope,
     )
 
+    /**
+     * Phase F.2 — UI-side wrapper around Media3's `MediaController`. Connects asynchronously to
+     * the running `PlaybackService` on first construction; exposes the four narrow interfaces
+     * (R.A.2 + R.C.1) the player surface consumes. The concrete class stays `internal`.
+     */
+    private val playbackController: PlaybackController = PlaybackController(
+        context = appContext,
+        bookSource = bookSource,
+        chapterSource = chapterSource,
+        applicationScope = applicationScope,
+    )
+
+    val nowPlayingState: NowPlayingState = playbackController
+    val transportCommands: TransportCommands = playbackController
+    val bookCommands: BookCommands = playbackController
+
     fun release() {
+        playbackController.release()
         playerHolder.release()
     }
 }

@@ -55,6 +55,7 @@ fun HomeScreen(
     libraryRescanCoordinator: LibraryRescanCoordinator,
     bookSource: BookSource,
     libraryUiSettings: LibraryUiSettings,
+    onBookTap: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val roots by persistedUriPermissionStore.observeRoots()
@@ -71,6 +72,7 @@ fun HomeScreen(
             persistedUriPermissionStore = persistedUriPermissionStore,
             libraryRescanCoordinator = libraryRescanCoordinator,
             libraryUiSettings = libraryUiSettings,
+            onBookTap = onBookTap,
             modifier = modifier,
         )
     }

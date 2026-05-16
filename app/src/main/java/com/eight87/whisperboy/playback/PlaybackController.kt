@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -386,11 +387,11 @@ internal class PlaybackController(
     }
 
     private suspend fun kotlinx.coroutines.flow.Flow<BookEntity?>.firstOrLoadingDefault(): BookEntity? {
-        // Tiny helper: grab the first non-null emission with a short timeout-ish bound. Phase F
-        // doesn't need a hard timeout because the BookEntity is already cached in Room from the
-        // last scan; if it really isn't there, the caller's `playBook` is a user error and the
-        // null return surfaces as `BookNotFound` via the state projection.
-        return kotlinx.coroutines.flow.firstOrNull(this)
+        // Tiny helper: grab the first emission. Phase F doesn't need a hard timeout because the
+        // BookEntity is already cached in Room from the last scan; if it really isn't there, the
+        // caller's `playBook` is a user error and the null return surfaces as `BookNotFound` via
+        // the state projection.
+        return this.firstOrNull()
     }
 
     fun release() {
