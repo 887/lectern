@@ -77,6 +77,7 @@
     <string name="library_search_hint">Search title or author</string>
     <string name="library_search_no_results">No books match \"%1$s\"</string>
     <string name="library_filter_completed">Completed</string>
+    <string name="library_rail_cd">Library filters</string>
     <string name="library_book_action_sheet_title">%1$s</string>
     <string name="library_book_action_mark_completed">Mark completed</string>
     <string name="library_book_action_mark_not_started">Mark not started</string>
