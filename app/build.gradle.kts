@@ -107,6 +107,10 @@ dependencies {
   // Coil — cover-art tile loading (cover-art.md Phase A.5). Local files only; no
   // coil-network-okhttp dep — network image search is cover-art.md Phase B work.
   implementation(libs.coil.compose)
+  // cover-art Phase B — Coil's OkHttp network fetcher, so the staggered-grid thumbnails
+  // (HTTP URLs from DuckDuckGo) load via Coil. Without this fetcher Coil-3 fails any
+  // non-file `model`.
+  implementation(libs.coil.network.okhttp)
 
   // DataStore Preferences — persisted (treeUri → FolderType) mapping in Phase C, settings in Phase K.
   implementation(libs.androidx.datastore.preferences)
@@ -116,4 +120,16 @@ dependencies {
   implementation(libs.androidx.room.ktx)
   ksp(libs.androidx.room.compiler)
   testImplementation(libs.androidx.room.testing)
+
+  // cover-art Phase B — user-initiated DuckDuckGo image search for per-book cover art.
+  // Retrofit + OkHttp + kotlinx-serialization power the two-step `vqd` protocol (see
+  // docs/plans/cover-art.md); androidx.paging threads the `next` cursor into
+  // `LazyVerticalStaggeredGrid` via paging-compose's `LazyPagingItems`.
+  implementation(libs.retrofit)
+  implementation(libs.retrofit.converter.kotlinx.serialization)
+  implementation(libs.retrofit.converter.scalars)
+  implementation(libs.okhttp)
+  implementation(libs.kotlinx.serialization.json)
+  implementation(libs.androidx.paging.runtime)
+  implementation(libs.androidx.paging.compose)
 }

@@ -110,6 +110,15 @@
     <string name="player_chapter_list_title">Chapters</string>
     <string name="player_chapter_duration_format">%1$s</string>
 
+    <!-- coverart_ — user-initiated DuckDuckGo image search for per-book cover art (Phase B) -->
+    <string name="coverart_search_title">Cover art search</string>
+    <string name="coverart_search_hint">Search the web</string>
+    <string name="coverart_search_close_cd">Close cover search</string>
+    <string name="coverart_search_error">Couldn\'t load results</string>
+    <string name="coverart_search_retry">Retry</string>
+    <string name="coverart_search_loading_cd">Loading cover search results</string>
+    <string name="coverart_cover_thumb_cd">Cover candidate</string>
+
     <plurals name="folder_count">
         <item quantity="one">%1$d audiobook folder configured</item>
         <item quantity="other">%1$d audiobook folders configured</item>

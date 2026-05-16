@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
+import com.eight87.whisperboy.data.coverart.CoverApi
+import com.eight87.whisperboy.data.coverart.CoverApiModule
 import com.eight87.whisperboy.data.library.AndroidLibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.AndroidLibraryUiSettings
 import com.eight87.whisperboy.data.library.AndroidPersistedUriPermissionStore
@@ -117,6 +119,17 @@ class AppGraph(context: Context) {
 
     /** Phase D.4 — atomic cover-bytes-to-disk store at `<filesDir>/covers/<bookId>`. */
     val coverStore: CoverStore = CoverStore(appContext)
+
+    /**
+     * cover-art Phase B — shared OkHttp client for DuckDuckGo image search + full-image
+     * downloads. Exposed because [com.eight87.whisperboy.ui.coverart.SelectCoverFromInternet]
+     * uses it directly to fetch the full-resolution image bytes after the user picks a
+     * thumbnail (Retrofit only handles the JSON page; bytes come straight from OkHttp).
+     */
+    val okHttpClient: okhttp3.OkHttpClient = CoverApiModule.provideOkHttpClient()
+
+    /** cover-art Phase B — narrow Retrofit-backed DuckDuckGo image-search client. */
+    val coverApi: CoverApi = CoverApiModule.provideCoverApi(okHttpClient)
 
     /**
      * Phase D.4's [LibraryRepository] — the concrete implementation behind every narrow data
