@@ -6,6 +6,13 @@
       ACTION_OPEN_DOCUMENT_TREE. No READ_MEDIA_AUDIO, no READ_EXTERNAL_STORAGE.
       See CLAUDE.md "Why SAF (not MediaStore)" for the rationale.
     -->
+    <!--
+      INTERNET — used exclusively by cover-art Phase B's user-initiated DuckDuckGo image
+      search (see docs/plans/cover-art.md). No automated network round-trips happen
+      anywhere else in the app.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
