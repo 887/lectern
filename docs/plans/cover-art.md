@@ -51,7 +51,7 @@ Goal: every cover the user already has on disk renders correctly, automatically,
 - [x] **A.5** `CoverArt` composable — Coil-based, takes a `BookId` (resolves `coverPath` via `CoverSaver`). Placeholder is the M3E book glyph. **Decode-size discipline**: tiles request `Size(coverSizePx, coverSizePx)`, full-screen player requests `Size.ORIGINAL` only at the player surface (tonearmboy `8d8c1a4` "Balanced load speed" lesson). *Shipped with `SubcomposeAsyncImage` loading `File(coverPath)`; the book-glyph placeholder is the loading/error/null fallback; no explicit size override (Coil derives from Box constraints — correct for grid tiles).*
 - [ ] **A.6** Per-book overflow action "Use custom cover from device" — `OPEN_DOCUMENT` for `image/*`, copy bytes via `CoverSaver`, mark with a flag (`coverSource = Custom`) so a later rescan doesn't overwrite the user's pick.
 
-**Shipped:** A.1, A.2, A.4, A.5 in commit `457920a`. A.3 + A.6 stay open.
+**Shipped:** A.1, A.2, A.4, A.5 in commit `05217dd`. A.3 + A.6 stay open.
 
 ## Phase B — user-initiated DuckDuckGo search
 
