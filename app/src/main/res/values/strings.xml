@@ -82,6 +82,7 @@
     <string name="library_book_action_mark_completed">Mark completed</string>
     <string name="library_book_action_mark_not_started">Mark not started</string>
     <string name="library_book_action_custom_cover">Use custom cover from device</string>
+    <string name="library_book_action_refresh_cover">Refresh cover</string>
     <string name="library_book_action_forget">Forget book</string>
     <string name="library_book_action_forget_confirm_title">Forget this book?</string>
     <string name="library_book_action_forget_confirm_body">whisperboy will remove the book from your library, including bookmarks and progress. The audio files on your device are untouched. If the file is still in your folders, the book will reappear on the next scan.</string>
@@ -118,6 +119,10 @@
     <string name="coverart_search_retry">Retry</string>
     <string name="coverart_search_loading_cd">Loading cover search results</string>
     <string name="coverart_cover_thumb_cd">Cover candidate</string>
+    <string name="coverart_crop_title">Crop cover</string>
+    <string name="coverart_crop_cancel">Cancel</string>
+    <string name="coverart_crop_confirm">Save cover</string>
+    <string name="coverart_crop_loading">Loading image…</string>
 
     <plurals name="folder_count">
         <item quantity="one">%1$d audiobook folder configured</item>
