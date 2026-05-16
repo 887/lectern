@@ -17,6 +17,7 @@ import com.eight87.whisperboy.ui.coverart.SelectCoverFromInternet
 import com.eight87.whisperboy.ui.home.HomeScreen
 import com.eight87.whisperboy.ui.playback.NowPlayingSheet
 import com.eight87.whisperboy.ui.settings.AboutScreen
+import com.eight87.whisperboy.ui.settings.LibraryFoldersScreen
 import com.eight87.whisperboy.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
@@ -60,7 +61,6 @@ fun WhisperboyApp() {
                 entry<HomeRoute> {
                     HomeScreen(
                         persistedUriPermissionStore = graph.persistedUriPermissionStore,
-                        libraryRescanCoordinator = graph.libraryRescanCoordinator,
                         bookSource = graph.bookSource,
                         libraryUiSettings = graph.libraryUiSettings,
                         onBookTap = { bookId ->
@@ -73,13 +73,23 @@ fun WhisperboyApp() {
                 }
                 entry<SettingsRoute> {
                     // Phase K.1 — settings root. Subcategory navigation
-                    // (Playback / Sleep timer / Library / Theme) lands
-                    // when K.2 / K.3 / K.4 / K.5 ship; until then the
-                    // SettingsScreen surfaces a "Coming soon" snackbar
-                    // for those rows internally.
+                    // (Playback / Sleep timer / Theme) lands when K.2 /
+                    // K.3 / K.5 ship; the Library row navigates to the
+                    // Phase K.4 partial `LibraryFoldersRoute`, and a
+                    // "Rescan now" button sits inside the General card.
                     SettingsScreen(
+                        libraryRescanCoordinator = graph.libraryRescanCoordinator,
                         onBack = { backStack.removeLastOrNull() },
                         onAboutClick = { backStack.add(AboutRoute) },
+                        onLibraryFoldersClick = { backStack.add(LibraryFoldersRoute) },
+                        modifier = Modifier.safeDrawingPadding(),
+                    )
+                }
+                entry<LibraryFoldersRoute> {
+                    // Phase K.4 (partial) — folder management lives in Settings now.
+                    LibraryFoldersScreen(
+                        persistedUriPermissionStore = graph.persistedUriPermissionStore,
+                        onBack = { backStack.removeLastOrNull() },
                         modifier = Modifier.safeDrawingPadding(),
                     )
                 }

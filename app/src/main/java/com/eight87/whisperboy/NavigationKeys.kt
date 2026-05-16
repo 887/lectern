@@ -41,3 +41,10 @@ import kotlinx.serialization.Serializable
  * sub-page tracked in `docs/plans/oss-licenses.md`.
  */
 @Serializable data object AboutRoute : NavKey
+
+/**
+ * Phase K.4 (partial) — Library folders sub-page. Pushed from Settings.
+ * Lists configured roots with their `FolderType` + Remove action; a FAB
+ * adds a new root via the SAF tree picker.
+ */
+@Serializable data object LibraryFoldersRoute : NavKey

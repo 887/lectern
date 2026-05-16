@@ -12,7 +12,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
@@ -54,10 +57,11 @@ import kotlinx.coroutines.launch
  * Visible only when [PlaybackUiState] is `Loaded`. When idle / not-yet-connected
  * the composable returns immediately so nothing reserves layout space.
  *
- * Layout (mirrors tonearmboy's mini-player shape, audiobook-flavoured):
+ * Layout (3-row Column, mirroring tonearmboy's MiniPlayer shape, audiobook-flavoured):
  *
- *   [cover 48dp] [title/chapter, weight=1] [skip-prev] [play/pause] [skip-next]
- *   [position mm:ss .... 2dp progress line .... chapter-duration mm:ss]
+ *   Row 1 (info):     [cover 48dp] [title/chapter, weight=1]
+ *   Row 2 (transport): [Replay] [SkipPrev] [Play/Pause] [SkipNext] [Forward]    (SpaceEvenly, 40dp targets, 24dp icons; Play/Pause 28dp)
+ *   Row 3 (progress): [position mm:ss] .... 2dp progress line .... [chapter-duration mm:ss]
  *
  * The 2dp progress line tracks `position / duration` across the whole book and
  * uses `Modifier.graphicsLayer { scaleX = fraction }` (cold-start-perf C.2) so
@@ -95,6 +99,9 @@ fun NowPlayingBar(
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
+        // Row 1 — info. Cover + title/chapter only. Drag + tap-to-expand gestures
+        // live on this row (the transport row below has its own tap targets so a
+        // tap on a button shouldn't also expand the sheet).
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -133,9 +140,32 @@ fun NowPlayingBar(
                     )
                 }
             }
+        }
+
+        // Row 2 — five-button transport row. Replay / SkipPrev / Play-Pause /
+        // SkipNext / Forward, space-evenly. Rewind/Forward seconds come from
+        // PlaybackSettings via the transport bridge — the mini-player doesn't
+        // need to know the configured values, just call rewind()/forward().
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = { scope.launch { transport.rewind() } },
+                modifier = Modifier.size(40.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.FastRewind,
+                    contentDescription = stringResource(R.string.player_rewind_cd, 0),
+                    modifier = Modifier.size(24.dp),
+                )
+            }
             IconButton(
                 onClick = { scope.launch { transport.prevChapter() } },
-                modifier = Modifier.size(36.dp),
+                modifier = Modifier.size(40.dp),
             ) {
                 Icon(
                     imageVector = Icons.Filled.SkipPrevious,
@@ -161,11 +191,21 @@ fun NowPlayingBar(
             }
             IconButton(
                 onClick = { scope.launch { transport.nextChapter() } },
-                modifier = Modifier.size(36.dp),
+                modifier = Modifier.size(40.dp),
             ) {
                 Icon(
                     imageVector = Icons.Filled.SkipNext,
                     contentDescription = stringResource(R.string.player_skip_next_cd),
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            IconButton(
+                onClick = { scope.launch { transport.forward() } },
+                modifier = Modifier.size(40.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.FastForward,
+                    contentDescription = stringResource(R.string.player_forward_cd, 0),
                     modifier = Modifier.size(24.dp),
                 )
             }

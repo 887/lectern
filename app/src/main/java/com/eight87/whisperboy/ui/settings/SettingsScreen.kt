@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,8 +35,12 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
+import com.eight87.whisperboy.data.library.RescanState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -69,8 +74,10 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    libraryRescanCoordinator: LibraryRescanCoordinator,
     onBack: () -> Unit,
     onAboutClick: () -> Unit,
+    onLibraryFoldersClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -79,6 +86,7 @@ fun SettingsScreen(
     val pendingClick: () -> Unit = {
         scope.launch { snackbarHostState.showSnackbar(comingSoon) }
     }
+    val rescanState by libraryRescanCoordinator.state.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = modifier,
@@ -122,8 +130,24 @@ fun SettingsScreen(
                     icon = Icons.Outlined.FolderOpen,
                     title = stringResource(R.string.settings_category_library),
                     subtitle = stringResource(R.string.settings_category_library_subtitle),
-                    onClick = pendingClick,
+                    onClick = onLibraryFoldersClick,
                 )
+                // "Rescan now" — Phase K.4 partial. Sits inside the General card under
+                // the Library row so it's discoverable next to folder management. Disabled
+                // while a scan is in flight (RescanState.Running).
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    Button(
+                        onClick = { libraryRescanCoordinator.requestRescan() },
+                        enabled = rescanState !is RescanState.Running,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.settings_rescan_now))
+                    }
+                }
                 SettingsCategoryRow(
                     icon = Icons.Outlined.Palette,
                     title = stringResource(R.string.settings_category_theme),

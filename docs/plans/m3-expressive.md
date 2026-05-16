@@ -47,14 +47,17 @@ shrink), `2bb042e` (auto-accent + retune splash to 60 %).
    Custom Compose surfaces (e.g. a Player chapter list, the bookmark
    sheet) that want the same coloured accent should call
    `accentFor(id)` directly — keep the function exported.
-6. **Top-app-bar `expandedHeight = 32dp` across all screens.**
-   tonearmboy converged on this value after sweeping 64dp → 48dp →
-   32dp across all 11 screens (`2da7c07` → `3903d71` → `088630b`).
-   M3's default of 64dp (large) or even 48dp (medium) reads chunky on
-   modern screens once the surface-tier ladder is doing the visual
-   work the height used to do. Whisperboy starts at 32dp on every
-   screen out of the box; don't ship 64dp/48dp variants and then
-   sweep them later.
+6. **Top-app-bar height — use the M3 default (64dp), do NOT override
+   `expandedHeight`.** RETRACTED: an earlier draft of this gotcha
+   claimed tonearmboy converged on `expandedHeight = 32dp` across 11
+   screens. That claim is incorrect. Tonearmboy does not override
+   `expandedHeight` anywhere; every TopAppBar uses the M3 default of
+   64dp. Whisperboy was wrong to ship 32dp overrides at Phase E.1 /
+   F.1 — the resulting chrome read "way too small" against M3E's
+   spacing assumptions. The overrides were removed in the coordinated
+   sizing + chrome refactor (see `main.md` E.6 / K.4 notes); if a
+   future agent thinks "shrink the top app bar" is the right move,
+   bring evidence from tonearmboy/Voice first — neither does this.
 7. **DO NOT ship a two-stage Compose splash to bypass the
    Android 12+ system circle clip.** tonearmboy tried this in
    `f249b0e` and reverted in `51d1769` — the square overlay was

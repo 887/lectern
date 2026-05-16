@@ -31,7 +31,6 @@ import android.net.Uri
 import com.eight87.whisperboy.R
 import com.eight87.whisperboy.data.library.BookSource
 import com.eight87.whisperboy.data.library.FolderType
-import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.LibraryRoot
 import com.eight87.whisperboy.data.library.LibraryUiSettings
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
@@ -52,7 +51,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     persistedUriPermissionStore: PersistedUriPermissionStore,
-    libraryRescanCoordinator: LibraryRescanCoordinator,
     bookSource: BookSource,
     libraryUiSettings: LibraryUiSettings,
     onBookTap: (String) -> Unit,
@@ -71,7 +69,6 @@ fun HomeScreen(
         LibraryScreen(
             bookSource = bookSource,
             persistedUriPermissionStore = persistedUriPermissionStore,
-            libraryRescanCoordinator = libraryRescanCoordinator,
             libraryUiSettings = libraryUiSettings,
             onBookTap = onBookTap,
             onSettingsClick = onSettingsClick,
