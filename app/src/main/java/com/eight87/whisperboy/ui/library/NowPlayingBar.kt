@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,13 +38,14 @@ import com.eight87.whisperboy.playback.NowPlayingState
 import com.eight87.whisperboy.playback.PlaybackUiState
 import com.eight87.whisperboy.playback.TransportCommands
 import com.eight87.whisperboy.ui.common.CoverArt
+import com.eight87.whisperboy.ui.playback.formatMmSs
 import kotlinx.coroutines.launch
 
 /**
  * Phase E.6 — slim now-playing bar pinned to the bottom.
  *
  * Used as the **peek** of [com.eight87.whisperboy.ui.playback.NowPlayingSheet]:
- * tapping anywhere outside the play / pause button calls [onExpand], which the
+ * tapping anywhere outside the transport buttons calls [onExpand], which the
  * host animates into the full-screen player by driving `sheetProgress` 0 → 1.
  * Vertical drag gestures on the outer Row are forwarded to the host via
  * [onSheetDragDelta] / [onSheetDragSettle], so the user can drag the sheet open
@@ -51,10 +54,19 @@ import kotlinx.coroutines.launch
  * Visible only when [PlaybackUiState] is `Loaded`. When idle / not-yet-connected
  * the composable returns immediately so nothing reserves layout space.
  *
- * 2dp thin progress line along the bottom edge tracks `position / duration`
- * across the whole book. `Modifier.graphicsLayer { scaleX = fraction }`
- * (cold-start-perf C.2) defers the state read to draw — the fast-ticking
- * position field doesn't trigger composition each tick.
+ * Layout (mirrors tonearmboy's mini-player shape, audiobook-flavoured):
+ *
+ *   [cover 48dp] [title/chapter, weight=1] [skip-prev] [play/pause] [skip-next]
+ *   [position mm:ss .... 2dp progress line .... chapter-duration mm:ss]
+ *
+ * The 2dp progress line tracks `position / duration` across the whole book and
+ * uses `Modifier.graphicsLayer { scaleX = fraction }` (cold-start-perf C.2) so
+ * the fast-ticking position field doesn't trigger composition of the whole bar.
+ *
+ * The mm:ss text readout *does* re-render each tick (text content changes
+ * second-by-second). It lives in a scoped child composable [PositionReadout]
+ * so recomposition stays bounded — cover, title, chapter, and the three
+ * transport buttons skip the recomp.
  */
 @Composable
 fun NowPlayingBar(
@@ -93,7 +105,7 @@ fun NowPlayingBar(
                         onDragCancel = { onSheetDragSettle() },
                     ) { _, delta -> onSheetDragDelta(delta) }
                 }
-                .padding(horizontal = 8.dp, vertical = 8.dp),
+                .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             CoverArt(
@@ -121,40 +133,101 @@ fun NowPlayingBar(
                     )
                 }
             }
-            Spacer(Modifier.width(8.dp))
-            IconButton(onClick = {
-                scope.launch {
-                    if (loaded.isPlaying) transport.pause() else transport.play()
-                }
-            }) {
+            IconButton(
+                onClick = { scope.launch { transport.prevChapter() } },
+                modifier = Modifier.size(36.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.SkipPrevious,
+                    contentDescription = stringResource(R.string.player_skip_prev_cd),
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            IconButton(
+                onClick = {
+                    scope.launch {
+                        if (loaded.isPlaying) transport.pause() else transport.play()
+                    }
+                },
+                modifier = Modifier.size(40.dp),
+            ) {
                 Icon(
                     imageVector = if (loaded.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     contentDescription = stringResource(
                         if (loaded.isPlaying) R.string.player_pause_cd else R.string.player_play_cd,
                     ),
+                    modifier = Modifier.size(28.dp),
+                )
+            }
+            IconButton(
+                onClick = { scope.launch { transport.nextChapter() } },
+                modifier = Modifier.size(36.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.SkipNext,
+                    contentDescription = stringResource(R.string.player_skip_next_cd),
+                    modifier = Modifier.size(24.dp),
                 )
             }
         }
 
-        // Auxio-style thin progress line. `graphicsLayer { scaleX = ... }` (cold-start-perf C.2)
-        // defers the fast-ticking position read to draw — keeps the bar off the recomposition
-        // hot path. Anchor scale at the left edge via `transformOrigin`.
-        Box(
+        // Position / 2dp progress / duration row.
+        //
+        // Position-left, duration-right both in labelSmall + onSurfaceVariant @ 0.85f
+        // alpha (tonearmboy's mini-player shape, adapted to chapter-relative time
+        // since that's the audiobook-meaningful frame). The 2dp scaleX bar sits
+        // between them so it visually anchors the readout pair to the same line.
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(2.dp)
-                .background(MaterialTheme.colorScheme.surfaceContainerLowest),
+                .padding(horizontal = 12.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            PositionReadout(loaded = loaded, showPosition = true)
+            Spacer(Modifier.width(8.dp))
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .weight(1f)
                     .height(2.dp)
-                    .graphicsLayer {
-                        scaleX = progressFraction()
-                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
-                    }
-                    .background(MaterialTheme.colorScheme.primary),
-            )
+                    .background(MaterialTheme.colorScheme.surfaceContainerLowest),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.dp)
+                        .graphicsLayer {
+                            scaleX = progressFraction()
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+                        }
+                        .background(MaterialTheme.colorScheme.primary),
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            PositionReadout(loaded = loaded, showPosition = false)
         }
     }
+}
+
+/**
+ * Scoped readout child — re-reads the fast-ticking position field and renders
+ * either the chapter-relative position (left) or the chapter duration (right).
+ * Wrapping each side in its own composable keeps the per-tick recomposition off
+ * the parent NowPlayingBar (cover / title / chapter / buttons all skip).
+ */
+@Composable
+private fun PositionReadout(
+    loaded: PlaybackUiState.Loaded,
+    showPosition: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val chapterStartMs = loaded.currentChapter?.positionInBookMs ?: 0L
+    val chapterDurationMs = loaded.currentChapter?.durationMs ?: loaded.book.durationMs
+    val positionInChapterMs = (loaded.positionInBookMs - chapterStartMs).coerceAtLeast(0L)
+    Text(
+        text = if (showPosition) formatMmSs(positionInChapterMs) else formatMmSs(chapterDurationMs),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+        maxLines = 1,
+        modifier = modifier,
+    )
 }
