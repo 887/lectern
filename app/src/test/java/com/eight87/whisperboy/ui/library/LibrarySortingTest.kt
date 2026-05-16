@@ -113,4 +113,36 @@ class LibrarySortingTest {
     fun `sectionStartsFor empty list returns empty`() {
         assertEquals(emptyList<Pair<Int, String>>(), sectionStartsFor(emptyList(), BookSortKey.Title))
     }
+
+    @Test
+    fun `filterBooks All returns input unchanged`() {
+        val input = listOf(book("a", "A"), book("b", "B", lastPlayedAt = 1L))
+        assertEquals(input, filterBooks(input, BookFilter.All))
+    }
+
+    @Test
+    fun `filterBooks Current keeps only books with lastPlayedAt`() {
+        val out = filterBooks(
+            listOf(
+                book("a", "A", lastPlayedAt = null),
+                book("b", "B", lastPlayedAt = 100L),
+                book("c", "C", lastPlayedAt = null),
+            ),
+            BookFilter.Current,
+        )
+        assertEquals(listOf("B"), out.map { it.title })
+    }
+
+    @Test
+    fun `filterBooks NotStarted keeps only books with null lastPlayedAt`() {
+        val out = filterBooks(
+            listOf(
+                book("a", "A", lastPlayedAt = null),
+                book("b", "B", lastPlayedAt = 100L),
+                book("c", "C", lastPlayedAt = null),
+            ),
+            BookFilter.NotStarted,
+        )
+        assertEquals(listOf("A", "C"), out.map { it.title })
+    }
 }

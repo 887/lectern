@@ -32,6 +32,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -100,12 +102,14 @@ fun LibraryScreen(
 
     var gridMode by remember { mutableStateOf(GridMode.Grid) }
     var sortKey by remember { mutableStateOf(BookSortKey.Title) }
+    var filter by remember { mutableStateOf(BookFilter.All) }
     var sortMenuOpen by remember { mutableStateOf(false) }
     var overflowOpen by remember { mutableStateOf(false) }
     var manageFoldersOpen by remember { mutableStateOf(false) }
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
 
-    val sortedBooks = remember(books, sortKey) { sortedBooks(books, sortKey) }
+    val filteredBooks = remember(books, filter) { filterBooks(books, filter) }
+    val sortedBooks = remember(filteredBooks, sortKey) { sortedBooks(filteredBooks, sortKey) }
     val sectionStarts = remember(sortedBooks, sortKey) { sectionStartsFor(sortedBooks, sortKey) }
 
     val pickFolder = rememberLauncherForActivityResult(
@@ -199,6 +203,14 @@ fun LibraryScreen(
             },
         )
 
+        if (books.isNotEmpty()) {
+            LibraryFilterChips(
+                filter = filter,
+                onFilterChange = { filter = it },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
         if (sortedBooks.isEmpty()) {
             LibraryEmptyState(modifier = Modifier.weight(1f).fillMaxWidth())
         } else {
@@ -238,6 +250,29 @@ fun LibraryScreen(
             },
             onDismiss = { manageFoldersOpen = false },
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LibraryFilterChips(
+    filter: BookFilter,
+    onFilterChange: (BookFilter) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BookFilter.entries.forEach { option ->
+            FilterChip(
+                selected = filter == option,
+                onClick = { onFilterChange(option) },
+                label = { Text(stringResource(filterLabel(option))) },
+                colors = FilterChipDefaults.filterChipColors(),
+            )
+        }
     }
 }
 
@@ -380,6 +415,12 @@ private fun sortKeyLabel(key: BookSortKey): Int = when (key) {
     BookSortKey.Recent -> R.string.library_sort_recent
     BookSortKey.Title -> R.string.library_sort_title
     BookSortKey.Author -> R.string.library_sort_author
+}
+
+private fun filterLabel(filter: BookFilter): Int = when (filter) {
+    BookFilter.All -> R.string.library_filter_all
+    BookFilter.Current -> R.string.library_filter_current
+    BookFilter.NotStarted -> R.string.library_filter_not_started
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

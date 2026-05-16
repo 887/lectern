@@ -64,6 +64,9 @@
     <string name="library_sort_recent">Recent</string>
     <string name="library_sort_title">Title</string>
     <string name="library_sort_author">Author</string>
+    <string name="library_filter_all">All</string>
+    <string name="library_filter_current">Current</string>
+    <string name="library_filter_not_started">Not started</string>
 
     <plurals name="folder_count">
         <item quantity="one">%1$d audiobook folder configured</item>

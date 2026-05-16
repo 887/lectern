@@ -13,6 +13,23 @@ import java.util.Locale
 enum class BookSortKey { Recent, Title, Author }
 
 /**
+ * Phase E.2 — filter chips above the library grid.
+ *
+ * `Completed` is deliberately absent until E.5's "Mark completed" action lands — without an
+ * explicit user-set completion flag, "completed" can only be inferred from position math
+ * (`currentChapterIndex` + `positionInChapterMs` against `durationMs`) which is unreliable
+ * before the user has actually played to the end. Voice ships an explicit flag; we will too
+ * when E.5 lands the schema migration.
+ */
+enum class BookFilter { All, Current, NotStarted }
+
+fun filterBooks(books: List<BookEntity>, filter: BookFilter): List<BookEntity> = when (filter) {
+    BookFilter.All -> books
+    BookFilter.Current -> books.filter { it.lastPlayedAt != null }
+    BookFilter.NotStarted -> books.filter { it.lastPlayedAt == null }
+}
+
+/**
  * Pure-function sort. The comparator instances are constructed per-call so they pick up
  * the current default locale (R.A.Q for collation across languages — Voice does the same).
  */
