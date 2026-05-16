@@ -19,9 +19,14 @@
     dialog_       generic dialog buttons (Cancel / OK / Delete)
     error_        error messages
     cd_           content descriptions (transport buttons, cover art alt text)
+    notification_ notification channel names + descriptions (system settings UI)
 -->
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
     <string name="app_name">whisperboy</string>
+
+    <!-- notification_ — channel labels surfaced in system Settings → Notifications (Phase F) -->
+    <string name="notification_channel_playback_name">Playback</string>
+    <string name="notification_channel_playback_description">Playback controls and ongoing audio session.</string>
 
     <!-- folder_ — SAF picker bridge + the four FolderType labels (Phase C) -->
     <string name="folder_picker_empty_title">No audiobook folders yet</string>
