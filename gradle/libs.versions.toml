@@ -4,6 +4,17 @@ androidxCore = "1.18.0"
 androidxLifecycle = "2.10.0"
 androidxActivity = "1.13.0"
 androidxComposeBom = "2026.03.01"
+# m3-expressive A.1 — pin material3 to 1.5.0-alpha18, the alpha that
+# promotes `MaterialExpressiveTheme` / `expressiveLightColorScheme` to
+# public API. The 1.4.0 stable line (resolved by the BOM above) keeps
+# these `internal` — Kotlin metadata marks them `internal` even though
+# the JVM bytecode is public. Override at the artifact level so the
+# BOM still governs every other Compose artifact. Note:
+# `expressiveDarkColorScheme()` does NOT exist in alpha18 — only the
+# light factory ships; dark stays on `darkColorScheme(...)` and
+# inherits the surface ladder. Drop this override once 1.5.0 stable
+# ships and the BOM picks it up.
+composeMaterial3 = "1.5.0-alpha18"
 androidxTest = "1.7.0"
 androidxTestExt = "1.3.0"
 androidxTestRunner = "1.7.0"
@@ -23,7 +34,11 @@ ksp = "2.3.7"
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidxActivity" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "androidxComposeBom" }
-androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3"}
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "composeMaterial3" }
+# m3-expressive A.2 — `material-icons-extended` is no longer transitive
+# in `material3:1.4.0+`; declare it explicitly so Phase E+ chrome can
+# pull from `Icons.Filled.*` / `Icons.Outlined.*` without surprises.
+androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui"}
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview"}
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4"}

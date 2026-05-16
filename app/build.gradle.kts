@@ -71,6 +71,10 @@ dependencies {
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.compose.material3)
+  // m3-expressive A.2 — `material-icons-extended` is no longer transitive
+  // in `material3:1.4.0+`; Phase E+ chrome needs `Icons.Filled.*` /
+  // `Icons.Outlined.*` available without surprises.
+  implementation(libs.androidx.compose.material.icons.extended)
   // Tooling
   debugImplementation(libs.androidx.compose.ui.tooling)
   // Instrumented tests
