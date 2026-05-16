@@ -65,7 +65,7 @@ Goal: the per-book "Search online" flow, exactly Voice's shape.
 - [x] **B.6** `LazyVerticalStaggeredGrid` with `StaggeredGridCells.Adaptive(minSize = 150.dp)`. `AsyncImage` per cell with `model = item.thumbnail`, `aspectRatio = item.width / item.height`, `placeholder = ColorPainter(onSurfaceVariant)`. Tap → emit `CoverClick(item)`. *Shipped: `ContentGrid` uses Coil 3 `AsyncImage` against the thumbnail URL (added `coil-network-okhttp` for HTTP fetcher); placeholder is `ColorPainter(surfaceContainerHigh)` to match M3E surface ladder; tap calls `coverStore.writeCover(bookId, downloadedBytes)` then `onClose()`. Trailing footer row visualises `LoadState.Loading` / `LoadState.Error` for `append` (paging "load next page" UX).*
 - [x] **B.7** Navigate from the library long-press sheet ("Search online") and from the player overflow ("Change cover"). *Shipped (partial): `CoverSearchRoute(bookId)` added to `NavigationKeys.kt`, entry block in `WhisperboyApp.kt` renders `SelectCoverFromInternet` and pops on close. Action-sheet entry from `LibraryScreen` is owned by a coexisting inch; the integration glue lands post-merge.*
 
-**Shipped:** B.1–B.7 in commit `<filled in below>`.
+**Shipped:** B.1–B.7 in commit `45af7bf`.
 
 **Crop step out of scope for this commit.** Picked image bytes go straight to `CoverStore.writeCover`; the user gets the full image rendered with `ContentScale.Crop` at display time until Phase C ships a real crop UI.
 
