@@ -56,6 +56,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -140,6 +141,29 @@ fun LibraryScreen(
     val pickFolder = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
     ) { uri -> if (uri != null) pendingUri = uri }
+
+    // Phase A.6 (`cover-art.md`) — "Use custom cover from device" SAF picker. The user picks
+    // an image, we read its bytes via `contentResolver.openInputStream`, hand them to
+    // `BookSource.setCustomCover`, and tag the row as `Custom` so a later rescan leaves the
+    // user's pick alone. The launcher is created at the top of the composable (matching the
+    // `pickFolder` idiom above); `pendingCustomCoverBookId` stashes the target book id from
+    // the moment the user taps the action-sheet button until the picker returns.
+    val context = LocalContext.current
+    var pendingCustomCoverBookId by remember { mutableStateOf<String?>(null) }
+    val pickCustomCover = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        val bookId = pendingCustomCoverBookId
+        pendingCustomCoverBookId = null
+        if (uri != null && bookId != null) {
+            coroutineScope.launch {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (bytes != null && bytes.isNotEmpty()) {
+                    bookSource.setCustomCover(bookId, bytes)
+                }
+            }
+        }
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         if (searchMode) {
@@ -331,6 +355,11 @@ fun LibraryScreen(
                     coroutineScope.launch { bookSource.markNotStarted(actionBook.bookId) }
                     actionSheetBookId = null
                 },
+                onPickCustomCover = {
+                    pendingCustomCoverBookId = actionBook.bookId
+                    pickCustomCover.launch(arrayOf("image/*"))
+                    actionSheetBookId = null
+                },
                 onForget = {
                     forgetConfirmBookId = actionBook.bookId
                     actionSheetBookId = null
@@ -362,6 +391,7 @@ private fun BookActionSheet(
     onDismiss: () -> Unit,
     onMarkCompleted: () -> Unit,
     onMarkNotStarted: () -> Unit,
+    onPickCustomCover: () -> Unit,
     onForget: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -374,6 +404,15 @@ private fun BookActionSheet(
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(Modifier.height(12.dp))
+            // Phase A.6 — custom cover picker. Sits above the mark-completed / mark-not-started
+            // pair so the cover-art affordance has visual priority and the destructive "Forget"
+            // action stays last.
+            TextButton(onClick = onPickCustomCover, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.library_book_action_custom_cover),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             if (isCompleted) {
                 TextButton(onClick = onMarkNotStarted, modifier = Modifier.fillMaxWidth()) {
                     Text(

@@ -43,6 +43,12 @@ interface BookDao {
     @Query("UPDATE books SET completedAt = :timestamp WHERE bookId = :id")
     suspend fun setCompletedAt(id: String, timestamp: Long?)
 
+    @Query("UPDATE books SET coverPath = :path WHERE bookId = :id")
+    suspend fun setCoverPath(id: String, path: String?)
+
+    @Query("UPDATE books SET coverSource = :source WHERE bookId = :id")
+    suspend fun setCoverSource(id: String, source: CoverSource)
+
     @Query("UPDATE books SET lastPlayedAt = :timestamp WHERE bookId = :id")
     suspend fun setLastPlayedAt(id: String, timestamp: Long?)
 

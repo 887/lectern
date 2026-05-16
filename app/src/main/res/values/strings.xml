@@ -81,6 +81,7 @@
     <string name="library_book_action_sheet_title">%1$s</string>
     <string name="library_book_action_mark_completed">Mark completed</string>
     <string name="library_book_action_mark_not_started">Mark not started</string>
+    <string name="library_book_action_custom_cover">Use custom cover from device</string>
     <string name="library_book_action_forget">Forget book</string>
     <string name="library_book_action_forget_confirm_title">Forget this book?</string>
     <string name="library_book_action_forget_confirm_body">whisperboy will remove the book from your library, including bookmarks and progress. The audio files on your device are untouched. If the file is still in your folders, the book will reappear on the next scan.</string>

@@ -34,4 +34,11 @@ interface BookSource {
     suspend fun markNotStarted(bookId: String)
 
     suspend fun forgetBook(bookId: String)
+
+    /**
+     * Phase A.6 (`cover-art.md`) — replace the cover for [bookId] with the given bytes and
+     * mark its [BookEntity.coverSource] as [CoverSource.Custom] so subsequent rescans leave
+     * the user's pick alone. Bytes are typically loaded from a SAF `OpenDocument` result.
+     */
+    suspend fun setCustomCover(bookId: String, bytes: ByteArray)
 }

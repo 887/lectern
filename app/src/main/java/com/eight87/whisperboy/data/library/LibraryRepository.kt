@@ -50,6 +50,15 @@ internal class LibraryRepository(
         coverStore.deleteCover(bookId)
     }
 
+    override suspend fun setCustomCover(bookId: String, bytes: ByteArray) {
+        // Phase A.6 (`cover-art.md`): write the bytes through [CoverStore] (atomic tmp+rename),
+        // then flip the cached row to point at the new path with `coverSource = Custom` so
+        // `applyScan` leaves it alone on subsequent rescans.
+        val path = coverStore.writeCover(bookId, bytes)
+        bookDao.setCoverPath(bookId, path)
+        bookDao.setCoverSource(bookId, CoverSource.Custom)
+    }
+
     // ---- ChapterSource ----
 
     override fun observeChaptersForBook(bookId: String): Flow<List<ChapterEntity>> =
@@ -97,12 +106,24 @@ internal class LibraryRepository(
         // 1. Land cover bytes on disk OUTSIDE the Room transaction. Long file IO inside the
         //    txn would hold the database lock; a rollback would also leave the on-disk file
         //    orphaned. Write first, then commit rows that reference the path.
-        val booksWithCoverPaths: List<Pair<ScannedBook, String?>> = snapshot.books.map { book ->
-            val coverPath = book.embeddedCoverBytes?.let { bytes ->
-                coverStore.writeCover(book.bookId, bytes)
-            } ?: book.coverPath
-            book to coverPath
-        }
+        //
+        //    Phase A.6 (`cover-art.md`): a per-book lookup respects user-picked custom covers
+        //    — if the existing cached row has `coverSource = Custom`, keep its `coverPath`
+        //    and tag the new row as `Custom` too, so the scanner-derived bytes (sidecar
+        //    folder image / embedded tag) don't overwrite the user's pick. Acceptable to
+        //    fan out per-book here: scans run infrequently and the typical library is small.
+        val booksWithCoverPaths: List<Triple<ScannedBook, String?, CoverSource>> =
+            snapshot.books.map { book ->
+                val existing = bookDao.findById(book.bookId)
+                if (existing?.coverSource == CoverSource.Custom) {
+                    Triple(book, existing.coverPath, CoverSource.Custom)
+                } else {
+                    val coverPath = book.embeddedCoverBytes?.let { bytes ->
+                        coverStore.writeCover(book.bookId, bytes)
+                    } ?: book.coverPath
+                    Triple(book, coverPath, CoverSource.Scanned)
+                }
+            }
 
         // 2. Group incoming book ids by treeUri so soft-delete sweeps per touched root.
         //    Pattern: for each touched root, mark every active book from that root inactive,
@@ -117,8 +138,8 @@ internal class LibraryRepository(
             for (root in touchedRoots) {
                 bookDao.markRootInactive(root)
             }
-            for ((book, coverPath) in booksWithCoverPaths) {
-                bookDao.upsert(book.toEntity(coverPath = coverPath))
+            for ((book, coverPath, coverSource) in booksWithCoverPaths) {
+                bookDao.upsert(book.toEntity(coverPath = coverPath, coverSource = coverSource))
                 // Replace the chapter set wholesale. CASCADE on chapter delete is fine here:
                 // bookmarks have `onDelete = SET_NULL` on chapterId, so they survive a
                 // chapter-row disappearing (the bookmark just unpins from the chapter and
@@ -129,7 +150,7 @@ internal class LibraryRepository(
         }
     }
 
-    private fun ScannedBook.toEntity(coverPath: String?): BookEntity = BookEntity(
+    private fun ScannedBook.toEntity(coverPath: String?, coverSource: CoverSource): BookEntity = BookEntity(
         bookId = bookId,
         treeUriString = treeUriString,
         relativePath = relativePath,
@@ -137,6 +158,7 @@ internal class LibraryRepository(
         author = author,
         durationMs = durationMs,
         coverPath = coverPath,
+        coverSource = coverSource,
         // Resume / per-book settings are NOT touched on rescan — preserve the user's state
         // by not overwriting these fields. Room's @Upsert with the existing PK will write
         // ALL columns, so we have to read the existing row and merge. For D.4 simplicity:
