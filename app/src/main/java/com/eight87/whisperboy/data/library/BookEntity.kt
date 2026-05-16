@@ -40,6 +40,13 @@ data class BookEntity(
     /** Path to the cached cover bytes in the app's `files/covers/` directory; null when no cover. */
     val coverPath: String? = null,
 
+    /**
+     * Where [coverPath] came from. `Scanned` covers are owned by the scanner and may be
+     * overwritten by a later rescan; `Custom` covers were explicitly picked by the user
+     * (Phase A.6 in `cover-art.md`) and must survive rescans. Defaults to `Scanned`.
+     */
+    val coverSource: CoverSource = CoverSource.Scanned,
+
     /** Resume position. */
     val currentChapterIndex: Int = 0,
     @ColumnInfo(name = "position_in_chapter_ms") val positionInChapterMs: Long = 0L,
