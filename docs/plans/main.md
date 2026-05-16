@@ -198,7 +198,7 @@ Goal: per-book speed (0.5x–3.5x), skip silence, volume gain in dB. **Voice ana
 
 ---
 
-## Phase K — settings screen — partial; K.1 scaffold + K.6 shipped in commit `d4df060`
+## Phase K — settings screen — partial; K.1 scaffold + K.6 shipped in commit `fddbd17`
 
 Goal: full settings tree. **Voice analog:** `:features:settings`.
 
