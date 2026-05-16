@@ -86,8 +86,11 @@
     <string name="player_pause_cd">Pause</string>
     <string name="player_skip_prev_cd">Previous chapter</string>
     <string name="player_skip_next_cd">Next chapter</string>
-    <string name="player_rewind_30_cd">Rewind 30 seconds</string>
-    <string name="player_forward_30_cd">Forward 30 seconds</string>
+    <string name="player_rewind_cd">Rewind %1$d seconds</string>
+    <string name="player_forward_cd">Forward %1$d seconds</string>
+    <string name="player_rewind_picker_title">Rewind by</string>
+    <string name="player_forward_picker_title">Forward by</string>
+    <string name="player_seconds_label">%1$d seconds</string>
     <string name="player_sleep_timer_cd">Sleep timer</string>
     <string name="player_bookmark_cd">Add bookmark</string>
     <string name="player_cover_cd">Cover art</string>
