@@ -107,8 +107,6 @@
     <string name="player_loading">Connecting to player…</string>
     <string name="player_book_not_found_title">Book not found</string>
     <string name="player_book_not_found_subtitle">whisperboy can\'t find this book anymore. It may have been moved or removed from your library.</string>
-    <string name="player_chapter_list_cd">Chapter list</string>
-    <string name="player_chapter_list_title">Chapters</string>
     <string name="player_chapter_duration_format">%1$s</string>
 
     <!-- coverart_ — user-initiated DuckDuckGo image search for per-book cover art (Phase B) -->

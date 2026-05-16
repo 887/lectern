@@ -3,10 +3,12 @@ package com.eight87.whisperboy.ui.playback
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -16,9 +18,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
@@ -55,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eight87.whisperboy.R
+import com.eight87.whisperboy.data.library.ChapterEntity
 import com.eight87.whisperboy.data.library.ChapterSource
 import com.eight87.whisperboy.data.playback.PlaybackSettings
 import com.eight87.whisperboy.playback.NowPlayingState
@@ -86,20 +92,14 @@ fun PlaybackScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     /**
-     * Optional list state for an inner LazyColumn (e.g. a future queue / chapter
-     * list mounted directly in the player body) so a host that wants to drive
-     * overscroll-down → sheet-collapse can wire a `NestedScrollConnection` against
-     * it. Currently unused — the chapter list lives inside `ChapterListSheet`
-     * (a ModalBottomSheet), not in the player body, so there is no inner Lazy
-     * column to drive. Left as a stub so the sheet host's nested-scroll wiring
-     * has a place to plug in without a second signature change.
+     * Optional list state for the inline chapter-queue LazyColumn so a host
+     * that wants to drive overscroll-down → sheet-collapse can wire a
+     * `NestedScrollConnection` against it. When non-null, the queue uses
+     * this hoisted state; otherwise it allocates its own local one.
      */
-    @Suppress("UNUSED_PARAMETER")
-    chapterListState: androidx.compose.foundation.lazy.LazyListState? = null,
+    chapterListState: LazyListState? = null,
 ) {
     val uiState by state.state.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
-    var chapterSheetOpen by remember { mutableStateOf(false) }
 
     // F.6 — extract a single dominant accent color from the current book's cover.
     // Off-main (Dispatchers.IO inside extractTint). Re-keys on the cover path so a
@@ -157,15 +157,6 @@ fun PlaybackScreen(
                         contentDescription = stringResource(R.string.player_bookmark_cd),
                     )
                 }
-                IconButton(
-                    onClick = { chapterSheetOpen = true },
-                    enabled = uiState is PlaybackUiState.Loaded,
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.List,
-                        contentDescription = stringResource(R.string.player_chapter_list_cd),
-                    )
-                }
             },
         )
 
@@ -177,27 +168,12 @@ fun PlaybackScreen(
                 state = s,
                 transport = transport,
                 playbackSettings = playbackSettings,
+                chapterSource = chapterSource,
+                chapterListState = chapterListState,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
         }
         }
-    }
-
-    // Lazy-mount: the chapter list LazyColumn is only composed while the sheet is open. Per
-    // cold-start-perf A.5, sheet-only data (the full chapter list) does NOT ride in
-    // PlaybackUiState.Loaded — the sheet fetches via ChapterSource the first time it opens.
-    val loaded = uiState as? PlaybackUiState.Loaded
-    if (chapterSheetOpen && loaded != null) {
-        ChapterListSheet(
-            bookId = loaded.book.bookId,
-            currentChapterIndex = loaded.currentChapter?.chapterIndex ?: -1,
-            chapterSource = chapterSource,
-            onChapterTap = { positionInBookMs ->
-                scope.launch { transport.seekTo(positionInBookMs) }
-                chapterSheetOpen = false
-            },
-            onDismiss = { chapterSheetOpen = false },
-        )
     }
 }
 
@@ -241,6 +217,8 @@ private fun PlayerLoaded(
     state: PlaybackUiState.Loaded,
     transport: TransportCommands,
     playbackSettings: PlaybackSettings,
+    chapterSource: ChapterSource,
+    chapterListState: LazyListState?,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -252,63 +230,207 @@ private fun PlayerLoaded(
     val forwardSeconds by playbackSettings.forwardSeconds.collectAsStateWithLifecycle(initialValue = 30)
 
     Column(
-        modifier = modifier.padding(horizontal = 24.dp),
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(16.dp))
-        CoverArt(
-            coverPath = state.book.coverPath,
+        Column(
             modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .aspectRatio(1f),
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.height(16.dp))
+            // F.5 (inline-queue refactor) — cover shrunk from 0.85f to 0.55f so the inline
+            // chapter queue below has room to breathe. Tonearmboy's NowPlayingScreen uses a
+            // very small cover (96dp seed) because its queue dominates; whisperboy keeps the
+            // cover more prominent (audiobooks are one-cover-per-session) — 55% of width is the
+            // middle ground.
+            CoverArt(
+                coverPath = state.book.coverPath,
+                modifier = Modifier
+                    .fillMaxWidth(0.55f)
+                    .aspectRatio(1f),
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = state.book.title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = chapterDisplayTitle(state),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            PlayerScrubber(
+                positionInChapterMs = positionInChapter(state),
+                chapterDurationMs = chapterDurationMs,
+                onSeek = { newPositionInChapterMs ->
+                    val absolute = (state.currentChapter?.positionInBookMs ?: 0L) + newPositionInChapterMs
+                    scope.launch { transport.seekTo(absolute) }
+                },
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            PlayerTransport(
+                isPlaying = state.isPlaying,
+                rewindSeconds = rewindSeconds,
+                forwardSeconds = forwardSeconds,
+                onPlayPause = {
+                    scope.launch { if (state.isPlaying) transport.pause() else transport.play() }
+                },
+                onRewind = { scope.launch { transport.rewind() } },
+                onForward = { scope.launch { transport.forward() } },
+                onPrev = { scope.launch { transport.prevChapter() } },
+                onNext = { scope.launch { transport.nextChapter() } },
+                onSetRewindSeconds = { value ->
+                    scope.launch { playbackSettings.setRewindSeconds(value) }
+                },
+                onSetForwardSeconds = { value ->
+                    scope.launch { playbackSettings.setForwardSeconds(value) }
+                },
+            )
+
+            Spacer(Modifier.height(16.dp))
+        }
+
+        // F.5 (inline-queue refactor, replaces ChapterListSheet) — the chapter list now lives
+        // inline below the transport row, fills remaining vertical space, scrolls itself.
+        // Tonearmboy's NowPlayingScreen pattern, adapted to chapters (whisperboy ships
+        // audiobooks; the analog of "queue" is "chapters in this book").
+        ChapterQueue(
+            bookId = state.book.bookId,
+            currentChapterIndex = state.currentChapter?.chapterIndex ?: -1,
+            chapterSource = chapterSource,
+            listState = chapterListState,
+            onChapterTap = { positionInBookMs ->
+                scope.launch { transport.seekTo(positionInBookMs) }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
         )
-        Spacer(Modifier.height(24.dp))
+    }
+}
+
+/**
+ * Inline chapter queue. Replaces F.5's `ChapterListSheet` (a `ModalBottomSheet`) — same
+ * data flow, same active-row treatment, but rendered directly in the player body so the
+ * user doesn't have to open a sheet to see / tap chapters. Tonearmboy `NowPlayingScreen`
+ * uses the same shape for its track queue.
+ *
+ * Lazy-mount discipline still holds: the Flow is `remember`-pinned to (chapterSource, bookId)
+ * and collected via `collectAsStateWithLifecycle`, so the queue list isn't materialised until
+ * Room emits. The whole composable only renders inside `PlayerLoaded`, so a not-yet-loaded
+ * player branch never composes it.
+ *
+ * Stable keys on `items(...)` use `chapter.chapterId` (cold-start-perf E.1 — never use the
+ * index as the LazyColumn key).
+ */
+@Composable
+private fun ChapterQueue(
+    bookId: String,
+    currentChapterIndex: Int,
+    chapterSource: ChapterSource,
+    listState: LazyListState?,
+    onChapterTap: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val chaptersFlow = remember(chapterSource, bookId) {
+        chapterSource.observeChaptersForBook(bookId)
+    }
+    val chapters by chaptersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val fallbackListState = rememberLazyListState()
+    val state = listState ?: fallbackListState
+    // Scroll to the active chapter on first load + when it changes (user on chapter 47
+    // shouldn't have to scroll manually to see where they are). Same pattern as the retired
+    // ChapterListSheet's LaunchedEffect.
+    LaunchedEffect(chapters.size, currentChapterIndex) {
+        if (chapters.isNotEmpty() && currentChapterIndex in chapters.indices) {
+            state.scrollToItem(currentChapterIndex.coerceAtLeast(0))
+        }
+    }
+    LazyColumn(
+        state = state,
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        items(
+            items = chapters,
+            key = { it.chapterId },
+        ) { chapter ->
+            ChapterQueueRow(
+                chapter = chapter,
+                isActive = chapter.chapterIndex == currentChapterIndex,
+                onClick = { onChapterTap(chapter.positionInBookMs) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChapterQueueRow(
+    chapter: ChapterEntity,
+    isActive: Boolean,
+    onClick: () -> Unit,
+) {
+    val bg = if (isActive) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+    val fg = if (isActive) {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    val subFg = if (isActive) {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Box(
+            modifier = Modifier.size(24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (isActive) {
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = null,
+                    tint = fg,
+                )
+            }
+        }
+        Spacer(Modifier.width(12.dp))
         Text(
-            text = state.book.title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
+            text = chapter.title
+                ?: stringResource(R.string.player_unknown_chapter, chapter.chapterIndex + 1),
+            style = MaterialTheme.typography.bodyLarge,
+            color = fg,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.width(12.dp))
         Text(
-            text = chapterDisplayTitle(state),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-
-        Spacer(Modifier.height(24.dp))
-
-        PlayerScrubber(
-            positionInChapterMs = positionInChapter(state),
-            chapterDurationMs = chapterDurationMs,
-            onSeek = { newPositionInChapterMs ->
-                val absolute = (state.currentChapter?.positionInBookMs ?: 0L) + newPositionInChapterMs
-                scope.launch { transport.seekTo(absolute) }
-            },
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        PlayerTransport(
-            isPlaying = state.isPlaying,
-            rewindSeconds = rewindSeconds,
-            forwardSeconds = forwardSeconds,
-            onPlayPause = {
-                scope.launch { if (state.isPlaying) transport.pause() else transport.play() }
-            },
-            onRewind = { scope.launch { transport.rewind() } },
-            onForward = { scope.launch { transport.forward() } },
-            onPrev = { scope.launch { transport.prevChapter() } },
-            onNext = { scope.launch { transport.nextChapter() } },
-            onSetRewindSeconds = { value ->
-                scope.launch { playbackSettings.setRewindSeconds(value) }
-            },
-            onSetForwardSeconds = { value ->
-                scope.launch { playbackSettings.setForwardSeconds(value) }
-            },
+            text = formatMmSs(chapter.durationMs),
+            style = MaterialTheme.typography.labelMedium,
+            color = subFg,
         )
     }
 }
