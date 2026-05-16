@@ -4,15 +4,20 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import com.eight87.whisperboy.playback.PlaybackUiState
 import com.eight87.whisperboy.ui.coverart.SelectCoverFromInternet
 import com.eight87.whisperboy.ui.home.HomeScreen
 import com.eight87.whisperboy.ui.playback.NowPlayingSheet
@@ -53,7 +58,16 @@ fun WhisperboyApp() {
     // NavDisplay's own onBack pops the back stack (and exits on HomeRoute).
     BackHandler(enabled = sheetProgress.value > 0f) { closeSheet() }
 
+    // When the mini-player peek is visible, pad the NavDisplay's bottom by the peek
+    // height so library chrome (FAB, lists) doesn't sit underneath the peek bar.
+    // Matches tonearmboy's `libraryBottomPad` pattern. Keep in sync with
+    // `NowPlayingSheet.DEFAULT_PEEK_DP`.
+    val playbackState by graph.nowPlayingState.state.collectAsStateWithLifecycle()
+    val showMiniPlayer = playbackState is PlaybackUiState.Loaded
+    val navDisplayBottomPad = if (showMiniPlayer) 80.dp else 0.dp
+
     Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().padding(bottom = navDisplayBottomPad)) {
         NavDisplay(
             backStack = backStack,
             onBack = { backStack.removeLastOrNull() },
@@ -117,6 +131,7 @@ fun WhisperboyApp() {
                 // Auto launch) which will hand off to the sheet animate-to-1f.
             },
         )
+        }
 
         // Overlay sheet — peek bar (mini-player) along the bottom, expands to
         // the full PlaybackScreen as `sheetProgress` runs 0 → 1. Self-hides
