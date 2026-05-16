@@ -71,6 +71,10 @@ dependencies {
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.compose.material3)
+  // material-icons-extended — needed for non-core glyphs (MenuBook, GridView, ViewList, MoreVert,
+  // Folder, etc.) used across the library / settings / player chrome. Not transitive in material3
+  // 1.4.0+ (m3-expressive.md gotcha #2).
+  implementation(libs.androidx.compose.material.icons.extended)
   // Tooling
   debugImplementation(libs.androidx.compose.ui.tooling)
   // Instrumented tests

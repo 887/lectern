@@ -48,6 +48,19 @@
     <!-- dialog_ — generic dialog buttons -->
     <string name="dialog_cancel">Cancel</string>
 
+    <!-- library_ — cover grid, top app bar, grid/list toggle, empty state (Phase E) -->
+    <string name="library_title">Library</string>
+    <string name="library_empty_title">No books yet</string>
+    <string name="library_empty_subtitle">whisperboy is scanning your folders. Books will appear here as they\'re found.</string>
+    <string name="library_grid_mode_toggle_to_list_cd">Switch to list view</string>
+    <string name="library_grid_mode_toggle_to_grid_cd">Switch to grid view</string>
+    <string name="library_overflow_cd">More actions</string>
+    <string name="library_overflow_manage_folders">Manage folders</string>
+    <string name="library_overflow_add_folder">Add folder</string>
+    <string name="library_overflow_rescan">Rescan now</string>
+    <string name="library_cover_placeholder_cd">Cover art placeholder</string>
+    <string name="library_book_unknown_author">Unknown author</string>
+
     <plurals name="folder_count">
         <item quantity="one">%1$d audiobook folder configured</item>
         <item quantity="other">%1$d audiobook folders configured</item>

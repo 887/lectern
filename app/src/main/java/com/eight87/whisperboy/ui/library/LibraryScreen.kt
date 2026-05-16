@@ -1,0 +1,456 @@
+package com.eight87.whisperboy.ui.library
+
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.eight87.whisperboy.R
+import com.eight87.whisperboy.data.library.BookEntity
+import com.eight87.whisperboy.data.library.BookSource
+import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
+import com.eight87.whisperboy.data.library.LibraryRoot
+import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
+import com.eight87.whisperboy.data.library.RescanState
+import com.eight87.whisperboy.ui.common.CoverArt
+import com.eight87.whisperboy.ui.common.FastScrollbar
+import kotlinx.coroutines.launch
+
+/** Phase E.1 — grid vs list rendering mode for the library. Persisted later in Phase E.3. */
+enum class GridMode { Grid, List }
+
+/**
+ * Phase E.1 — the library screen.
+ *
+ * Takes only narrow data interfaces (R.A discipline): [BookSource] for the catalog flow,
+ * [PersistedUriPermissionStore] + [LibraryRescanCoordinator] for the overflow-menu folder
+ * management (interim home until Phase K's settings tree lands).
+ *
+ * Top app bar at `expandedHeight = 32dp` (m3-expressive gotcha #6, validated in tonearmboy
+ * across 11 screens). Cover grid wrapped in [FastScrollbar] — section-letter chips along the
+ * right edge appear when scrolling/dragging, 800ms linger fade-out (tonearmboy `4e2ff73`).
+ *
+ * Filter chips (E.2), sort menu + sort-aware section keys (E.3), search (E.4), long-press
+ * action sheet + multi-select (E.5), and now-playing bar (E.6) land in follow-up commits.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LibraryScreen(
+    bookSource: BookSource,
+    persistedUriPermissionStore: PersistedUriPermissionStore,
+    libraryRescanCoordinator: LibraryRescanCoordinator,
+    modifier: Modifier = Modifier,
+) {
+    val books by bookSource.observeBooks()
+        .collectAsStateWithLifecycle(initialValue = emptyList<BookEntity>())
+    val rescanState by libraryRescanCoordinator.state.collectAsStateWithLifecycle()
+    val roots by persistedUriPermissionStore.observeRoots()
+        .collectAsStateWithLifecycle(initialValue = emptyList<LibraryRoot>())
+    val coroutineScope = rememberCoroutineScope()
+
+    var gridMode by remember { mutableStateOf(GridMode.Grid) }
+    var overflowOpen by remember { mutableStateOf(false) }
+    var manageFoldersOpen by remember { mutableStateOf(false) }
+    var pendingUri by remember { mutableStateOf<Uri?>(null) }
+
+    val pickFolder = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+    ) { uri -> if (uri != null) pendingUri = uri }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text(stringResource(R.string.library_title)) },
+            expandedHeight = 32.dp,
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
+            actions = {
+                IconButton(onClick = {
+                    gridMode = if (gridMode == GridMode.Grid) GridMode.List else GridMode.Grid
+                }) {
+                    val (icon, cd) = when (gridMode) {
+                        GridMode.Grid -> Icons.AutoMirrored.Filled.ViewList to
+                            R.string.library_grid_mode_toggle_to_list_cd
+                        GridMode.List -> Icons.Filled.GridView to
+                            R.string.library_grid_mode_toggle_to_grid_cd
+                    }
+                    Icon(imageVector = icon, contentDescription = stringResource(cd))
+                }
+                Box {
+                    IconButton(onClick = { overflowOpen = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.MoreVert,
+                            contentDescription = stringResource(R.string.library_overflow_cd),
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = overflowOpen,
+                        onDismissRequest = { overflowOpen = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.library_overflow_rescan)) },
+                            enabled = rescanState !is RescanState.Running,
+                            onClick = {
+                                libraryRescanCoordinator.requestRescan()
+                                overflowOpen = false
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.library_overflow_add_folder)) },
+                            onClick = {
+                                pickFolder.launch(null)
+                                overflowOpen = false
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.library_overflow_manage_folders)) },
+                            onClick = {
+                                manageFoldersOpen = true
+                                overflowOpen = false
+                            },
+                        )
+                    }
+                }
+            },
+        )
+
+        if (books.isEmpty()) {
+            LibraryEmptyState(modifier = Modifier.weight(1f).fillMaxWidth())
+        } else {
+            when (gridMode) {
+                GridMode.Grid -> LibraryCoverGrid(
+                    books = books,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                )
+                GridMode.List -> LibraryCoverList(
+                    books = books,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                )
+            }
+        }
+    }
+
+    val pending = pendingUri
+    if (pending != null) {
+        ManageFoldersFolderTypeSheet(
+            onDismiss = { pendingUri = null },
+            onSelect = { folderType ->
+                coroutineScope.launch {
+                    persistedUriPermissionStore.addRoot(pending, folderType)
+                    pendingUri = null
+                }
+            },
+        )
+    }
+
+    if (manageFoldersOpen) {
+        ManageFoldersSheet(
+            roots = roots,
+            onRemove = { uri ->
+                coroutineScope.launch { persistedUriPermissionStore.removeRoot(uri) }
+            },
+            onDismiss = { manageFoldersOpen = false },
+        )
+    }
+}
+
+@Composable
+private fun LibraryEmptyState(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = stringResource(R.string.library_empty_title),
+            style = MaterialTheme.typography.headlineSmall,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.library_empty_subtitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun LibraryCoverGrid(
+    books: List<BookEntity>,
+    modifier: Modifier = Modifier,
+) {
+    val gridState = rememberLazyGridState()
+    val sectionStarts = remember(books) { titleSectionStarts(books) }
+
+    Box(modifier = modifier) {
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 140.dp),
+            state = gridState,
+            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 96.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(items = books, key = { "book:${it.bookId}" }) { book ->
+                BookGridTile(book)
+            }
+        }
+
+        FastScrollbar(
+            state = gridState,
+            sectionStarts = sectionStarts,
+            modifier = Modifier.align(Alignment.TopEnd),
+        )
+    }
+}
+
+@Composable
+private fun LibraryCoverList(
+    books: List<BookEntity>,
+    modifier: Modifier = Modifier,
+) {
+    val listState = rememberLazyListState()
+    val sectionStarts = remember(books) { titleSectionStarts(books) }
+
+    Box(modifier = modifier) {
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(items = books, key = { "book:${it.bookId}" }) { book ->
+                BookListRow(book)
+            }
+        }
+
+        FastScrollbar(
+            state = listState,
+            sectionStarts = sectionStarts,
+            modifier = Modifier.align(Alignment.TopEnd),
+        )
+    }
+}
+
+@Composable
+private fun BookGridTile(book: BookEntity) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        CoverArt(
+            coverPath = book.coverPath,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f),
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = book.title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = book.author ?: stringResource(R.string.library_book_unknown_author),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun BookListRow(book: BookEntity) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CoverArt(
+            coverPath = book.coverPath,
+            modifier = Modifier.size(56.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = book.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = book.author ?: stringResource(R.string.library_book_unknown_author),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/**
+ * Phase E.3 prep — sort-aware section starts for [FastScrollbar]. Returns `(itemIndex, letter)`
+ * pairs marking where each first-letter group begins. When sort lands (E.3), this swaps based
+ * on the active sort key (Title → alphabet, Author → author letter, Recent → date bucket).
+ *
+ * Duplicate-key crash gotcha (tonearmboy `d75b542`): if a header item type is ever added to
+ * the same grid as the book tiles, the header key MUST be `"section:$letter"` not just the
+ * letter, so it can't collide with a `"book:..."` id. Currently no header items in the grid;
+ * the section labels live on the scrollbar track only.
+ */
+private fun titleSectionStarts(books: List<BookEntity>): List<Pair<Int, String>> {
+    if (books.isEmpty()) return emptyList()
+    val seen = mutableSetOf<String>()
+    val out = mutableListOf<Pair<Int, String>>()
+    books.forEachIndexed { index, book ->
+        val letter = book.title.firstOrNull()?.uppercaseChar()?.toString()?.takeIf { it[0].isLetter() } ?: "#"
+        if (seen.add(letter)) out += index to letter
+    }
+    return out
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ManageFoldersFolderTypeSheet(
+    onDismiss: () -> Unit,
+    onSelect: (com.eight87.whisperboy.data.library.FolderType) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.folder_type_dialog_title),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Spacer(Modifier.height(12.dp))
+            com.eight87.whisperboy.data.library.FolderType.allOrdered.forEach { type ->
+                TextButton(
+                    onClick = { onSelect(type) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = stringResource(folderTypeTitle(type)),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(folderTypeSubtitle(type)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
+                Text(stringResource(R.string.dialog_cancel))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ManageFoldersSheet(
+    roots: List<LibraryRoot>,
+    onRemove: (Uri) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.folder_section_title),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Spacer(Modifier.height(12.dp))
+            roots.forEach { root ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = root.displayName, fontWeight = FontWeight.Medium)
+                        Text(
+                            text = stringResource(folderTypeTitle(root.folderType)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    TextButton(onClick = { onRemove(root.treeUri) }) {
+                        Text(stringResource(R.string.folder_remove_action))
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.dialog_cancel))
+            }
+        }
+    }
+}
+
+private fun folderTypeTitle(type: com.eight87.whisperboy.data.library.FolderType): Int = when (type) {
+    com.eight87.whisperboy.data.library.FolderType.SingleFile -> R.string.folder_type_singlefile_title
+    com.eight87.whisperboy.data.library.FolderType.SingleFolder -> R.string.folder_type_singlefolder_title
+    com.eight87.whisperboy.data.library.FolderType.Root -> R.string.folder_type_root_title
+    com.eight87.whisperboy.data.library.FolderType.Author -> R.string.folder_type_author_title
+}
+
+private fun folderTypeSubtitle(type: com.eight87.whisperboy.data.library.FolderType): Int = when (type) {
+    com.eight87.whisperboy.data.library.FolderType.SingleFile -> R.string.folder_type_singlefile_subtitle
+    com.eight87.whisperboy.data.library.FolderType.SingleFolder -> R.string.folder_type_singlefolder_subtitle
+    com.eight87.whisperboy.data.library.FolderType.Root -> R.string.folder_type_root_subtitle
+    com.eight87.whisperboy.data.library.FolderType.Author -> R.string.folder_type_author_subtitle
+}
+
