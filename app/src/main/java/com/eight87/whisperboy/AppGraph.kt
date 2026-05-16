@@ -14,7 +14,6 @@ import com.eight87.whisperboy.data.library.BookSource
 import com.eight87.whisperboy.data.library.BookmarkSource
 import com.eight87.whisperboy.data.library.ChapterSource
 import com.eight87.whisperboy.data.library.CoverStore
-import com.eight87.whisperboy.data.library.FolderCoverFinder
 import com.eight87.whisperboy.data.library.LibraryDatabase
 import com.eight87.whisperboy.data.library.LibraryRepository
 import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
@@ -92,7 +91,6 @@ class AppGraph(context: Context) {
      */
     val libraryScannerEnrichment: LibraryScannerEnrichment = LibraryScannerEnrichment(
         mediaAnalyzer = mediaAnalyzer,
-        folderCoverFinder = FolderCoverFinder(),
     )
 
     /** Phase D.4 — atomic cover-bytes-to-disk store at `<filesDir>/covers/<bookId>`. */

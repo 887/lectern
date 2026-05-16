@@ -27,7 +27,6 @@ import kotlinx.coroutines.withContext
  */
 class LibraryScannerEnrichment(
     private val mediaAnalyzer: MediaAnalyzer,
-    private val folderCoverFinder: FolderCoverFinder,
 ) {
 
     suspend fun enrich(snapshot: ScanSnapshot): ScanSnapshot = withContext(Dispatchers.IO) {
