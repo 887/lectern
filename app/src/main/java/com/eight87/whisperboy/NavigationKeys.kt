@@ -25,3 +25,19 @@ import kotlinx.serialization.Serializable
  * library-side integration ships in a coexisting inch.
  */
 @Serializable data class CoverSearchRoute(val bookId: String) : NavKey
+
+/**
+ * Phase K.1 — settings root surface. Pushed from the library top-app-bar
+ * overflow menu's "Settings" item. Hosts the category list that branches
+ * into Playback (K.2) / Sleep timer (K.3) / Library (K.4) / Theme (K.5) /
+ * About (K.6) sub-pages.
+ */
+@Serializable data object SettingsRoute : NavKey
+
+/**
+ * Phase K.6 — About sub-page. Pushed from `SettingsRoute`. Shows app
+ * icon, version, license, clean-room "spiritual sibling" credit for
+ * Voice, GitHub link, and (eventually) the open-source-licenses
+ * sub-page tracked in `docs/plans/oss-licenses.md`.
+ */
+@Serializable data object AboutRoute : NavKey
