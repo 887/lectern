@@ -47,6 +47,21 @@ shrink), `2bb042e` (auto-accent + retune splash to 60 %).
    Custom Compose surfaces (e.g. a Player chapter list, the bookmark
    sheet) that want the same coloured accent should call
    `accentFor(id)` directly — keep the function exported.
+6. **Top-app-bar `expandedHeight = 32dp` across all screens.**
+   tonearmboy converged on this value after sweeping 64dp → 48dp →
+   32dp across all 11 screens (`2da7c07` → `3903d71` → `088630b`).
+   M3's default of 64dp (large) or even 48dp (medium) reads chunky on
+   modern screens once the surface-tier ladder is doing the visual
+   work the height used to do. Whisperboy starts at 32dp on every
+   screen out of the box; don't ship 64dp/48dp variants and then
+   sweep them later.
+7. **DO NOT ship a two-stage Compose splash to bypass the
+   Android 12+ system circle clip.** tonearmboy tried this in
+   `f249b0e` and reverted in `51d1769` — the square overlay was
+   visible for ~half a second before fading and was "not worth the
+   moving parts". The 60% mipmap icon (gotcha #4 above) is the
+   working answer. Recorded here so a future agent doesn't
+   re-discover the same regression.
 
 ## Scope: "all the views"
 

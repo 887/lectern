@@ -16,6 +16,8 @@ The flip side: if the discipline holds across Phases C–L and no god-object eme
 
 ---
 
+> **Status of the tonearmboy precedent (2026-05-11):** R.A through R.E are all shipped and validated in tonearmboy as of `4e2ff73`. The patterns below stop being speculative — they're the locked answer. R.D.2 (`rememberSelectionState()`) ships in tonearmboy `40da803` (selection across every library tab). R.C.4 (mini-player takes only `NowPlayingState`) ships in tonearmboy `3436ae2` (lazy-mount NowPlaying behind sheet). Refer to those commits as the shipped reference for whisperboy's equivalent work.
+
 ## Phase R.A pattern — narrow data interfaces from day one
 
 **Applies to:** Phase D (scanner + book/chapter/bookmark repository) and any UI phase that consumes data (E, F, H).
@@ -143,6 +145,7 @@ These are discrete items that don't block the lettered phases. Some apply right 
 - [ ] **R.F.7** Settings catalog discipline: per-section files, not one 683-LOC catalog. Settings rows carry their own `@Composable Render(entry)`. (Tonearmboy R.F.13 + R.F.14 analog — Phase K applies them from the start.)
 - [ ] **R.F.8** `rememberSettingPicker<T>(...)` helper so each settings sub-page body is a `bindings` list, not 100+ LOC of `var xPicker by remember { mutableStateOf(false) }`. (Tonearmboy R.F.17 analog.)
 - [ ] **R.F.9** Detail-screen Flows on the data layer: `BookSource.observeBooksByAuthor(authorName)` etc. — UI does not filter in Compose. (Tonearmboy R.F.12 analog.)
+- [ ] **R.F.10** `CoverScanner` / `CoverExtractor` / `CoverApi` / `CoverSaver` as narrow interfaces from day one (see [`cover-art.md`](cover-art.md)). Mirrors Voice's split: `CoverScanner` orchestrates local-first scan; `CoverExtractor` is a sealed interface with `Mp4CoverExtractor` + `MatroskaCoverExtractor` impls; `CoverApi` wraps the DuckDuckGo client (auth + paged search); `CoverSaver` owns the on-disk covers dir. UI takes only what it reads — the library grid takes `CoverSaver.coverFor(bookId)`, the search screen takes `CoverApi` via the paging source.
 
 ---
 

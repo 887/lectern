@@ -117,12 +117,14 @@ Goal: cover-grid library screen, three filter chips (Current / Not started / Com
 
 > **Read [`m3-expressive.md`](m3-expressive.md) before starting.** Phase E is the first surface that mounts visible chrome, so the M3E foundation lands here too: bump `material3` to `1.5.0-alpha18` (gotcha #1: stable 1.4.0 keeps the expressive APIs `internal`), wrap the theme entry in `MaterialExpressiveTheme(...)` (m3e A.3), switch to `expressiveDarkColorScheme()` (m3e A.4 — note `expressiveLightColorScheme()` only; no dark factory in alpha18), audit page bg vs card bg (m3e B.1 — `surface` vs `surfaceContainerHigh` on AMOLED dark). The library grid itself is m3e D.1.
 
-- [ ] **E.1** `LibraryScreen` composable — cover-forward grid, default columns auto-sized to width, list-toggle in the top app bar (`GridMode` sealed type). Each cover renders the book title underneath + a thin progress bar overlay along the bottom edge of the cover (% of total duration listened).
+> **Read [`cover-art.md`](cover-art.md) before starting.** Phase E mounts the first `CoverArt` consumer (the library grid). The plan mirrors **Voice's `features/cover/` module** almost exactly: local-first scan (existing → SAF directory first `image/*` → embedded from first 5 chapters), user-initiated DuckDuckGo image search per-book only, crop overlay after pick. Phase A of that plan lands here (local-first scan + placeholder glyph + decode-size discipline — **never `Size.ORIGINAL` for tiles**, tonearmboy `8d8c1a4` lesson). The Search-online entry point is the long-press sheet's "Search online" action (Phase B of cover-art.md). **No cover-art settings exist** — Voice doesn't expose any, neither do we.
+
+- [ ] **E.1** `LibraryScreen` composable — cover-forward grid, default columns auto-sized to width, list-toggle in the top app bar (`GridMode` sealed type). Each cover renders the book title underneath + a thin progress bar overlay along the bottom edge of the cover (% of total duration listened). **`FastScrollbar`** (per `tonearmboy/ui/common/FastScrollbar.kt` — commits `52d0b81` → `4e2ff73`) wraps the grid: section-letter chips along the right edge at each section's fractional Y, visible during `isScrollInProgress || isDragging`, 800ms linger before fade-out. Top-app-bar `expandedHeight = 32dp` (the resting value tonearmboy converged to across 11 screens — `2da7c07` → `3903d71` → `088630b`).
 - [ ] **E.2** Filter chips row: Current / Not started / Completed. Filter is a sealed `BookFilter`; query plumbed through `BookSource.observeBooks(filter)`.
-- [ ] **E.3** Sort menu (Recent, Title, Author). Persisted in DataStore.
+- [ ] **E.3** Sort menu (Recent, Title, Author). Persisted in DataStore. **Sort indicator** in the top app bar shows the active sort key (tonearmboy `bd525f9` + `d75b542` — initial circle indicator dropped). **Sort-aware section keys**: when sorting by Title, the FastScrollbar `sectionStarts` is the alphabet; when sorting by Recent, it's date buckets; when sorting by Author, the author letter. **Duplicate-key crash gotcha** (`d75b542`): `LazyVerticalGrid` keys must be unique across the rendered set — when a "section header" item type sits in the same grid as book tiles, the header's key must include a discriminator (`"section:$letter"`), not just the letter, otherwise two ranges with the same letter blow up.
 - [ ] **E.4** Search — full-text over book title + author. Room FTS4 if it composes cleanly with the `BookEntity` shape, else `LIKE` fallback. Same pattern tonearmboy validated in C.4.
-- [ ] **E.5** Long-press → `BookActionSheet` (Rename, Change cover from device, Mark completed, Mark not started, Forget book record). "Forget" only deletes the row + bookmarks — does not delete files (whisperboy doesn't delete audiobook files; the user's library is precious).
-- [ ] **E.6** Now-playing bar pinned to the bottom when something is playing — book title, chapter title, play/pause, taps through to the player screen (Phase F).
+- [ ] **E.5** Long-press → `BookActionSheet` (Rename, **Use custom cover from device** / **Search online for cover** — per [`cover-art.md`](cover-art.md), Mark completed, Mark not started, Forget book record). "Forget" only deletes the row + bookmarks — does not delete files (whisperboy doesn't delete audiobook files; the user's library is precious). **Multi-select**: long-press on a tile flips into selection mode (state hoisted via `rememberSelectionState()` — `refactor-solid.md` R.D.2, validated in tonearmboy `40da803`); subsequent taps toggle; back press clears. `MultiSelectBar` at the top renders the count + close + "Mark completed" / "Forget" bulk actions. Selection background uses `secondaryContainer` painted by the row wrapper, not per-row (so list + grid both inherit the highlight without re-implementing).
+- [ ] **E.6** Now-playing bar pinned to the bottom when something is playing — book title, chapter title, play/pause, taps through to the player screen (Phase F). **Auxio-style thin progress line** (2dp, tonearmboy `82d6248`) along the bottom edge of the bar reads the same `NowPlayingState.position / duration` fraction the player scrubber uses. **Lazy-mount behind sheet** (tonearmboy `3436ae2`): the full now-playing surface mounts only when the user expands the sheet; collapsed state renders only the slim bar — keeps cold-start light.
 
 ---
 
@@ -137,7 +139,7 @@ Goal: full-screen player. **Voice analog:** `:features:playbackScreen`.
 - [ ] **F.3** Configurable rewind / forward seconds — defaults 30s back / 30s forward; long-press on either button opens a quick selector. Persisted in DataStore. (Voice 25.12.1 added this — common request.)
 - [ ] **F.4** Auto-rewind on resume — when resuming after >5 minutes paused, rewind by `autoRewindSeconds` (configurable, default 5s). Implemented in `PlaybackController.onResume`.
 - [ ] **F.5** Chapter list — bottom sheet from the player overflow. Lists chapters with per-chapter progress, current chapter highlighted, tap → seek to chapter start.
-- [ ] **F.6** Background gradient tinted by the cover-art's extracted Palette swatch (Voice does this; mild but adds polish).
+- [ ] **F.6** Background gradient tinted by the cover-art's extracted Palette swatch (Voice does this; mild but adds polish). **Custom chrome tint picker** (tonearmboy `82d6248` analog — a Phase K row that overrides the Palette extraction with a user-picked accent) is a follow-up, not a Phase F gate.
 - [ ] **F.7** Notification + lock-screen via `MediaStyle` notification, channel `whisperboy_playback` (IMPORTANCE_LOW, silent). Replaces Phase B's stub. Verified via `dumpsys media_session` and lock-screen screenshots.
 
 ---
@@ -204,8 +206,9 @@ Goal: full settings tree. **Voice analog:** `:features:settings`.
 - [ ] **K.2** Playback section: default speed, default skip silence, default gain, rewind/forward seconds, auto-rewind seconds, equalizer launcher (`AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL` system intent — same pattern as Voice).
 - [ ] **K.3** Sleep timer section: default duration, fade-out duration, shake-to-resume on/off, auto-arm window.
 - [ ] **K.4** Library section: list of roots with `FolderType` + remove + add-new; manual rescan button.
-- [ ] **K.5** Theme section: light / dark / follow-system; dynamic color toggle (Material You).
-- [ ] **K.6** About section: version, build hash, license, link to GitHub repo. Build metadata captured at compile time (same pattern tonearmboy validated).
+- [ ] **K.5** Theme section: light / dark / follow-system; dynamic color toggle (Material You). **Custom chrome tint picker** (tonearmboy `82d6248`) — optional override of the Palette-extracted accent for users who want a fixed app-wide tint instead of cover-driven.
+- [ ] **K.6** About section: version, build hash, license, link to GitHub repo. Build metadata captured at compile time (same pattern tonearmboy validated). **Clean-room credits clarification** (tonearmboy `765c545`): the About text explicitly states that the relationship with Voice is "spiritual sibling" — UI design-space inspiration only, no code copy, MIT vs GPLv3 — so anyone reading the credits doesn't infer a fork.
+_No K.7. Cover-art has no settings surface — see [`cover-art.md`](cover-art.md) "Settings surface" section. Voice doesn't expose cover-art settings, and we don't either; the "Search online" action is per-book in the long-press sheet (Phase E.5)._
 
 ---
 
@@ -271,6 +274,9 @@ Caught-once-then-fixed bugs and gnarly real-world cases that don't belong to any
 - [ ] **P.5** Very large libraries — Voice has #3175 (OOM on huge libraries). Profile whisperboy at 500 books, 10000 chapters; if Room queries on the library screen are blocking, page with `Pager` from `androidx.paging`.
 - [ ] **P.6** Foreground service lifecycle on Android 14+ — `FOREGROUND_SERVICE_MEDIA_PLAYBACK` strictness around when the service can start in the background. Verify on API 34+ AVD.
 - [ ] **P.7** Position-save cadence — Voice's "experimental playback persistence" (26.4.3) saves on events not continuously, for battery. Mirror the pattern: save on chapter-end, on pause, on backgrounding, on shutdown — not on a 1Hz timer.
+- [ ] **P.8** **Skip rescan when nothing changed** (tonearmboy `d0a566d` analog for SAF). Cache the SAF tree fingerprint (document count + max-mtime under each persisted root) in DataStore; on foreground-rescan, compare; if unchanged, no-op. Saves the splash-hold + the scanner pass when the user is just resuming the app with no library deltas.
+- [ ] **P.9** **Nav scaffold inset double-consume gotcha** (tonearmboy `5bb2fd2`). When the root scaffold consumes `WindowInsets.statusBars` AND the top app bar also pulls from `LocalWindowInsets`, the status bar gets padded twice — visible as a too-tall top inset on edge-to-edge. Audit once at Phase E, audit again at Phase F's full-screen player. Fix is `Modifier.consumeWindowInsets(...)` at the right level.
+- [ ] **P.10** **Two-stage Compose splash NOT recommended.** tonearmboy tried it in `f249b0e` to bypass the Android 12+ system circle clip, and reverted in `51d1769` — the square overlay was visible for ~half a second before fading and "not worth the moving parts". Whisperboy stays on the standard system splash with the 60% mipmap icon (see [`m3-expressive.md`](m3-expressive.md) gotcha #4). This bullet exists so a future agent doesn't re-discover the same regression.
 
 ---
 
@@ -300,8 +306,9 @@ Read these files first, in order:
 2. /home/laragana/workspace/whisperboy/docs/plans/main.md (find Phase <X>)
 3. /home/laragana/workspace/whisperboy/docs/plans/sharing-analysis.md (skim — relevant if your phase touches a candidate-shareable surface)
 4. /home/laragana/workspace/whisperboy/docs/plans/cold-start-perf.md (REQUIRED for any UI-touching phase — E, F, G's bottom sheet, K's settings list, L's onboarding, M's widget — preventive guards, not optional)
-5. /home/laragana/workspace/whisperboy/docs/plans/m3-expressive.md (REQUIRED for any UI-touching phase — Phase E lands the M3E foundation, Phase K cashes in the catalog avatars, Phase N propagates the theme into AAOS surfaces; gotchas #1–#5 prevent re-running tonearmboy's discovery cycle)
-6. The Voice analog if mentioned in the phase header (browse-only via WebFetch — do not vendor any code).
+5. /home/laragana/workspace/whisperboy/docs/plans/m3-expressive.md (REQUIRED for any UI-touching phase — Phase E lands the M3E foundation, Phase K cashes in the catalog avatars, Phase N propagates the theme into AAOS surfaces; gotchas #1–#7 prevent re-running tonearmboy's discovery cycle, including the top-app-bar 32dp default and the do-not-ship-two-stage-Compose-splash anti-pattern)
+6. /home/laragana/workspace/whisperboy/docs/plans/cover-art.md (REQUIRED for Phase E — library grid mounts first CoverArt consumer; REQUIRED for Phase K — service-picker + threshold-slider + bulk-scan settings land there; REQUIRED for Phase F — full-size cover surface). Five locked rules including "no web requests by default" — non-negotiable.
+7. The Voice analog if mentioned in the phase header (browse-only via WebFetch — do not vendor any code).
 
 Your job:
 - Land sub-steps <X.1> through <X.N>.

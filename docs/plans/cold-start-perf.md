@@ -49,7 +49,8 @@ within ~20 ms on the same AVD. The lessons are below as guards.
 - [ ] **A.1** **Don't add a splash-hold mechanism.** The default `installSplashScreen()` flow is fine — splash dismisses on first activity frame. A `setKeepOnScreenCondition { ... }` that gates dismissal on async work *extends* the splash visibility, which feels like a hang to the user.
 - [ ] **A.2** **Don't run application work in `onCreate`.** Things like `applicationScope.launch { firstLaunchInitialise() }` belong in a `LaunchedEffect(Unit) { }` inside `setContent` — they execute post-first-frame, off the critical path.
 - [ ] **A.3** **Don't open the Room database in `onCreate`.** Lazy from the first repository call instead.
-- [ ] **A.4** When tempted to put intent / deeplink handling here, keep `handleIntent(...)` minimal — read the extra, set a Compose state, **clear the extra back into the intent via `setIntent(intent)` so a later activity recreation doesn't re-fire the same deeplink**.
+- [ ] **A.4** When tempted to put intent / deeplink handling here, keep `handleIntent(...)` minimal — read the extra, set a Compose state, **clear the extra back into the intent via `setIntent(intent)` so a later activity recreation doesn't re-fire the same deeplink**. (Tonearmboy validated in `3436ae2`.)
+- [ ] **A.5** **Lazy-mount heavy surfaces behind sheets.** When a `ModalBottomSheet` / `BottomSheetScaffold` houses a complex composable (e.g. the full now-playing surface — cover, scrubber, transport, chapter list), do NOT mount the surface inside the sheet stack at all times. Mount it only when the sheet is expanded; render only the slim collapsed-state bar when collapsed. Tonearmboy `3436ae2` reclaimed real cold-start time by deferring the full NowPlaying tree behind the sheet's `targetValue`.
 
 ## Phase B — keep `setContent { }` shallow — standing rule
 
@@ -85,7 +86,7 @@ When the transcripts list / search-results list grows, **every
 `items(...)` call needs a stable `key = { ... }`** so Compose's
 slot-table reuse works correctly across reorderings.
 
-- [ ] **E.1** Every `items(...)` / `items(count = ...)` call passes a `key = { ... }` argument that returns a stable identity (typically the entity id, NOT the index).
+- [ ] **E.1** Every `items(...)` / `items(count = ...)` call passes a `key = { ... }` argument that returns a stable identity (typically the entity id, NOT the index). **Duplicate-key crash gotcha** (tonearmboy `d75b542`): when a single `LazyVerticalGrid` mixes heterogeneous item types (e.g. section headers + book tiles), the section header's key MUST include a type discriminator (`"section:$letter"` not just `letter`) — otherwise it can collide with a tile id that happens to share the same value, and `LazyVerticalGrid` throws `IllegalArgumentException: Key X was already used`. Same rule applies when sort-aware section keys are introduced (per main.md E.3): keys must round-trip across sort changes without collision.
 - [ ] **E.2** When using `LazyColumn` / `LazyVerticalGrid` for a heterogeneous content type, consider `contentType = { ... }` too — Compose's slot table reuse benefits.
 
 ## Phase F — Baseline Profile — pending
