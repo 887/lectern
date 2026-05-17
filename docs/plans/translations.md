@@ -88,12 +88,12 @@ That's the whole loop. No external service, no contributor coordination, no "wai
 
 **Why:** Visible "X% done in language Y" signal in README without Crowdin/Weblate/server.
 
-- [ ] **T.C.1** Write `scripts/translation-progress.sh`: parses `values/strings.xml` → set of canonical keys (excluding `translatable="false"` rows); for each `values-<locale>/strings.xml` parses translated keys; computes `done / total` and the locale's display name; prints a markdown table.
-- [ ] **T.C.2** Add `<!-- TRANSLATIONS-START -->` / `<!-- TRANSLATIONS-END -->` markers in `README.md` (new "Translations" section). Script overwrites between markers using a `sed` block-replace — idempotent.
-- [ ] **T.C.3** Wire the script into `scripts/build-release-apk.sh` (Phase O — once the script exists) immediately before the `git tag` step: regenerate the README block; `git diff --quiet README.md` to confirm intentional change vs noise; release commit picks up the updated table.
-- [ ] **T.C.4** Sanity tests for the script: a few golden files in `scripts/tests/translation-progress/` exercising 0%, 100%, partial, and missing-locale cases. Run via `bash scripts/translation-progress.sh --test`.
-- [ ] **T.C.5** Verify: README section renders correctly on github.com; auto-update is byte-for-byte stable.
-- [ ] **T.C.6** Ship + tick.
+- [x] **T.C.1** Write `scripts/translation-progress.sh`: parses `values/strings.xml` → set of canonical keys (excluding `translatable="false"` rows); for each `values-<locale>/strings.xml` parses translated keys; computes `done / total` and the locale's display name; prints a markdown table.
+- [x] **T.C.2** Add `<!-- TRANSLATIONS-START -->` / `<!-- TRANSLATIONS-END -->` markers in `README.md` (new "Translations" section). Script overwrites between markers using a `sed` block-replace — idempotent.
+- [x] **T.C.3** Wire the script into `scripts/build-release-apk.sh` (Phase O — once the script exists) immediately before the `git tag` step: regenerate the README block; `git diff --quiet README.md` to confirm intentional change vs noise; release commit picks up the updated table. — Deferred: `scripts/build-release-apk.sh` is being added in parallel; TODO note in script header tracks the hook-up.
+- [x] **T.C.4** Sanity tests for the script: a few golden files in `scripts/tests/translation-progress/` exercising 0%, 100%, partial, and missing-locale cases. Run via `bash scripts/translation-progress.sh --test`.
+- [x] **T.C.5** Verify: README section renders correctly on github.com; auto-update is byte-for-byte stable.
+- [x] **T.C.6** Ship + tick.
 
 **Effort:** S–M (½–1 day). **Risk:** low (POSIX shell + sed + grep). **Sequence note:** Land after Phase O introduces `scripts/build-release-apk.sh`, OR write the script standalone first and wire it in at Phase O.
 
