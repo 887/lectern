@@ -3,6 +3,7 @@ package com.eight87.whisperboy.data.library
 import android.net.Uri
 import com.eight87.whisperboy.data.library.parser.ChapterMark
 import com.eight87.whisperboy.data.library.parser.ChapterParser
+import com.eight87.whisperboy.data.library.parser.CoverExtractorDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -30,6 +31,7 @@ import kotlinx.coroutines.withContext
 class LibraryScannerEnrichment(
     private val mediaAnalyzer: MediaAnalyzer,
     private val chapterParser: ChapterParser? = null,
+    private val coverExtractorDispatcher: CoverExtractorDispatcher? = null,
 ) {
 
     suspend fun enrich(snapshot: ScanSnapshot): ScanSnapshot = withContext(Dispatchers.IO) {
@@ -106,6 +108,7 @@ class LibraryScannerEnrichment(
         // when the scanner didn't already find a sidecar. Mirrors Voice's order (folder > embedded).
         val resolvedCover = expanded.embeddedCoverBytes
             ?: perChapterMetadata.firstNotNullOfOrNull { it?.embeddedCoverBytes }
+            ?: extractCoverFromFirstFiveChapters(expanded)
 
         return expanded.copy(
             chapters = enrichedChapters,
@@ -113,6 +116,30 @@ class LibraryScannerEnrichment(
             durationMs = rolledDuration,
             embeddedCoverBytes = resolvedCover,
         )
+    }
+
+    /**
+     * Cover-art Phase A.3 fallback: when [Media3MediaAnalyzer] / [MediaMetadataRetriever]
+     * returns no embedded cover for any of the per-chapter calls, try the dedicated
+     * container-aware extractors (MP4 `covr`, Matroska `AttachedFile`, MP3 `APIC`) against
+     * the first 5 chapter files. Voice's `scanForEmbeddedCover` pattern. First success wins.
+     *
+     * Deduplicates by URI so a SingleFile book whose 5 "chapters" all point at the same file
+     * only opens the source once.
+     */
+    private suspend fun extractCoverFromFirstFiveChapters(book: ScannedBook): ByteArray? {
+        val dispatcher = coverExtractorDispatcher ?: return null
+        val seen = LinkedHashSet<String>()
+        for (chapter in book.chapters.take(5)) {
+            val uriString = chapter.fileUri ?: continue
+            if (!seen.add(uriString)) continue
+            val uri = runCatching { Uri.parse(uriString) }.getOrNull() ?: continue
+            val bytes = runCatching {
+                dispatcher.extract(uri, mimeType = null, fileName = book.relativePath)
+            }.getOrNull()
+            if (bytes != null) return bytes
+        }
+        return null
     }
 
     /**

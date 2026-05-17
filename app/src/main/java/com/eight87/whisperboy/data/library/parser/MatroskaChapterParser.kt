@@ -130,7 +130,7 @@ internal class MatroskaChapterParser(private val source: SeekableSource) {
  * Read an EBML element ID, returning the raw value with length-marker bits included
  * (canonical quoted form, e.g. Segment = 0x18538067). Returns null on EOF.
  */
-private fun readEbmlId(s: SeekableSource): Long? {
+internal fun readEbmlId(s: SeekableSource): Long? {
     val one = ByteArray(1)
     val n = s.read(one, 0, 1)
     if (n < 0) return null
@@ -159,7 +159,7 @@ private fun readEbmlId(s: SeekableSource): Long? {
  * Read an EBML variable-size integer (element data size). Returns the size as a positive
  * long, or -1L for the all-ones "unknown size" sentinel.
  */
-private fun readEbmlSize(s: SeekableSource): Long? {
+internal fun readEbmlSize(s: SeekableSource): Long? {
     val buf = ByteArray(1)
     val n = s.read(buf, 0, 1)
     if (n < 0) return null
