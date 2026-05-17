@@ -98,7 +98,7 @@ generate_table() {
         done_count="$(comm -12 <(printf '%s\n' "${canonical_keys}") <(printf '%s\n' "${locale_keys}") | grep -c . || true)"
         percent=$(( done_count * 100 / total ))
         name="$(locale_display "${locale}")"
-        link="[${name}](app/src/main/res/values-${locale}/)"
+        link="[${name}](app/src/main/res/values-${locale}/strings.xml)"
         bar="${done_count}/${total} (${percent}%)"
         echo "| ${link} | ${bar} | $(status_emoji "${percent}") |"
     done <<<"${locale_dirs}"
