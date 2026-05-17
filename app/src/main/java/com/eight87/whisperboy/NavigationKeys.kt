@@ -48,3 +48,25 @@ import kotlinx.serialization.Serializable
  * adds a new root via the SAF tree picker.
  */
 @Serializable data object LibraryFoldersRoute : NavKey
+
+/**
+ * Phase L — first-run onboarding flow. Four steps, in order:
+ *
+ * 1. [OnboardingWelcomeRoute] — one short sentence + Get-started CTA.
+ * 2. [OnboardingPermissionsRoute] — `POST_NOTIFICATIONS` rationale (API 33+; auto-skip otherwise).
+ * 3. [OnboardingFolderPickerRoute] — explains the four `FolderType` modes, launches
+ *    the SAF `OPEN_DOCUMENT_TREE` picker, surfaces the FolderType bottom sheet.
+ * 4. [OnboardingFirstScanRoute] — listens to `LibraryRescanCoordinator.state`, shows
+ *    "Scanning your library…" and, once Idle, "Found N books, M chapters" + Continue.
+ *
+ * Completion flips `OnboardingSettings.setCompleted(true)` and clears the back stack
+ * down to [HomeRoute]. Existing users (`onboardingSettings.completed == true`) skip
+ * the flow entirely — `WhisperboyApp` picks the initial back-stack key.
+ */
+@Serializable data object OnboardingWelcomeRoute : NavKey
+
+@Serializable data object OnboardingPermissionsRoute : NavKey
+
+@Serializable data object OnboardingFolderPickerRoute : NavKey
+
+@Serializable data object OnboardingFirstScanRoute : NavKey

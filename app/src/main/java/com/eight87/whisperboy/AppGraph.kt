@@ -28,6 +28,8 @@ import com.eight87.whisperboy.data.library.MediaAnalyzer
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
 import com.eight87.whisperboy.data.library.SafLibraryScanner
 import com.eight87.whisperboy.data.library.ScanWriter
+import com.eight87.whisperboy.data.onboarding.AndroidOnboardingSettings
+import com.eight87.whisperboy.data.onboarding.OnboardingSettings
 import com.eight87.whisperboy.data.playback.AndroidPlaybackSettings
 import com.eight87.whisperboy.data.playback.PlaybackSettings
 import com.eight87.whisperboy.playback.BookCommands
@@ -81,6 +83,18 @@ class AppGraph(context: Context) {
 
     val playbackSettings: PlaybackSettings =
         AndroidPlaybackSettings(playbackSettingsDataStore)
+
+    /**
+     * Phase L — persisted "onboarding completed" flag. Own DataStore file
+     * (`onboarding`) so a future "reset onboarding" debug affordance can `clear()`
+     * this without touching any of the other persisted prefs.
+     */
+    private val onboardingDataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
+        produceFile = { appContext.preferencesDataStoreFile("onboarding") }
+    )
+
+    val onboardingSettings: OnboardingSettings =
+        AndroidOnboardingSettings(onboardingDataStore)
 
     /**
      * Library cache database. Eagerly constructed so a misconfigured schema fails fast at app

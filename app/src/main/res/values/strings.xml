@@ -152,6 +152,25 @@
     <string name="about_oss_licenses_label">Open-source licenses</string>
     <string name="about_oss_licenses_subtitle">Components shipped in this build</string>
 
+    <!-- onboarding_ — first-run flow (Phase L). Welcome → Permissions → Folder picker → First-scan. -->
+    <string name="onboarding_welcome_title">Welcome to whisperboy</string>
+    <string name="onboarding_welcome_body">Whisperboy plays audiobooks from folders you pick.</string>
+    <string name="onboarding_welcome_cta">Get started</string>
+
+    <string name="onboarding_permissions_title">Allow notifications</string>
+    <string name="onboarding_permissions_body">Whisperboy uses a notification to show what\'s playing and to keep playback running in the background. You can change this any time in system settings.</string>
+    <string name="onboarding_permissions_grant">Allow notifications</string>
+    <string name="onboarding_permissions_skip">Not now</string>
+
+    <string name="onboarding_folder_picker_title">Pick an audiobook folder</string>
+    <string name="onboarding_folder_picker_intro">Whisperboy can read folders organised in a few different ways. Pick the layout that matches yours after you choose the folder.</string>
+    <string name="onboarding_folder_picker_cta">Pick a folder</string>
+
+    <string name="onboarding_first_scan_title">Scanning your library</string>
+    <string name="onboarding_first_scan_running">Scanning your library…</string>
+    <string name="onboarding_first_scan_done">Found %1$d books, %2$d chapters.</string>
+    <string name="onboarding_first_scan_continue">Continue</string>
+
     <plurals name="folder_count">
         <item quantity="one">%1$d audiobook folder configured</item>
         <item quantity="other">%1$d audiobook folders configured</item>

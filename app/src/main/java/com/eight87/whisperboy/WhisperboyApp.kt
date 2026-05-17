@@ -14,12 +14,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.eight87.whisperboy.playback.PlaybackUiState
 import com.eight87.whisperboy.ui.coverart.SelectCoverFromInternet
 import com.eight87.whisperboy.ui.home.HomeScreen
+import com.eight87.whisperboy.ui.onboarding.OnboardingFirstScanScreen
+import com.eight87.whisperboy.ui.onboarding.OnboardingFolderPickerScreen
+import com.eight87.whisperboy.ui.onboarding.OnboardingPermissionsScreen
+import com.eight87.whisperboy.ui.onboarding.OnboardingWelcomeScreen
 import com.eight87.whisperboy.ui.playback.NowPlayingSheet
 import com.eight87.whisperboy.ui.settings.AboutScreen
 import com.eight87.whisperboy.ui.settings.LibraryFoldersScreen
@@ -38,11 +43,35 @@ import kotlinx.coroutines.launch
  *
  * Sheet progress is owned here so the fast-ticking drag updates do not
  * propagate into the library's recomposition path (cold-start-perf C.1).
+ *
+ * **Phase L:** initial back-stack key is chosen from [OnboardingSettings.completed]:
+ *
+ * - `null` (DataStore hasn't emitted yet on this cold start): render nothing —
+ *   the Android 12+ system splash stays up until the first emission lands.
+ *   Avoids a flash of either Home or Welcome on the wrong path. The DataStore
+ *   emits its first value within a frame or two of subscription on every device
+ *   we test on, so this is invisible in practice.
+ * - `false`: start at `OnboardingWelcomeRoute`. Completion replaces the stack with `HomeRoute`.
+ * - `true`: start directly at `HomeRoute`. Existing users never see onboarding.
  */
 @Composable
 fun WhisperboyApp() {
-    val backStack = rememberNavBackStack(HomeRoute)
     val graph = (LocalContext.current.applicationContext as WhisperboyApplication).graph
+
+    // Wait for the onboarding flag to emit at least once before constructing the
+    // NavDisplay. `initialValue = null` distinguishes "still waiting" from the
+    // two real states (false / true). No splash composable of our own — the
+    // Android 12+ system splash is already on screen for the first frame; we
+    // simply don't replace it until we know where to send the user.
+    val onboardingCompleted by graph.onboardingSettings.completed.collectAsStateWithLifecycle(initialValue = null)
+    val initialKey: NavKey? = when (onboardingCompleted) {
+        null -> null
+        true -> HomeRoute
+        false -> OnboardingWelcomeRoute
+    }
+    if (initialKey == null) return
+
+    val backStack = rememberNavBackStack(initialKey)
     val scope = rememberCoroutineScope()
 
     // Sheet progress 0 (collapsed, mini-player only) → 1 (full player).
@@ -66,12 +95,49 @@ fun WhisperboyApp() {
     val showMiniPlayer = playbackState is PlaybackUiState.Loaded
     val navDisplayBottomPad = if (showMiniPlayer) 80.dp else 0.dp
 
+    // Replace the entire back stack with HomeRoute. Used by the onboarding
+    // first-scan "Continue" button so back from Home doesn't re-enter the
+    // onboarding flow.
+    val finishOnboarding: () -> Unit = {
+        backStack.clear()
+        backStack.add(HomeRoute)
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize().padding(bottom = navDisplayBottomPad)) {
         NavDisplay(
             backStack = backStack,
             onBack = { backStack.removeLastOrNull() },
             entryProvider = entryProvider {
+                entry<OnboardingWelcomeRoute> {
+                    OnboardingWelcomeScreen(
+                        onGetStarted = { backStack.add(OnboardingPermissionsRoute) },
+                        modifier = Modifier.safeDrawingPadding(),
+                    )
+                }
+                entry<OnboardingPermissionsRoute> {
+                    OnboardingPermissionsScreen(
+                        onNext = { backStack.add(OnboardingFolderPickerRoute) },
+                        modifier = Modifier.safeDrawingPadding(),
+                    )
+                }
+                entry<OnboardingFolderPickerRoute> {
+                    OnboardingFolderPickerScreen(
+                        persistedUriPermissionStore = graph.persistedUriPermissionStore,
+                        onNext = { backStack.add(OnboardingFirstScanRoute) },
+                        modifier = Modifier.safeDrawingPadding(),
+                    )
+                }
+                entry<OnboardingFirstScanRoute> {
+                    OnboardingFirstScanScreen(
+                        libraryRescanCoordinator = graph.libraryRescanCoordinator,
+                        bookSource = graph.bookSource,
+                        chapterSource = graph.chapterSource,
+                        onboardingSettings = graph.onboardingSettings,
+                        onFinish = finishOnboarding,
+                        modifier = Modifier.safeDrawingPadding(),
+                    )
+                }
                 entry<HomeRoute> {
                     HomeScreen(
                         persistedUriPermissionStore = graph.persistedUriPermissionStore,
