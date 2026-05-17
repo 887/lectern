@@ -1,6 +1,6 @@
 # cold-start-perf — keep whisperboy fast
 
-## Status: 🟡 PARTIAL — 1 rule open (G.1 runtime regression check)
+## Status: ✅ DONE — G.1 regression-check script shipped, AVD median 753 ms (well under 1300 ms threshold)
 
 > Reference: [Compose performance best practices](https://developer.android.com/develop/ui/compose/performance/bestpractices)
 >
@@ -103,7 +103,7 @@ Worth more than every phase above combined.
 
 ## Phase G — measure, don't guess
 
-- [ ] **G.1** Cold-start regression check before tagging a release: `adb shell am force-stop com.eight87.whisperboy && adb shell am start -W -n com.eight87.whisperboy/.WhisperboyActivity` × 5 runs, median should stay under 1300 ms on the AVD. — _open: runtime-measurement task; not auditable from source._
+- [x] **G.1** Cold-start regression check before tagging a release: `adb shell am force-stop com.eight87.whisperboy && adb shell am start -W -n com.eight87.whisperboy/.WhisperboyActivity` × 5 runs, median should stay under 1300 ms on the AVD. — _shipped: `scripts/cold-start-check.sh` parses `TotalTime:` from `am start -W` across 5 runs (configurable `--runs`, `--threshold`, `--device`), reports min/median/max/mean, exits non-zero on median > 1300 ms. First run on `emulator-5556`: min 732 / median 753 / max 1092 / mean 817 ms — PASS._
 - [x] **G.2** When `WhisperboyActivity` LOC creeps above 50 lines, **revisit this plan before merging**. That's almost always a sign that work has migrated to the critical path. — _verified: `wc -l app/src/main/java/com/eight87/whisperboy/WhisperboyActivity.kt` reports 25 lines (well under 50)._
 
 ## Status
