@@ -170,20 +170,22 @@ Goal: named bookmarks tied to position-in-book. **Voice analog:** `:features:boo
 
 ---
 
-## Phase I — chapter parsing (M4B + Matroska)
+## Phase I — chapter parsing (M4B + Matroska) — ✅ DONE (shipped in commit 73a2709)
 
 Goal: parse embedded chapter markers from M4B (Apple chap-track + Nero chpl atoms) and Matroska/MKV/WebM (EBML chapters). Read chapters via SAF stream — no temp files. **Voice analog:** `:core:scanner` (`Mp4BoxParser` + visitors `ChapVisitor`/`ChplVisitor`/`MdhdVisitor`/`StcoVisitor`/`StscVisitor`/`SttsVisitor`; `MatroskaChapter`, `MatroskaMetaDataExtractor`, `SafSeekableDataSource`).
 
 This is *the* feature that separates a real audiobook player from a music player pointed at long files. Plan it carefully; budget time.
 
-- [ ] **I.1** `SafSeekableDataSource` — random-access reader over a SAF `Uri` (Media3-style `DataSource`-flavored, but for our parser, not for ExoPlayer). Wraps `ContentResolver.openAssetFileDescriptor` and `seek` on the underlying `FileDescriptor`. Necessary because SAF streams are forward-only by default.
-- [ ] **I.2** `Mp4BoxParser` — visitor-based MP4 atom walker. Visit `moov.trak.mdia.minf.stbl.{stco,stsc,stsz,stts}` to build offset tables; visit `moov.udta.chpl` for Nero chapter list; visit `chap` track-reference + corresponding text track for Apple chap-track.
-- [ ] **I.3** Apple chap-track decoder — for each chunk in the chap text track, decode `(start_time, length, title_string)`. Convert sample-time to seconds via `mdhd` timescale.
-- [ ] **I.4** Nero chpl decoder — straight `(timestamp_in_100ns, title)` list. Convert to seconds.
-- [ ] **I.5** `MatroskaChapter` parser — walk EBML, find `\Chapters\EditionEntry\ChapterAtom`, extract `ChapterTimeStart` (ns) + `ChapterDisplay\ChapString`. Skip ordered / nested-edition variants for v1.
-- [ ] **I.6** Vorbis comment chapter extractor — `CHAPTER001`, `CHAPTER001NAME`, etc. Less common but cheap to add.
-- [ ] **I.7** `ChapterParser` dispatch — by extension + sniffed magic, route to the right parser. Output: `List<ChapterMark>(positionMs, title)`. Falls back to "one mark at 0 with the file name" if nothing parses.
-- [ ] **I.8** Wire into Phase D's scanner — `SingleFile` books with parsed chapters get rich `Chapter` rows; without, get one chapter == whole file.
+Shipped as a single commit; new package `data/library/parser/` houses every parser plus the seekable-source abstraction so the parsers can be unit-tested on the JVM without `Context`. The MP4 box walker descends 12 container box types (`moov`, `trak`, `mdia`, `minf`, `stbl`, `udta`, `meta` (FullBox), `ilst`, `edts`, `tref`, `moof`, `traf`, `mvex`) capped at depth 16. `LibraryScannerEnrichment` gained an optional `ChapterParser` constructor param + `maybeExpandSingleFileChapters` step that turns a SingleFile book's lone structural chapter into one row per embedded mark. `AppGraph` constructs the parser once and hands it to the enrichment.
+
+- [x] **I.1** `SafSeekableDataSource` — random-access reader over a SAF `Uri` (Media3-style `DataSource`-flavored, but for our parser, not for ExoPlayer). Wraps `ContentResolver.openAssetFileDescriptor` and `seek` on the underlying `FileDescriptor`. Necessary because SAF streams are forward-only by default. — `FileInputStream.channel` over the `AssetFileDescriptor`'s `FileDescriptor` (RandomAccessFile's `FileDescriptor` constructor is package-private and not callable from Kotlin). Lives behind a `SeekableSource` interface so tests substitute an in-memory `ByteArraySeekableSource`.
+- [x] **I.2** `Mp4BoxParser` — visitor-based MP4 atom walker. Visit `moov.trak.mdia.minf.stbl.{stco,stsc,stsz,stts}` to build offset tables; visit `moov.udta.chpl` for Nero chapter list; visit `chap` track-reference + corresponding text track for Apple chap-track. — visitor returns `Descend`/`Skip`/`Stop`; recursion + container-set guard live in the parser, not the visitor. `meta` payload's 4-byte version+flags skipped before descent.
+- [x] **I.3** Apple chap-track decoder — for each chunk in the chap text track, decode `(start_time, length, title_string)`. Convert sample-time to seconds via `mdhd` timescale. — `Mp4Collector` accumulates per-track `stsz`/`stsc`/`stco|co64`/`stts` tables; `decodeTextSampleTrack` materialises per-sample file offsets + start times from the `mdhd` timescale and reads `[2-byte length][UTF-8 title]` from each sample. UTF-16 BOM handled.
+- [x] **I.4** Nero chpl decoder — straight `(timestamp_in_100ns, title)` list. Convert to seconds. — at `moov/udta/chpl`. Auto-detects the two competing layouts in the wild: 1.0 (`[count-byte][entries]`) vs the widely-deployed mp4v2/Nero variant (`[1-byte reserved][4-byte count][entries]`). Apple chap-track wins when both present.
+- [x] **I.5** `MatroskaChapter` parser — walk EBML, find `\Chapters\EditionEntry\ChapterAtom`, extract `ChapterTimeStart` (ns) + `ChapterDisplay\ChapString`. Skip ordered / nested-edition variants for v1. — variable-length ID + size readers; first edition wins; nested atoms ignored.
+- [x] **I.6** Vorbis comment chapter extractor — `CHAPTER001`, `CHAPTER001NAME`, etc. Less common but cheap to add. — Ogg page reassembler walks pages and packets (segment-table-driven), strips the codec-specific marker (`OpusTags` / `\x03vorbis`), parses the comment block, regex-matches `CHAPTER\d+` / `CHAPTER\d+NAME`. Timestamp parser tolerates `hh:mm:ss.sss`, `mm:ss.sss`, `ss.sss`.
+- [x] **I.7** `ChapterParser` dispatch — by extension + sniffed magic, route to the right parser. Output: `List<ChapterMark>(positionMs, title)`. Falls back to "one mark at 0 with the file name" if nothing parses. — dispatch is MIME → extension → magic-byte sniff. Exceptions are swallowed (logged under `whisperboy.parser`) so a malformed file never crashes a scan.
+- [x] **I.8** Wire into Phase D's scanner — `SingleFile` books with parsed chapters get rich `Chapter` rows; without, get one chapter == whole file. — `LibraryScannerEnrichment.maybeExpandSingleFileChapters` runs the parser when a book has one structural chapter, expands marks into multi-chapter rows (chapter ids stable via `SafLibraryScanner.chapterIdFor(bookId, index)`), and switches duration computation to position-delta mode so the per-file analyzer doesn't broadcast the full file length to every row.
 
 ---
 

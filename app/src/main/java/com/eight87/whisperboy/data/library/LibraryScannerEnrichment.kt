@@ -1,6 +1,8 @@
 package com.eight87.whisperboy.data.library
 
 import android.net.Uri
+import com.eight87.whisperboy.data.library.parser.ChapterMark
+import com.eight87.whisperboy.data.library.parser.ChapterParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -27,6 +29,7 @@ import kotlinx.coroutines.withContext
  */
 class LibraryScannerEnrichment(
     private val mediaAnalyzer: MediaAnalyzer,
+    private val chapterParser: ChapterParser? = null,
 ) {
 
     suspend fun enrich(snapshot: ScanSnapshot): ScanSnapshot = withContext(Dispatchers.IO) {
@@ -34,41 +37,109 @@ class LibraryScannerEnrichment(
     }
 
     private suspend fun enrichBook(book: ScannedBook): ScannedBook {
-        val perChapterMetadata: List<FileMetadata?> = book.chapters.map { chapter ->
-            chapter.fileUri?.let { uriString ->
-                runCatching { Uri.parse(uriString) }.getOrNull()?.let { mediaAnalyzer.extract(it) }
+        // Phase I.8: SingleFile books — one structural chapter that spans the whole file —
+        // get expanded with embedded chapter markers when the parser finds any. We always
+        // run the standard per-chapter metadata pass; for marks-expanded books all generated
+        // chapters share the same fileUri, so file metadata (duration, cover, author) is
+        // resolved once and broadcast.
+        val expanded = maybeExpandSingleFileChapters(book)
+
+        val perChapterMetadata: List<FileMetadata?> = if (expanded.chapters.isNotEmpty() &&
+            expanded.chapters.all { it.fileUri == expanded.chapters.first().fileUri }
+        ) {
+            // All chapters point at the same file — one analyzer call, broadcast result.
+            val one = expanded.chapters.first().fileUri
+                ?.let { runCatching { Uri.parse(it) }.getOrNull() }
+                ?.let { mediaAnalyzer.extract(it) }
+            List(expanded.chapters.size) { one }
+        } else {
+            expanded.chapters.map { chapter ->
+                chapter.fileUri?.let { uriString ->
+                    runCatching { Uri.parse(uriString) }.getOrNull()?.let { mediaAnalyzer.extract(it) }
+                }
             }
         }
 
-        // Compute cumulative positionInBookMs as we enrich each chapter's duration.
-        var cumulative = 0L
-        val enrichedChapters = book.chapters.zip(perChapterMetadata) { chapter, metadata ->
-            val durationMs = metadata?.durationMs ?: chapter.durationMs
-            val title = chapter.title ?: metadata?.title
-            val withFields = chapter.copy(
-                durationMs = durationMs,
-                title = title,
-                positionInBookMs = cumulative,
-            )
-            cumulative += durationMs
-            withFields
+        // If chapters were generated from embedded marks, durations come from positionInBookMs
+        // deltas (last chapter duration = file duration - last mark position) and we should
+        // NOT overwrite with the per-file duration the analyzer reports (it'd assign the full
+        // file length to every row).
+        val marksDrivenDurations = expanded.chapters.size > 1 &&
+            expanded.chapters.all { it.fileUri == expanded.chapters.first().fileUri }
+
+        val enrichedChapters: List<ScannedChapter>
+        if (marksDrivenDurations) {
+            val fileDuration = perChapterMetadata.firstNotNullOfOrNull { it?.durationMs } ?: 0L
+            enrichedChapters = expanded.chapters.mapIndexed { i, chapter ->
+                val nextStart = expanded.chapters.getOrNull(i + 1)?.positionInBookMs ?: fileDuration
+                val duration = (nextStart - chapter.positionInBookMs).coerceAtLeast(0L)
+                chapter.copy(durationMs = duration)
+            }
+        } else {
+            var cumulative = 0L
+            enrichedChapters = expanded.chapters.zip(perChapterMetadata) { chapter, metadata ->
+                val durationMs = metadata?.durationMs ?: chapter.durationMs
+                val title = chapter.title ?: metadata?.title
+                val withFields = chapter.copy(
+                    durationMs = durationMs,
+                    title = title,
+                    positionInBookMs = cumulative,
+                )
+                cumulative += durationMs
+                withFields
+            }
         }
 
-        // Roll up book-level fields.
-        val rolledAuthor = book.author ?: perChapterMetadata.firstNotNullOfOrNull { it?.author }
-        val rolledDuration = enrichedChapters.sumOf { it.durationMs }
+        // Roll up book-level fields. Author preference: scan-supplied → first per-chapter author.
+        val rolledAuthor = expanded.author ?: perChapterMetadata.firstNotNullOfOrNull { it?.author }
+        // Duration: marks-driven means chapters share one fileUri, so total = file duration;
+        // otherwise sum the per-chapter durations the analyzer reported.
+        val rolledDuration = if (marksDrivenDurations) {
+            perChapterMetadata.firstNotNullOfOrNull { it?.durationMs }
+                ?: enrichedChapters.sumOf { it.durationMs }
+        } else {
+            enrichedChapters.sumOf { it.durationMs }
+        }
         // Cover-art Phase A local-first preference order: folder-level bytes from
-        // SafLibraryScanner / FolderCoverFinder win; only fall back to embedded extraction
-        // when the scanner didn't already find a sidecar image. Mirrors Voice's order
-        // (folder file > embedded). See `docs/plans/cover-art.md` doctrine #1.
-        val resolvedCover = book.embeddedCoverBytes
+        // SafLibraryScanner / FolderCoverFinder win (already on `book.embeddedCoverBytes` if
+        // the scanner found a sidecar image); only fall back to per-chapter embedded extraction
+        // when the scanner didn't already find a sidecar. Mirrors Voice's order (folder > embedded).
+        val resolvedCover = expanded.embeddedCoverBytes
             ?: perChapterMetadata.firstNotNullOfOrNull { it?.embeddedCoverBytes }
 
-        return book.copy(
+        return expanded.copy(
             chapters = enrichedChapters,
             author = rolledAuthor,
             durationMs = rolledDuration,
             embeddedCoverBytes = resolvedCover,
         )
+    }
+
+    /**
+     * Phase I.8: if [book] is a SingleFile book (one chapter, that chapter spans the file)
+     * and the embedded-chapter parser returns marks, produce a new [ScannedBook] with one
+     * [ScannedChapter] per mark. Chapter ids are derived via the same `chapterIdFor` scheme
+     * the structural scanner uses so re-scans remain stable.
+     */
+    private suspend fun maybeExpandSingleFileChapters(book: ScannedBook): ScannedBook {
+        val parser = chapterParser ?: return book
+        if (book.chapters.size != 1) return book
+        val sole = book.chapters.first()
+        val uriString = sole.fileUri ?: return book
+        val uri = runCatching { Uri.parse(uriString) }.getOrNull() ?: return book
+        val marks: List<ChapterMark> = parser.parse(uri, mimeType = null, fileName = book.relativePath)
+        if (marks.isEmpty()) return book
+        // Sort by position defensively; some producers emit unordered chapters.
+        val sorted = marks.sortedBy { it.positionMs }
+        val newChapters = sorted.mapIndexed { index, mark ->
+            ScannedChapter(
+                chapterId = SafLibraryScanner.chapterIdFor(book.bookId, index),
+                chapterIndex = index,
+                title = mark.title.ifBlank { "Chapter ${index + 1}" },
+                fileUri = uriString,
+                positionInBookMs = mark.positionMs,
+            )
+        }
+        return book.copy(chapters = newChapters)
     }
 }
