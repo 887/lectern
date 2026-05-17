@@ -62,6 +62,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -637,7 +638,7 @@ private fun PlayerLoaded(
  * index as the LazyColumn key).
  */
 @Composable
-private fun ChapterQueue(
+internal fun ChapterQueue(
     bookId: String,
     currentChapterIndex: Int,
     chapterSource: ChapterSource,
@@ -714,6 +715,7 @@ private fun ChapterQueueRow(
             .clip(RoundedCornerShape(12.dp))
             .background(bg)
             .clickable(onClick = onClick)
+            .testTag(if (isActive) "chapter_row_active" else "chapter_row")
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Box(
