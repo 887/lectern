@@ -668,6 +668,7 @@ private fun ChapterQueue(
         items(
             items = chapters,
             key = { it.chapterId },
+            contentType = { "chapter" },
         ) { chapter ->
             ChapterQueueRow(
                 chapter = chapter,

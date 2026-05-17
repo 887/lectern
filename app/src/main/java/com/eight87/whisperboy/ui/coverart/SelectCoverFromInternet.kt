@@ -28,7 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +44,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
@@ -93,7 +93,7 @@ fun SelectCoverFromInternet(
 ) {
     // Resolve the book once on first compose. The result feeds the pre-filled query;
     // recomposition isn't needed after that (the search bar is user-driven from there).
-    val book by remember(bookId) { bookSource.observeBook(bookId) }.collectAsState(initial = null)
+    val book by remember(bookId) { bookSource.observeBook(bookId) }.collectAsStateWithLifecycle(initialValue = null)
 
     // `queryState` holds the currently-submitted query; the field's own text state is
     // separate so the user can keep typing without firing a new search per keystroke.
