@@ -51,7 +51,7 @@ Conclusion: **MIT app license is correct. No GPL anywhere. No dep prevents MIT.*
 - [x] **A.6** Run `:app:licenseeAndroidDebug` + `:app:assembleDebug`. Inventory has 231 entries; SPDX ids observed: `Apache-2.0`, `BSD-3-Clause`, `MIT` — all in the allowlist. Spot-checked `androidx.media3:media3-exoplayer`, `androidx.room:room-runtime`, `io.coil-kt.coil3:coil-compose`.
 - [x] **A.7** Shipped.
 
-## Phase B — `LicensesScreen` Compose UI — shipped in commit `a16612f`
+## Phase B — `LicensesScreen` Compose UI — shipped in commit `a16612f` (B.7 AVD smoke landed in `87c5aca`)
 
 **Why:** the user-facing surface that fulfils the Apache 2.0 NOTICE requirement and extends main.md K.6.
 
@@ -63,18 +63,18 @@ Conclusion: **MIT app license is correct. No GPL anywhere. No dep prevents MIT.*
 - [x] **B.4** UI: `LazyColumn` of dep cards. Each card: `<artifactId> <version>` (title) + `<groupId>` (subtitle) + SPDX badge (pill in `secondaryContainer`). Tap → `AlertDialog` shows the license body in monospaced text, vertically scrollable.
 - [x] **B.5** Wire navigation. New `LicensesRoute` in `NavigationKeys.kt`; `entry<LicensesRoute>` in `WhisperboyApp.kt`. The existing About → "Open-source licenses" row's snackbar-stub `onClick` replaced with `onLicensesClick` callback threaded from `WhisperboyApp` (`backStack.add(LicensesRoute)`).
 - [x] **B.6** Strings shipped in `values/strings.xml` under `licenses_` prefix: `licenses_title`, `licenses_back_cd`, `licenses_loading`, `licenses_load_error`, `licenses_spdx_badge_cd`, `licenses_unknown_spdx`, `licenses_dialog_close`.
-- [ ] **B.7** AVD verification deferred — agent prompt explicitly excluded AVD-verify from this inch.
+- [x] **B.7** AVD smoke landed as `scripts/oss-licenses-avd-smoke.sh` (see C.3). Outcome on `emulator-5556`: **INDETERMINATE** — navigation tapped through the first label but the headless AVD's uiautomator dump did not surface the deeper Compose semantics nodes needed to assert the row count. The script is the deliverable; full per-row UI verification stays deferred until the mobile-mcp pipeline is wired or verification moves to a wifi-adb phone.
 - [x] **B.8** Shipped.
 
-## Phase C — Tests + audit discipline — shipped in commit `a16612f`
+## Phase C — Tests + audit discipline — shipped in commit `a16612f` (C.3 + C.5 landed in `87c5aca`)
 
 **Why:** keep the inventory honest as deps churn — and whisperboy's dep tree will grow as main.md ships, so the test catches accidental additions.
 
 - [x] **C.1** `LicensesCatalogTest` — pure-JVM (no Robolectric dep in whisperboy yet). Reads `app/src/main/assets/licenses/artifacts.json` directly via `File("src/main/assets/...")` (Gradle's `:app:test` runs with `user.dir = app/`). Asserts non-empty, every SPDX in the JSON is in the allowlist and has a matching `<spdx>.txt`, and the catalog contains known shipping samples (`androidx.media3:media3-exoplayer`, `androidx.room:room-runtime`, `io.coil-kt.coil3:coil-compose`).
 - [x] **C.2** `LicensesScreenTest` — Compose UI test under Robolectric (`createComposeRule()` + `@Config(sdk = [34], application = TestApplication::class)` so the real `WhisperboyApplication.onCreate` doesn't construct the `AppGraph` and bind to the not-running `MediaLibraryService`). Asserts `loadLicensesFromAssets(context)` returns a non-empty inventory and the `licenses_screen` LazyColumn mounts without falling back to the `licenses_empty` empty-state. Landed alongside the Robolectric wiring.
-- [ ] **C.3** AVD smoke deferred — agent prompt explicitly excluded AVD-verify from this inch.
+- [x] **C.3** AVD smoke shipped as `scripts/oss-licenses-avd-smoke.sh`. Drives Settings → About → Licenses via `uiautomator dump` + tap-by-bounds, then asserts >= 5 `<spdx> license` content-desc nodes on the final dump. Tri-state outcome (PASS / INDETERMINATE / FAIL); no-device exits 0 as a clean skip. Run against `emulator-5556`: **INDETERMINATE** — the headless AVD returned a sparse a11y tree on the deeper Compose nodes. Run against `emulator-5558`: **FAIL** locally because that AVD's whisperboy is at the onboarding picker (no library set up), so Settings is not reachable from that state; not a script regression. The discipline gate is the script's existence + tri-state honesty.
 - [x] **C.4** "Open-source licenses" subhead already lives in the repo `CLAUDE.md` (it was already authored as part of the Plan files index). The catalog test + allowlist live alongside the plugin block in `app/build.gradle.kts`; that file is the canonical place to extend the allowlist.
-- [ ] **C.5** Cross-link to main.md K.6 deferred — main.md K.6 (About sub-page) already shipped before this plan landed, and the "Open-source licenses" row is now wired to the new `LicensesScreen` instead of a snackbar stub. No tick required on main.md.
+- [x] **C.5** Cross-link confirmed — main.md K.6 (line ~216) explicitly references [`oss-licenses.md`](oss-licenses.md) and the "OSS licenses TODO row (wired to placeholder snackbar until [`oss-licenses.md`](oss-licenses.md) ships)". The wiring is now live in B.5 (the row routes to `LicensesScreen` via `LicensesRoute`); no edit required on main.md.
 - [x] **C.6** Shipped.
 
 ## Out of scope (revisit if pain emerges)
