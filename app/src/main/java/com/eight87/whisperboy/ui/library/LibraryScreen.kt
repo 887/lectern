@@ -29,6 +29,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
@@ -37,6 +38,9 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -72,6 +76,8 @@ import com.eight87.whisperboy.data.library.BookFilter
 import com.eight87.whisperboy.data.library.BookSortKey
 import com.eight87.whisperboy.data.library.BookSource
 import com.eight87.whisperboy.data.library.GridMode
+import com.eight87.whisperboy.data.library.LibraryHealth
+import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.LibraryRoot
 import com.eight87.whisperboy.data.library.LibraryUiSettings
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
@@ -105,14 +111,22 @@ fun LibraryScreen(
     bookSource: BookSource,
     persistedUriPermissionStore: PersistedUriPermissionStore,
     libraryUiSettings: LibraryUiSettings,
+    libraryRescanCoordinator: LibraryRescanCoordinator,
     onBookTap: (String) -> Unit,
     onSettingsClick: () -> Unit,
+    onLibraryFoldersClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val books by bookSource.observeBooks()
         .collectAsStateWithLifecycle(initialValue = emptyList<BookEntity>())
     val roots by persistedUriPermissionStore.observeRoots()
         .collectAsStateWithLifecycle(initialValue = emptyList<LibraryRoot>())
+    // Phase P.4 — observe library health; render an error banner above the rail+content row
+    // whenever the scanner couldn't read one or more of the persisted roots (revoked SAF
+    // permission, missing SD card, etc.). Banner taps deep-link to LibraryFoldersScreen so
+    // the user can remove + re-pick.
+    val health by libraryRescanCoordinator.health
+        .collectAsStateWithLifecycle(initialValue = LibraryHealth())
     val coroutineScope = rememberCoroutineScope()
 
     // Phase E.3 follow-up — persisted via DataStore (`library_ui`). `collectAsStateWithLifecycle`
@@ -241,6 +255,19 @@ fun LibraryScreen(
                 }
             },
         )
+        }
+
+        // Phase P.4 — unreadable-roots banner. Renders above the rail+content row so the user
+        // sees the warning before scrolling into the (possibly stale) book grid. Click-through
+        // navigates to the folder management screen where the user can re-pick.
+        if (health.unreadableRoots.isNotEmpty()) {
+            LibraryHealthBanner(
+                unreadableCount = health.unreadableRoots.size,
+                onClick = onLibraryFoldersClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            )
         }
 
         val showRail = books.isNotEmpty() && !searchMode
@@ -814,5 +841,53 @@ private fun folderTypeSubtitle(type: com.eight87.whisperboy.data.library.FolderT
     com.eight87.whisperboy.data.library.FolderType.SingleFolder -> R.string.folder_type_singlefolder_subtitle
     com.eight87.whisperboy.data.library.FolderType.Root -> R.string.folder_type_root_subtitle
     com.eight87.whisperboy.data.library.FolderType.Author -> R.string.folder_type_author_subtitle
+}
+
+/**
+ * Phase P.4 — error-tinted banner card rendered above the library rail+content row whenever
+ * the rescan coordinator reports unreadable roots. Tap navigates to LibraryFoldersScreen
+ * where the user can remove + re-pick the SAF tree. Copy is pluralized via
+ * `library_health_unreadable_banner` so "1 folder unreadable" reads naturally.
+ */
+@Composable
+private fun LibraryHealthBanner(
+    unreadableCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.WarningAmber,
+                contentDescription = stringResource(R.string.library_health_unreadable_cd),
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = androidx.compose.ui.res.pluralStringResource(
+                    R.plurals.library_health_unreadable_banner,
+                    unreadableCount,
+                    unreadableCount,
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.NavigateNext,
+                contentDescription = null,
+            )
+        }
+    }
 }
 

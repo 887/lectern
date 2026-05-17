@@ -8,8 +8,10 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import com.eight87.whisperboy.data.coverart.CoverApi
 import com.eight87.whisperboy.data.coverart.CoverApiModule
+import com.eight87.whisperboy.data.library.AndroidLibraryFingerprintStore
 import com.eight87.whisperboy.data.library.AndroidLibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.AndroidLibraryUiSettings
+import com.eight87.whisperboy.data.library.LibraryFingerprintStore
 import com.eight87.whisperboy.data.library.AndroidPersistedUriPermissionStore
 import com.eight87.whisperboy.data.library.LibraryUiSettings
 import com.eight87.whisperboy.data.library.BookSource
@@ -238,11 +240,34 @@ class AppGraph(context: Context) {
      * see only the narrow [LibraryRescanCoordinator] interface — `requestRescan()` plus the
      * `state: StateFlow<RescanState>`.
      */
+    /**
+     * Phase P.8 — per-root SAF fingerprint cache. Own DataStore file
+     * (`library_fingerprints`) so a future "Reset fingerprints" debug
+     * affordance can `clear()` this without touching any other prefs.
+     */
+    private val libraryFingerprintsDataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
+        produceFile = { appContext.preferencesDataStoreFile("library_fingerprints") }
+    )
+
+    val libraryFingerprintStore: LibraryFingerprintStore =
+        AndroidLibraryFingerprintStore(libraryFingerprintsDataStore)
+
+    /**
+     * The concrete [SafLibraryScanner] above is exposed via the [LibraryScanner] interface for
+     * the standard scan path, but the coordinator also needs the concrete type for the P.8
+     * `computeFingerprint` probe. Smart-casting the interface would couple consumers, so we
+     * pass the concrete reference explicitly here.
+     */
+    private val safLibraryScannerConcrete: SafLibraryScanner = libraryScanner as SafLibraryScanner
+
     val libraryRescanCoordinator: LibraryRescanCoordinator = AndroidLibraryRescanCoordinator(
+        context = appContext,
         persistedUriPermissionStore = persistedUriPermissionStore,
         libraryScanner = libraryScanner,
         libraryScannerEnrichment = libraryScannerEnrichment,
         scanWriter = scanWriter,
+        fingerprintStore = libraryFingerprintStore,
+        safLibraryScanner = safLibraryScannerConcrete,
         applicationScope = applicationScope,
     )
 
@@ -278,6 +303,16 @@ class AppGraph(context: Context) {
     )
 
     val sleepTimerCommands: SleepTimerCommands = androidSleepTimer
+
+    /**
+     * Phase P.7 — flush hook for [com.eight87.whisperboy.playback.PlaybackService.onDestroy].
+     * The service doesn't hold a direct reference to [PlaybackController]; it reaches through
+     * the graph to ask for a position save before the underlying session releases. Cheap
+     * (single UPDATE row), no-op when nothing is playing.
+     */
+    fun flushPlaybackPosition() {
+        playbackController.saveCurrentPosition()
+    }
 
     fun release() {
         playbackController.release()

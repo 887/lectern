@@ -148,11 +148,13 @@ fun WhisperboyApp() {
                         persistedUriPermissionStore = graph.persistedUriPermissionStore,
                         bookSource = graph.bookSource,
                         libraryUiSettings = graph.libraryUiSettings,
+                        libraryRescanCoordinator = graph.libraryRescanCoordinator,
                         onBookTap = { bookId ->
                             scope.launch { graph.bookCommands.playBook(bookId) }
                             openSheet()
                         },
                         onSettingsClick = { backStack.add(SettingsRoute) },
+                        onLibraryFoldersClick = { backStack.add(LibraryFoldersRoute) },
                         modifier = Modifier.safeDrawingPadding(),
                     )
                 }

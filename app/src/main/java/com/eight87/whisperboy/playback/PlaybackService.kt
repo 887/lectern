@@ -88,6 +88,12 @@ class PlaybackService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
+        // Phase P.7 — flush the current playback position to Room before the session releases.
+        // The PlaybackController's own ProcessLifecycleOwner observer covers app-backgrounding;
+        // this catches the service-stopped-while-still-foreground edge (`stopSelf` from
+        // `onTaskRemoved`, system-killed for memory pressure, etc.) so the user's resume point
+        // isn't lost.
+        (application as? WhisperboyApplication)?.graph?.flushPlaybackPosition()
         session?.run {
             // Do not release the player here — AppGraph owns it across activity lifecycle.
             release()

@@ -136,7 +136,10 @@ fun SettingsScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
                     Button(
-                        onClick = { libraryRescanCoordinator.requestRescan() },
+                        // Phase P.8 — Settings "Rescan now" forces a full walk, bypassing
+                        // the fingerprint short-circuit so the user can demand a re-scan even
+                        // when the per-root `(docCount, maxMtime)` is unchanged.
+                        onClick = { libraryRescanCoordinator.requestRescan(force = true) },
                         enabled = rescanState !is RescanState.Running,
                         modifier = Modifier.fillMaxWidth(),
                     ) {

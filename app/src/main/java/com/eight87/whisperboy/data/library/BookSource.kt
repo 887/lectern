@@ -55,4 +55,11 @@ interface BookSource {
     suspend fun setSkipSilence(bookId: String, enabled: Boolean)
 
     suspend fun setGain(bookId: String, gainDb: Float)
+
+    /**
+     * Phase P.7 — event-driven position save. Called by [com.eight87.whisperboy.playback.PlaybackController]
+     * on chapter transition, on pause, on app backgrounding, and on service teardown. Writes
+     * `currentChapterIndex` + `position_in_chapter_ms` + `lastPlayedAt` atomically.
+     */
+    suspend fun updatePosition(bookId: String, chapterIndex: Int, positionInChapterMs: Long, lastPlayedAt: Long)
 }

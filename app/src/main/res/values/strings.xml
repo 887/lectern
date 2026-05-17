@@ -113,6 +113,13 @@
     <string name="library_book_action_forget_confirm_body">whisperboy will remove the book from your library, including bookmarks and progress. The audio files on your device are untouched. If the file is still in your folders, the book will reappear on the next scan.</string>
     <string name="library_book_action_forget_confirm_yes">Forget</string>
 
+    <!-- library_health_ — Phase P.4 unreadable-roots banner -->
+    <string name="library_health_unreadable_cd">Library folder warning</string>
+    <plurals name="library_health_unreadable_banner">
+        <item quantity="one">%1$d folder unreadable. Tap to re-pick.</item>
+        <item quantity="other">%1$d folders unreadable. Tap to re-pick.</item>
+    </plurals>
+
     <!-- player_ — full-screen now-playing surface (Phase F.1) -->
     <string name="player_back_cd">Back</string>
     <string name="player_play_cd">Play</string>

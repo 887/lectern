@@ -3,6 +3,7 @@ package com.eight87.whisperboy.ui.home
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.eight87.whisperboy.data.library.BookSource
+import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.LibraryUiSettings
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
 import com.eight87.whisperboy.ui.library.LibraryScreen
@@ -28,16 +29,20 @@ fun HomeScreen(
     persistedUriPermissionStore: PersistedUriPermissionStore,
     bookSource: BookSource,
     libraryUiSettings: LibraryUiSettings,
+    libraryRescanCoordinator: LibraryRescanCoordinator,
     onBookTap: (String) -> Unit,
     onSettingsClick: () -> Unit,
+    onLibraryFoldersClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LibraryScreen(
         bookSource = bookSource,
         persistedUriPermissionStore = persistedUriPermissionStore,
         libraryUiSettings = libraryUiSettings,
+        libraryRescanCoordinator = libraryRescanCoordinator,
         onBookTap = onBookTap,
         onSettingsClick = onSettingsClick,
+        onLibraryFoldersClick = onLibraryFoldersClick,
         modifier = modifier,
     )
 }
