@@ -31,6 +31,9 @@ internal class LibraryRepository(
 
     override fun observeBook(id: String): Flow<BookEntity?> = bookDao.observeById(id)
 
+    override fun observeBooksByAuthor(authorName: String): Flow<List<BookEntity>> =
+        bookDao.observeByAuthor(authorName)
+
     override suspend fun search(query: String): List<BookEntity> = bookDao.search(query)
 
     override suspend fun markCompleted(bookId: String) {

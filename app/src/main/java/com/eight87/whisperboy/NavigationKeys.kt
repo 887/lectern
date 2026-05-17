@@ -139,3 +139,11 @@ import kotlinx.serialization.Serializable
  * (a future deeplink "bookmarks for book X" pattern, parallel to `PlaybackRoute`).
  */
 @Serializable data class BookmarkRoute(val bookId: String) : NavKey
+
+/**
+ * R.F.9 — per-author detail screen. Pushed from the library long-press action sheet's
+ * "View all by <author>" row. Renders a cover grid filtered on the data layer via
+ * [com.eight87.whisperboy.data.library.BookSource.observeBooksByAuthor]; the screen
+ * never filters in Compose.
+ */
+@Serializable data class AuthorDetailRoute(val authorName: String) : NavKey

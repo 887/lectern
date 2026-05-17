@@ -18,6 +18,14 @@ interface BookSource {
 
     fun observeBook(id: String): Flow<BookEntity?>
 
+    /**
+     * R.F.9 — detail-screen flow filtered on the data layer. The UI does not filter
+     * in Compose; the [BookDao] query applies the `author = :authorName COLLATE NOCASE`
+     * predicate at the DB tier so the screen receives the ready-to-render list.
+     * Matches Voice's per-author detail pattern + tonearmboy R.F.12.
+     */
+    fun observeBooksByAuthor(authorName: String): Flow<List<BookEntity>>
+
     suspend fun search(query: String): List<BookEntity>
 
     /**

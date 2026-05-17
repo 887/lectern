@@ -14,6 +14,20 @@ interface BookDao {
     @Query("SELECT * FROM books WHERE bookId = :id LIMIT 1")
     fun observeById(id: String): Flow<BookEntity?>
 
+    /**
+     * R.F.9 — per-author detail flow. The filter happens at the DB layer (with NOCASE
+     * collation matching the rest of the catalog), so the UI never filters in Compose.
+     */
+    @Query(
+        """
+        SELECT * FROM books
+        WHERE active = 1
+          AND author = :authorName COLLATE NOCASE
+        ORDER BY title COLLATE NOCASE
+        """
+    )
+    fun observeByAuthor(authorName: String): Flow<List<BookEntity>>
+
     @Query("SELECT * FROM books WHERE bookId = :id LIMIT 1")
     suspend fun findById(id: String): BookEntity?
 
