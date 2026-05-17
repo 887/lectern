@@ -9,6 +9,11 @@ plugins {
   // is packaged into the release APK. The sibling `:baselineprofile`
   // module produces the rules; this side consumes them.
   alias(libs.plugins.androidx.baselineprofile)
+  // oss-licenses A.2 — Licensee plugin. Generates per-variant `artifacts.json`
+  // under `app/build/reports/licensee/android<Variant>/`. The Copy task wired
+  // below stages that JSON into `src/main/assets/licenses/` so LicensesScreen
+  // can read it via AssetManager at runtime.
+  alias(libs.plugins.licensee)
 }
 
 android {
@@ -51,6 +56,44 @@ android {
 
 room {
     schemaDirectory("$projectDir/schemas")
+}
+
+// oss-licenses A.3 — declare allowed SPDX ids for shipped deps. v1 ships
+// reporting-only (no failOnDisallowed); the catalog test in app/src/test
+// is what fails loud if an unrecognised SPDX sneaks in. EPL-1.0 (junit) is
+// test-scope only, so it never enters the resolved release classpath that
+// Licensee inspects.
+licensee {
+    allow("Apache-2.0")
+    allow("MIT")
+    allow("BSD-2-Clause")
+    allow("BSD-3-Clause")
+}
+
+// oss-licenses A.4 — copy the per-variant Licensee `artifacts.json` into
+// `src/main/assets/licenses/` so LicensesScreen can read it via
+// AssetManager at runtime. Wired as a dependency of the variant's
+// mergeAssets task so the asset is always self-consistent with the
+// build's resolved classpath.
+val licenseeReportDir = layout.buildDirectory.dir("reports/licensee")
+val licensesAssetDir = layout.projectDirectory.dir("src/main/assets/licenses")
+
+androidComponents {
+    onVariants { variant ->
+        val variantName = variant.name.replaceFirstChar { it.uppercase() }
+        val copyTask = tasks.register<Copy>("copyLicensesAssetFor$variantName") {
+            dependsOn("licenseeAndroid$variantName")
+            from(licenseeReportDir.map { it.dir("android$variantName") }) {
+                include("artifacts.json")
+            }
+            into(licensesAssetDir)
+        }
+        afterEvaluate {
+            tasks.named("merge${variantName}Assets").configure {
+                dependsOn(copyTask)
+            }
+        }
+    }
 }
 
 kotlin {

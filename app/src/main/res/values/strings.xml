@@ -238,6 +238,15 @@
     <string name="about_oss_licenses_label">Open-source licenses</string>
     <string name="about_oss_licenses_subtitle">Components shipped in this build</string>
 
+    <!-- licenses_ — Open-source licenses sub-page (oss-licenses Phase B). -->
+    <string name="licenses_title">Open-source licenses</string>
+    <string name="licenses_back_cd">Back</string>
+    <string name="licenses_loading">Loading licenses…</string>
+    <string name="licenses_load_error">Couldn\'t load license info</string>
+    <string name="licenses_spdx_badge_cd">%1$s license</string>
+    <string name="licenses_unknown_spdx">Unknown license — see project URL.</string>
+    <string name="licenses_dialog_close">Close</string>
+
     <!-- onboarding_ — first-run flow (Phase L). Welcome → Permissions → Folder picker → First-scan. -->
     <string name="onboarding_welcome_title">Welcome to whisperboy</string>
     <string name="onboarding_welcome_body">Whisperboy plays audiobooks from folders you pick.</string>
