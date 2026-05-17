@@ -49,7 +49,7 @@ The concrete `LibraryRepository` (or whatever it ends up named — could be spli
 
 ---
 
-## Phase R.B pattern — `Setting<T>` + facets, no `SettingsSnapshot` — R.B.2 full-facet migration shipped in commit `e3ec3a0`
+## Phase R.B pattern — `Setting<T>` + facets, no `SettingsSnapshot` — R.B.2 full-facet migration shipped in commit `074eb4f`
 
 **Applies to:** Phase K (settings).
 
