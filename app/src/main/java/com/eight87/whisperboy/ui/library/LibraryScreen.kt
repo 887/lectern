@@ -82,6 +82,10 @@ import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.LibraryRoot
 import com.eight87.whisperboy.data.library.LibraryUiSettings
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
+import com.eight87.whisperboy.data.library.RescanState
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.LaunchedEffect
 import com.eight87.whisperboy.theme.LibraryAccent
 import com.eight87.whisperboy.ui.common.CoverArt
 import com.eight87.whisperboy.ui.common.refreshCoverArt
@@ -119,6 +123,7 @@ fun LibraryScreen(
     onLibraryFoldersClick: () -> Unit,
     onAuthorClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val books by bookSource.observeBooks()
         .collectAsStateWithLifecycle(initialValue = emptyList<BookEntity>())
@@ -130,6 +135,13 @@ fun LibraryScreen(
     // the user can remove + re-pick.
     val health by libraryRescanCoordinator.health
         .collectAsStateWithLifecycle(initialValue = LibraryHealth())
+    // Issue-3 — in-library scan progress banner + "Found N new books" snackbar.
+    // Observe the rescan state; while Running, render the banner. On Running→Idle
+    // with a positive book delta, fire a transient snackbar. We track the
+    // last-seen book count alongside the previous running-state book count so
+    // the delta survives a state-flip race.
+    val rescanState by libraryRescanCoordinator.state
+        .collectAsStateWithLifecycle(initialValue = RescanState.Idle)
     val coroutineScope = rememberCoroutineScope()
 
     // Phase E.3 follow-up — persisted via DataStore (`library_ui`). `collectAsStateWithLifecycle`
@@ -149,6 +161,37 @@ fun LibraryScreen(
     var actionSheetBookId by remember { mutableStateOf<String?>(null) }
     var forgetConfirmBookId by remember { mutableStateOf<String?>(null) }
 
+    // Issue-3 — book-count snapshot at the moment the rescan kicked off, so the
+    // Idle-transition can compute the new-book delta and fire the snackbar.
+    val running = rescanState as? RescanState.Running
+    var preScanBookCount by remember { mutableStateOf<Int?>(null) }
+    val context = LocalContext.current
+    LaunchedEffect(rescanState) {
+        when (val s = rescanState) {
+            is RescanState.Running -> {
+                if (preScanBookCount == null) preScanBookCount = books.size
+            }
+            is RescanState.Idle -> {
+                val baseline = preScanBookCount
+                if (baseline != null) {
+                    val delta = books.size - baseline
+                    if (delta > 0) {
+                        snackbarHostState.showSnackbar(
+                            message = context.getString(
+                                R.string.library_scan_progress_complete_format,
+                                delta,
+                            ),
+                        )
+                    }
+                }
+                preScanBookCount = null
+            }
+            is RescanState.Failed -> {
+                preScanBookCount = null
+            }
+        }
+    }
+
     val filteredBooks = remember(books, filter) { filterBooks(books, filter) }
     val searchedBooks = remember(filteredBooks, searchQuery) {
         searchBooks(filteredBooks, searchQuery)
@@ -166,7 +209,6 @@ fun LibraryScreen(
     // user's pick alone. The launcher is created at the top of the composable (matching the
     // `pickFolder` idiom above); `pendingCustomCoverBookId` stashes the target book id from
     // the moment the user taps the action-sheet button until the picker returns.
-    val context = LocalContext.current
     var pendingCustomCoverBookId by remember { mutableStateOf<String?>(null) }
     val pickCustomCover = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -260,6 +302,18 @@ fun LibraryScreen(
         )
         }
 
+        // Issue-3 — scan progress banner. Sits directly beneath the TopAppBar so the user
+        // gets immediate feedback that a background scan is in flight on first launch after
+        // configuring a folder. Auto-dismisses on Idle.
+        if (running != null) {
+            LibraryScanProgressBanner(
+                running = running,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
+
         // Phase P.4 — unreadable-roots banner. Renders above the rail+content row so the user
         // sees the warning before scrolling into the (possibly stale) book grid. Click-through
         // navigates to the folder management screen where the user can re-pick.
@@ -334,6 +388,13 @@ fun LibraryScreen(
             )
         }
     }
+    // Issue-3 — host the "Found N new books" snackbar at the bottom of the library
+    // surface. The WhisperboyApp root also owns one for cross-screen messages; this
+    // local host stays scoped to library-only notifications.
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+    )
     }
 
     val pending = pendingUri

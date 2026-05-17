@@ -111,22 +111,25 @@ import kotlinx.serialization.Serializable
 @Serializable data object SleepTimerSettingsRoute : NavKey
 
 /**
- * Phase L — first-run onboarding flow. Four steps, in order:
+ * Phase L — first-run onboarding flow. Three steps, in order:
  *
  * 1. [OnboardingWelcomeRoute] — one short sentence + Get-started CTA.
  * 2. [OnboardingPermissionsRoute] — `POST_NOTIFICATIONS` rationale (API 33+; auto-skip otherwise).
  * 3. [OnboardingFolderPickerRoute] — explains the four `FolderType` modes, launches
- *    the SAF `OPEN_DOCUMENT_TREE` picker, surfaces the FolderType bottom sheet.
- * 4. [OnboardingFirstScanRoute] — listens to `LibraryRescanCoordinator.state`, shows
- *    "Scanning your library…" and, once Idle, "Found N books, M chapters" + Continue.
+ *    the SAF `OPEN_DOCUMENT_TREE` picker, surfaces the FolderType bottom sheet, and
+ *    on confirm flips `OnboardingSettings.completed` to `true` + replaces the stack
+ *    with `HomeRoute`. The scan runs in the background via `LibraryRescanCoordinator`;
+ *    in-library progress is surfaced by `LibraryScanProgressBanner`.
+ *
+ * The retired `OnboardingFirstScanRoute` previously gated completion on scan-settle —
+ * a process-death during the scan trapped users in onboarding forever. See
+ * `docs/plans/main.md` L.4 for the post-mortem.
  */
 @Serializable data object OnboardingWelcomeRoute : NavKey
 
 @Serializable data object OnboardingPermissionsRoute : NavKey
 
 @Serializable data object OnboardingFolderPickerRoute : NavKey
-
-@Serializable data object OnboardingFirstScanRoute : NavKey
 
 /**
  * Phase H.1 — bookmark list for a single book. Pushed from the player's top-app-bar

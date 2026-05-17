@@ -38,6 +38,32 @@ class LibraryScannerEnrichment(
         ScanSnapshot(snapshot.books.map { enrichBook(it) })
     }
 
+    /**
+     * Issue-3 progress-reporting overload. [reportProgress] is invoked after each book's
+     * enrichment with the cumulative `(booksEnriched, chaptersEnriched, currentFolder)` —
+     * the in-library scan progress banner consumes this via [AndroidLibraryRescanCoordinator]
+     * to surface "Scanning library — N books, M chapters" while the pipeline runs.
+     *
+     * Errors raised by [reportProgress] do not abort enrichment; the callback is for UX
+     * surfaces, not control flow.
+     */
+    suspend fun enrich(
+        snapshot: ScanSnapshot,
+        reportProgress: suspend (booksEnriched: Int, chaptersEnriched: Int, currentFolder: String?) -> Unit,
+    ): ScanSnapshot = withContext(Dispatchers.IO) {
+        var chapters = 0
+        val enriched = snapshot.books.mapIndexed { index, book ->
+            // Pre-emit so the banner reports the *upcoming* folder before the
+            // (potentially slow) per-file metadata read.
+            runCatching { reportProgress(index, chapters, book.title) }
+            val out = enrichBook(book)
+            chapters += out.chapters.size
+            runCatching { reportProgress(index + 1, chapters, book.title) }
+            out
+        }
+        ScanSnapshot(enriched)
+    }
+
     private suspend fun enrichBook(book: ScannedBook): ScannedBook {
         // Phase I.8: SingleFile books — one structural chapter that spans the whole file —
         // get expanded with embedded chapter markers when the parser finds any. We always

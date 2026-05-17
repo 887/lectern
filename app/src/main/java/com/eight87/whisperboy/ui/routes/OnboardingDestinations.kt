@@ -4,20 +4,26 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import com.eight87.whisperboy.OnboardingFirstScanRoute
 import com.eight87.whisperboy.OnboardingFolderPickerRoute
 import com.eight87.whisperboy.OnboardingPermissionsRoute
 import com.eight87.whisperboy.OnboardingWelcomeRoute
-import com.eight87.whisperboy.ui.onboarding.OnboardingFirstScanScreen
 import com.eight87.whisperboy.ui.onboarding.OnboardingFolderPickerScreen
 import com.eight87.whisperboy.ui.onboarding.OnboardingPermissionsScreen
 import com.eight87.whisperboy.ui.onboarding.OnboardingWelcomeScreen
 
 /**
- * Phase L — first-run onboarding flow destinations. Four steps in order:
- * Welcome → Permissions → Folder picker → First scan. The terminal "Continue"
- * button on First scan calls [RouteScope.finishOnboarding] which replaces the
- * back stack with `HomeRoute`.
+ * Phase L — first-run onboarding flow destinations. Three steps:
+ * Welcome → Permissions → Folder picker. The terminal folder-pick action sets
+ * [com.eight87.whisperboy.data.onboarding.OnboardingSettings.setCompleted]`(true)`
+ * and calls [RouteScope.finishOnboarding], which replaces the back stack with
+ * `HomeRoute`.
+ *
+ * The retired `OnboardingFirstScanRoute` previously gated onboarding on the
+ * initial scan settling. That blocked the user, and — worse — if the app was
+ * closed before the scan finished, the completed flag never persisted, so the
+ * user re-entered onboarding on every cold start. The library now renders its
+ * skeleton/empty state while the background scan runs (Voice / tonearmboy
+ * pattern); progress is surfaced via the in-library `LibraryScanProgressBanner`.
  */
 @Suppress("NOTHING_TO_INLINE") internal inline fun EntryProviderScope<NavKey>.registerOnboardingEntries(scope: RouteScope) {
     val graph = scope.graph
@@ -38,15 +44,6 @@ import com.eight87.whisperboy.ui.onboarding.OnboardingWelcomeScreen
     entry<OnboardingFolderPickerRoute> {
         OnboardingFolderPickerScreen(
             persistedUriPermissionStore = graph.persistedUriPermissionStore,
-            onNext = { backStack.add(OnboardingFirstScanRoute) },
-            modifier = Modifier.safeDrawingPadding(),
-        )
-    }
-    entry<OnboardingFirstScanRoute> {
-        OnboardingFirstScanScreen(
-            libraryRescanCoordinator = graph.libraryRescanCoordinator,
-            bookSource = graph.bookSource,
-            chapterSource = graph.chapterSource,
             onboardingSettings = graph.onboardingSettings,
             onFinish = scope.finishOnboarding,
             modifier = Modifier.safeDrawingPadding(),

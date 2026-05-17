@@ -88,6 +88,13 @@
     <string name="library_grid_mode_toggle_to_grid_cd">Switch to grid view</string>
     <string name="library_settings_cd">Settings</string>
     <string name="library_fab_add_folder_cd">Add folder</string>
+    <!-- Issue-3 — in-library scan progress banner (top of LibraryScreen). Visible while
+         LibraryRescanCoordinator.state is Running. Counts come from RescanState.Running.
+         The "complete" string is shown as a one-shot Snackbar after a scan settles with
+         books added. -->
+    <string name="library_scan_progress_running">Scanning library — %1$d books, %2$d chapters</string>
+    <string name="library_scan_progress_complete_format">Found %1$d new books</string>
+    <string name="library_scan_progress_cd">Library scan progress</string>
     <string name="library_cover_placeholder_cd">Cover art placeholder</string>
     <string name="library_book_unknown_author">Unknown author</string>
     <string name="library_sort_cd">Sort books</string>

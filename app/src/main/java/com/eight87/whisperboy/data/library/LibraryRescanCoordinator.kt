@@ -53,7 +53,23 @@ interface LibraryRescanCoordinator {
  */
 sealed class RescanState {
     data object Idle : RescanState()
-    data object Running : RescanState()
+
+    /**
+     * Active scan. [booksFound] / [chaptersFound] tick up as the enrichment pipeline
+     * finishes each book (the structural pass emits the initial book count once the
+     * tree walk completes; enrichment refines `chaptersFound` per book). [currentFolder]
+     * (when set) is the folder/title of the book currently being enriched and is
+     * surfaced by the in-library progress banner.
+     *
+     * Defaults of 0 / null keep the indeterminate-progress UX rendering correctly
+     * during the structural walk before any per-book numbers are available.
+     */
+    data class Running(
+        val booksFound: Int = 0,
+        val chaptersFound: Int = 0,
+        val currentFolder: String? = null,
+    ) : RescanState()
+
     data class Failed(val cause: Throwable) : RescanState()
 }
 

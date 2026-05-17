@@ -107,7 +107,7 @@ internal class AndroidLibraryRescanCoordinator(
     }
 
     private suspend fun runScan(force: Boolean) {
-        _state.value = RescanState.Running
+        _state.value = RescanState.Running()
         try {
             val roots = persistedUriPermissionStore.observeRoots().first()
 
@@ -156,7 +156,20 @@ internal class AndroidLibraryRescanCoordinator(
             }
 
             val structural = libraryScanner.scan(rootsToWalk)
-            val enriched = libraryScannerEnrichment.enrich(structural)
+            // Initial progress emission once the structural walk has settled — the user
+            // sees "N books, 0 chapters" while enrichment grinds through the file metadata.
+            _state.value = RescanState.Running(
+                booksFound = structural.books.size,
+                chaptersFound = 0,
+                currentFolder = null,
+            )
+            val enriched = libraryScannerEnrichment.enrich(structural) { booksDone, chaptersDone, folder ->
+                _state.value = RescanState.Running(
+                    booksFound = structural.books.size,
+                    chaptersFound = chaptersDone,
+                    currentFolder = folder,
+                )
+            }
             scanWriter.applyScan(enriched)
 
             // Persist new fingerprints for roots we successfully walked.

@@ -70,6 +70,10 @@
     <string name="library_grid_mode_toggle_to_grid_cd">Zur Rasteransicht wechseln</string>
     <string name="library_settings_cd">Einstellungen</string>
     <string name="library_fab_add_folder_cd">Ordner hinzufügen</string>
+    <!-- Issue-3 — Banner für Scanfortschritt am oberen Rand der Bibliothek. -->
+    <string name="library_scan_progress_running">Bibliothek wird eingelesen — %1$d Bücher, %2$d Kapitel</string>
+    <string name="library_scan_progress_complete_format">%1$d neue Bücher gefunden</string>
+    <string name="library_scan_progress_cd">Fortschritt des Bibliothek-Scans</string>
     <string name="library_cover_placeholder_cd">Platzhalter für Cover</string>
     <string name="library_book_unknown_author">Unbekannter Autor</string>
     <string name="library_sort_cd">Bücher sortieren</string>

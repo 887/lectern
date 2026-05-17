@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.eight87.whisperboy.R
 import com.eight87.whisperboy.data.library.FolderType
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
+import com.eight87.whisperboy.data.onboarding.OnboardingSettings
 import kotlinx.coroutines.launch
 
 /**
@@ -52,13 +53,23 @@ import kotlinx.coroutines.launch
  * tree picker drops them into a foreign system surface. A single CTA at
  * the bottom launches `OpenDocumentTree`; the result feeds the
  * [FolderTypeSheet] bottom sheet which writes the root + type to
- * [PersistedUriPermissionStore]. On success we push [onNext] (first-scan).
+ * [PersistedUriPermissionStore].
+ *
+ * **Issue-1 (onboarding loop) fix:** the moment the user confirms a root +
+ * [FolderType], we flip [OnboardingSettings.setCompleted] to `true` and call
+ * [onFinish] — onboarding is "configured", not "scanned to completion". The
+ * library screen renders its empty/skeleton state while the background scan
+ * runs (Voice / tonearmboy pattern). The retired
+ * `OnboardingFirstScanScreen` previously blocked onboarding on scan
+ * settling; if the user closed the app mid-scan, the flag never persisted
+ * and onboarding looped on every cold start.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingFolderPickerScreen(
     persistedUriPermissionStore: PersistedUriPermissionStore,
-    onNext: () -> Unit,
+    onboardingSettings: OnboardingSettings,
+    onFinish: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -113,8 +124,14 @@ fun OnboardingFolderPickerScreen(
             onSelect = { folderType ->
                 scope.launch {
                     persistedUriPermissionStore.addRoot(pending, folderType)
+                    // Issue-1 fix: persist the onboarding-completed flag the moment the
+                    // user has configured a root + FolderType. addRoot() suspends to
+                    // DataStore so the flag flip runs after the root write has landed;
+                    // a process death between addRoot and setCompleted simply re-enters
+                    // onboarding on the next launch, which is recoverable.
+                    onboardingSettings.setCompleted(true)
                     pendingUri = null
-                    onNext()
+                    onFinish()
                 }
             },
         )
