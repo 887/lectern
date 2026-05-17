@@ -5,7 +5,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -19,24 +19,9 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.eight87.whisperboy.playback.PlaybackUiState
-import com.eight87.whisperboy.ui.bookmark.BookmarkScreen
-import com.eight87.whisperboy.ui.coverart.SelectCoverFromInternet
-import com.eight87.whisperboy.ui.home.HomeScreen
-import com.eight87.whisperboy.ui.onboarding.OnboardingFirstScanScreen
-import com.eight87.whisperboy.ui.onboarding.OnboardingFolderPickerScreen
-import com.eight87.whisperboy.ui.onboarding.OnboardingPermissionsScreen
-import com.eight87.whisperboy.ui.onboarding.OnboardingWelcomeScreen
 import com.eight87.whisperboy.ui.playback.NowPlayingSheet
-import com.eight87.whisperboy.ui.settings.AboutScreen
-import com.eight87.whisperboy.ui.settings.LibraryGridModeDefaultScreen
-import com.eight87.whisperboy.ui.settings.LibraryScanFiltersScreen
-import com.eight87.whisperboy.ui.settings.LibrarySettingsScreen
-import com.eight87.whisperboy.ui.settings.LibrarySortDefaultScreen
-import com.eight87.whisperboy.ui.settings.LicensesScreen
-import com.eight87.whisperboy.ui.settings.PlaybackSettingsScreen
-import com.eight87.whisperboy.ui.settings.SettingsScreen
-import com.eight87.whisperboy.ui.settings.SleepTimerSettingsScreen
-import com.eight87.whisperboy.ui.settings.ThemeSettingsScreen
+import com.eight87.whisperboy.ui.routes.RouteScope
+import com.eight87.whisperboy.ui.routes.registerAllDestinations
 import kotlinx.coroutines.launch
 
 /**
@@ -52,25 +37,21 @@ import kotlinx.coroutines.launch
  * Sheet progress is owned here so the fast-ticking drag updates do not
  * propagate into the library's recomposition path (cold-start-perf C.1).
  *
- * **Phase L:** initial back-stack key is chosen from [OnboardingSettings.completed]:
+ * **Phase L:** initial back-stack key is chosen from [com.eight87.whisperboy.data.onboarding.OnboardingSettings].completed:
  *
  * - `null` (DataStore hasn't emitted yet on this cold start): render nothing —
  *   the Android 12+ system splash stays up until the first emission lands.
- *   Avoids a flash of either Home or Welcome on the wrong path. The DataStore
- *   emits its first value within a frame or two of subscription on every device
- *   we test on, so this is invisible in practice.
  * - `false`: start at `OnboardingWelcomeRoute`. Completion replaces the stack with `HomeRoute`.
  * - `true`: start directly at `HomeRoute`. Existing users never see onboarding.
+ *
+ * **R.E.2 – R.E.4:** per-destination `entry<XRoute>` blocks live in
+ * [com.eight87.whisperboy.ui.routes]; this file is just theme + scaffold +
+ * a single `entryProvider { registerAllDestinations(scope) }` dispatch.
  */
 @Composable
 fun WhisperboyApp() {
     val graph = (LocalContext.current.applicationContext as WhisperboyApplication).graph
 
-    // Wait for the onboarding flag to emit at least once before constructing the
-    // NavDisplay. `initialValue = null` distinguishes "still waiting" from the
-    // two real states (false / true). No splash composable of our own — the
-    // Android 12+ system splash is already on screen for the first frame; we
-    // simply don't replace it until we know where to send the user.
     val onboardingCompleted by graph.onboardingSettings.completed.collectAsStateWithLifecycle(initialValue = null)
     val initialKey: NavKey? = when (onboardingCompleted) {
         null -> null
@@ -80,25 +61,20 @@ fun WhisperboyApp() {
     if (initialKey == null) return
 
     val backStack = rememberNavBackStack(initialKey)
-    val scope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
 
     // Sheet progress 0 (collapsed, mini-player only) → 1 (full player).
-    // Not `rememberSaveable` — tonearmboy doesn't bother either; on process
-    // restart the sheet starts collapsed and the controller's persisted
-    // state re-emerges into the peek bar naturally.
     val sheetProgress = remember { Animatable(0f) }
-
-    val openSheet: () -> Unit = { scope.launch { sheetProgress.animateTo(1f) } }
-    val closeSheet: () -> Unit = { scope.launch { sheetProgress.animateTo(0f) } }
+    val openSheet: () -> Unit = { coroutineScope.launch { sheetProgress.animateTo(1f) } }
+    val closeSheet: () -> Unit = { coroutineScope.launch { sheetProgress.animateTo(0f) } }
 
     // Two-stage back: collapse the sheet first if it's open, otherwise the
-    // NavDisplay's own onBack pops the back stack (and exits on HomeRoute).
+    // NavDisplay's own onBack pops the back stack.
     BackHandler(enabled = sheetProgress.value > 0f) { closeSheet() }
 
     // When the mini-player peek is visible, pad the NavDisplay's bottom by the peek
     // height so library chrome (FAB, lists) doesn't sit underneath the peek bar.
-    // Matches tonearmboy's `libraryBottomPad` pattern. Keep in sync with
-    // `NowPlayingSheet.DEFAULT_PEEK_DP`.
     val playbackState by graph.nowPlayingState.state.collectAsStateWithLifecycle()
     val showMiniPlayer = playbackState is PlaybackUiState.Loaded
     val navDisplayBottomPad = if (showMiniPlayer) 80.dp else 0.dp
@@ -111,197 +87,26 @@ fun WhisperboyApp() {
         backStack.add(HomeRoute)
     }
 
+    val routeScope = RouteScope(
+        graph = graph,
+        backStack = backStack,
+        coroutineScope = coroutineScope,
+        snackbar = snackbar,
+        openSheet = openSheet,
+        finishOnboarding = finishOnboarding,
+    )
+
     Box(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize().padding(bottom = navDisplayBottomPad)) {
-        NavDisplay(
-            backStack = backStack,
-            onBack = { backStack.removeLastOrNull() },
-            entryProvider = entryProvider {
-                entry<OnboardingWelcomeRoute> {
-                    OnboardingWelcomeScreen(
-                        onGetStarted = { backStack.add(OnboardingPermissionsRoute) },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<OnboardingPermissionsRoute> {
-                    OnboardingPermissionsScreen(
-                        onNext = { backStack.add(OnboardingFolderPickerRoute) },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<OnboardingFolderPickerRoute> {
-                    OnboardingFolderPickerScreen(
-                        persistedUriPermissionStore = graph.persistedUriPermissionStore,
-                        onNext = { backStack.add(OnboardingFirstScanRoute) },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<OnboardingFirstScanRoute> {
-                    OnboardingFirstScanScreen(
-                        libraryRescanCoordinator = graph.libraryRescanCoordinator,
-                        bookSource = graph.bookSource,
-                        chapterSource = graph.chapterSource,
-                        onboardingSettings = graph.onboardingSettings,
-                        onFinish = finishOnboarding,
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<HomeRoute> {
-                    HomeScreen(
-                        persistedUriPermissionStore = graph.persistedUriPermissionStore,
-                        bookSource = graph.bookSource,
-                        libraryUiSettings = graph.libraryUiSettings,
-                        libraryRescanCoordinator = graph.libraryRescanCoordinator,
-                        onBookTap = { bookId ->
-                            scope.launch { graph.bookCommands.playBook(bookId) }
-                            openSheet()
-                        },
-                        onSettingsClick = { backStack.add(SettingsRoute) },
-                        onLibraryFoldersClick = { backStack.add(LibraryFoldersRoute) },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<SettingsRoute> {
-                    // Phase K.1 — settings root. Subcategory navigation
-                    // (Playback / Sleep timer / Theme) lands when K.2 /
-                    // K.3 / K.5 ship; the Library row navigates to the
-                    // Phase K.4 partial `LibraryFoldersRoute`, and a
-                    // "Rescan now" button sits inside the General card.
-                    SettingsScreen(
-                        libraryRescanCoordinator = graph.libraryRescanCoordinator,
-                        onBack = { backStack.removeLastOrNull() },
-                        onAboutClick = { backStack.add(AboutRoute) },
-                        onLibraryFoldersClick = { backStack.add(LibraryFoldersRoute) },
-                        onPlaybackClick = { backStack.add(PlaybackSettingsRoute) },
-                        onSleepTimerClick = { backStack.add(SleepTimerSettingsRoute) },
-                        onThemeClick = { backStack.add(ThemeSettingsRoute) },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<PlaybackSettingsRoute> {
-                    // Phase K.2 — playback defaults + seek seconds + equalizer launcher.
-                    PlaybackSettingsScreen(
-                        playbackSettings = graph.playbackSettings,
-                        onBack = { backStack.removeLastOrNull() },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<SleepTimerSettingsRoute> {
-                    // Phase K.3 — sleep-timer defaults + auto-arm window.
-                    SleepTimerSettingsScreen(
-                        sleepTimerSettings = graph.sleepTimerSettings,
-                        onBack = { backStack.removeLastOrNull() },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<ThemeSettingsRoute> {
-                    // Phase K.5 — theme mode + dynamic-color toggle.
-                    ThemeSettingsScreen(
-                        themeSettings = graph.themeSettings,
-                        onBack = { backStack.removeLastOrNull() },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<LibraryFoldersRoute> {
-                    // Phase K.4 — Library settings hub (folder list + add FAB +
-                    // three sub-screen rows). Route key kept as LibraryFoldersRoute
-                    // so persisted nav stacks survive the K.4 partial → full rename.
-                    LibrarySettingsScreen(
-                        persistedUriPermissionStore = graph.persistedUriPermissionStore,
-                        onBack = { backStack.removeLastOrNull() },
-                        onSortDefaultClick = { backStack.add(LibrarySortDefaultRoute) },
-                        onGridModeDefaultClick = { backStack.add(LibraryGridModeDefaultRoute) },
-                        onScanFiltersClick = { backStack.add(LibraryScanFiltersRoute) },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<LibrarySortDefaultRoute> {
-                    // Phase K.4 sub-screen — default sort radio group.
-                    LibrarySortDefaultScreen(
-                        libraryUiSettings = graph.libraryUiSettings,
-                        onBack = { backStack.removeLastOrNull() },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<LibraryGridModeDefaultRoute> {
-                    // Phase K.4 sub-screen — default grid mode radio group.
-                    LibraryGridModeDefaultScreen(
-                        libraryUiSettings = graph.libraryUiSettings,
-                        onBack = { backStack.removeLastOrNull() },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<LibraryScanFiltersRoute> {
-                    // Phase K.4 sub-screen — scan-filter checkboxes; toggling triggers
-                    // a forced rescan + snackbar.
-                    LibraryScanFiltersScreen(
-                        libraryScanFilterSettings = graph.libraryScanFilterSettings,
-                        libraryRescanCoordinator = graph.libraryRescanCoordinator,
-                        onBack = { backStack.removeLastOrNull() },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<AboutRoute> {
-                    // Phase K.6 — About sub-page.
-                    AboutScreen(
-                        onBack = { backStack.removeLastOrNull() },
-                        onLicensesClick = { backStack.add(LicensesRoute) },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<LicensesRoute> {
-                    // oss-licenses Phase B — Open-source licenses sub-page.
-                    LicensesScreen(
-                        onBack = { backStack.removeLastOrNull() },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<BookmarkRoute> { route ->
-                    // Phase H.1 — bookmark list for a single book. Tap on a row seeks the
-                    // active player to the bookmark, auto-resumes, and pops back so the user
-                    // lands inside the player resuming at the bookmark.
-                    BookmarkScreen(
-                        bookId = route.bookId,
-                        bookmarkSource = graph.bookmarkSource,
-                        chapterSource = graph.chapterSource,
-                        onBack = { backStack.removeLastOrNull() },
-                        onBookmarkSeek = { positionInBookMs ->
-                            scope.launch {
-                                graph.transportCommands.seekTo(positionInBookMs)
-                                graph.transportCommands.play()
-                            }
-                            backStack.removeLastOrNull()
-                            // Make sure the player surface is on screen for the seek to be
-                            // visible — the sheet may have been collapsed when the user opened
-                            // the bookmark list from a future deeplink.
-                            openSheet()
-                        },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                entry<CoverSearchRoute> { route ->
-                    // cover-art Phase B.7 — the per-book DuckDuckGo image-search surface.
-                    SelectCoverFromInternet(
-                        bookId = route.bookId,
-                        coverApi = graph.coverApi,
-                        bookSource = graph.bookSource,
-                        onClose = { backStack.removeLastOrNull() },
-                        modifier = Modifier.safeDrawingPadding(),
-                    )
-                }
-                // PlaybackRoute is intentionally NOT registered: the user-driven
-                // path through to the player goes via NowPlayingSheet (peek →
-                // expand), not via a nav-stack push. PlaybackRoute is retained
-                // in NavigationKeys.kt for future deeplinks (notification tap,
-                // Auto launch) which will hand off to the sheet animate-to-1f.
-            },
-        )
+            NavDisplay(
+                backStack = backStack,
+                onBack = { backStack.removeLastOrNull() },
+                entryProvider = entryProvider { registerAllDestinations(routeScope) },
+            )
         }
 
         // Overlay sheet — peek bar (mini-player) along the bottom, expands to
-        // the full PlaybackScreen as `sheetProgress` runs 0 → 1. Self-hides
-        // when no Loaded playback state; no slot reserved when nothing's
-        // playing.
+        // the full PlaybackScreen as `sheetProgress` runs 0 → 1.
         NowPlayingSheet(
             nowPlayingState = graph.nowPlayingState,
             transportCommands = graph.transportCommands,
