@@ -51,64 +51,22 @@ import kotlinx.serialization.Serializable
 @Serializable data object LicensesRoute : NavKey
 
 /**
- * Phase K.4 — Library settings hub. Pushed from Settings. Hosts the
- * configured folder roots (list + add FAB + remove) plus rows that
- * navigate to the three sub-screens: [LibrarySortDefaultRoute],
- * [LibraryGridModeDefaultRoute], [LibraryScanFiltersRoute].
- *
- * Route name preserved (was `LibraryFoldersRoute` in the K.4 partial)
- * so persisted nav stacks survive the rename — see the renamed
- * `LibrarySettingsScreen.kt` for the hub composable.
+ * Phase K.4 — Library folders sub-page. Pushed from Settings. Hosts the
+ * configured folder roots (list + add FAB + remove). The Library
+ * defaults (sort / grid mode / scan filters) used to live behind their
+ * own routes; with the catalog port they collapse into dialog pickers
+ * directly on the Settings root, so those routes are gone. The route
+ * name `LibraryFoldersRoute` is preserved so any persisted nav stack
+ * still resolves.
  */
 @Serializable data object LibraryFoldersRoute : NavKey
 
 /**
- * Phase K.4 sub-screen — Default sort. Radio group over [BookSortKey].
- * Reads/writes `LibraryUiSettings.sortKey` (same source of truth as the
- * library toolbar selection — no separate "default vs current").
+ * Settings search overlay. Owns a `TextField` + live-filtered result
+ * list across the entire `SettingsCatalog`. Pushed from the search bar
+ * at the top of `SettingsRoute`.
  */
-@Serializable data object LibrarySortDefaultRoute : NavKey
-
-/**
- * Phase K.4 sub-screen — Default grid mode. Radio group over [GridMode].
- * Reads/writes `LibraryUiSettings.gridMode` (same source of truth as
- * the library toolbar grid-toggle).
- */
-@Serializable data object LibraryGridModeDefaultRoute : NavKey
-
-/**
- * Phase K.4 sub-screen — Scan filters. Checkbox list of supported audio
- * extensions; toggles drive `LibraryScanFilterSettings.disabledExtensions`.
- * After a change, the screen calls
- * `libraryRescanCoordinator.requestRescan(force = true)` so the disabled
- * extension is excluded from the library on the next scan.
- */
-@Serializable data object LibraryScanFiltersRoute : NavKey
-
-/**
- * Phase K.5 — Theme sub-page. Pushed from Settings. Hosts the theme-mode
- * radio group (Light / Dark / Follow system) plus the dynamic-color
- * (Material You) toggle. Selection persists via [com.eight87.whisperboy.data.theme.ThemeSettings].
- */
-@Serializable data object ThemeSettingsRoute : NavKey
-
-/**
- * Phase K.2 — Playback sub-page. Pushed from Settings. Hosts the
- * [com.eight87.whisperboy.data.playback.PlaybackSettings] knobs: per-book
- * defaults (speed / skip silence / gain), seek seconds (rewind / forward /
- * auto-rewind radio groups), and a system equalizer launcher row that
- * fires `AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL`.
- */
-@Serializable data object PlaybackSettingsRoute : NavKey
-
-/**
- * Phase K.3 — Sleep timer sub-page. Pushed from Settings. Hosts the four
- * [com.eight87.whisperboy.data.playback.SleepTimerSettings] knobs: default
- * duration (5/10/15/30/45/60 min radio group), fade-out duration (slider),
- * shake-to-resume (toggle), and the auto-arm window (two `LocalTime`
- * chips + clear button).
- */
-@Serializable data object SleepTimerSettingsRoute : NavKey
+@Serializable data object SettingsSearchRoute : NavKey
 
 /**
  * Phase L — first-run onboarding flow. Three steps, in order:

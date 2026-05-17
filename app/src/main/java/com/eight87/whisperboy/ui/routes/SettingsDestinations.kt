@@ -7,69 +7,49 @@ import androidx.navigation3.runtime.NavKey
 import com.eight87.whisperboy.AboutRoute
 import com.eight87.whisperboy.LibraryFoldersRoute
 import com.eight87.whisperboy.LicensesRoute
-import com.eight87.whisperboy.PlaybackSettingsRoute
 import com.eight87.whisperboy.SettingsRoute
-import com.eight87.whisperboy.SleepTimerSettingsRoute
-import com.eight87.whisperboy.ThemeSettingsRoute
+import com.eight87.whisperboy.SettingsSearchRoute
 import com.eight87.whisperboy.ui.settings.AboutScreen
 import com.eight87.whisperboy.ui.settings.LicensesScreen
-import com.eight87.whisperboy.ui.settings.PlaybackSettingsScreen
 import com.eight87.whisperboy.ui.settings.SettingsScreen
-import com.eight87.whisperboy.ui.settings.SleepTimerSettingsScreen
-import com.eight87.whisperboy.ui.settings.ThemeSettingsScreen
+import com.eight87.whisperboy.ui.settings.catalog.SettingsSearchScreen
 
 /**
- * Phase K — Settings hub + leaf sub-pages (Playback, Sleep timer, Theme,
- * About, Licenses). The Library sub-tree lives in `LibraryDestinations` to
- * keep this file scoped to non-library settings.
+ * Phase K — Settings hub + leaf sub-pages (About, Licenses). Theme /
+ * Playback / Sleep timer / Library defaults all live as dialog pickers
+ * inside the [SettingsScreen] catalog now, so they no longer have
+ * their own routes. The Library folders sub-tree lives in
+ * `LibraryDestinations` to keep this file scoped.
  */
 @Suppress("NOTHING_TO_INLINE") internal inline fun EntryProviderScope<NavKey>.registerSettingsEntries(scope: RouteScope) {
     val graph = scope.graph
     val backStack = scope.backStack
 
     entry<SettingsRoute> {
-        // Phase K.1 — settings root. Subcategory navigation
-        // (Playback / Sleep timer / Theme) lands when K.2 /
-        // K.3 / K.5 ship; the Library row navigates to the
-        // Phase K.4 partial `LibraryFoldersRoute`, and a
-        // "Rescan now" button sits inside the General card.
         SettingsScreen(
+            themeSettings = graph.themeSettings,
+            playbackSettings = graph.playbackSettings,
+            sleepTimerSettings = graph.sleepTimerSettings,
+            libraryUiSettings = graph.libraryUiSettings,
+            libraryScanFilterSettings = graph.libraryScanFilterSettings,
             libraryRescanCoordinator = graph.libraryRescanCoordinator,
             onBack = { backStack.removeLastOrNull() },
-            onAboutClick = { backStack.add(AboutRoute) },
             onLibraryFoldersClick = { backStack.add(LibraryFoldersRoute) },
-            onPlaybackClick = { backStack.add(PlaybackSettingsRoute) },
-            onSleepTimerClick = { backStack.add(SleepTimerSettingsRoute) },
-            onThemeClick = { backStack.add(ThemeSettingsRoute) },
+            onAboutClick = { backStack.add(AboutRoute) },
+            onLicensesClick = { backStack.add(LicensesRoute) },
+            onOpenSearch = { backStack.add(SettingsSearchRoute) },
             modifier = Modifier.safeDrawingPadding(),
         )
     }
-    entry<PlaybackSettingsRoute> {
-        // Phase K.2 — playback defaults + seek seconds + equalizer launcher.
-        PlaybackSettingsScreen(
-            playbackSettings = graph.playbackSettings,
+    entry<SettingsSearchRoute> {
+        SettingsSearchScreen(
             onBack = { backStack.removeLastOrNull() },
-            modifier = Modifier.safeDrawingPadding(),
-        )
-    }
-    entry<SleepTimerSettingsRoute> {
-        // Phase K.3 — sleep-timer defaults + auto-arm window.
-        SleepTimerSettingsScreen(
-            sleepTimerSettings = graph.sleepTimerSettings,
-            onBack = { backStack.removeLastOrNull() },
-            modifier = Modifier.safeDrawingPadding(),
-        )
-    }
-    entry<ThemeSettingsRoute> {
-        // Phase K.5 — theme mode + dynamic-color toggle.
-        ThemeSettingsScreen(
-            themeSettings = graph.themeSettings,
-            onBack = { backStack.removeLastOrNull() },
-            modifier = Modifier.safeDrawingPadding(),
+            // Selecting a search result pops back to the Settings root.
+            // Catalog is flat there — every entry lives on the root surface.
+            onResult = { _ -> backStack.removeLastOrNull() },
         )
     }
     entry<AboutRoute> {
-        // Phase K.6 — About sub-page.
         AboutScreen(
             onBack = { backStack.removeLastOrNull() },
             onLicensesClick = { backStack.add(LicensesRoute) },
@@ -77,7 +57,6 @@ import com.eight87.whisperboy.ui.settings.ThemeSettingsScreen
         )
     }
     entry<LicensesRoute> {
-        // oss-licenses Phase B — Open-source licenses sub-page.
         LicensesScreen(
             onBack = { backStack.removeLastOrNull() },
             modifier = Modifier.safeDrawingPadding(),

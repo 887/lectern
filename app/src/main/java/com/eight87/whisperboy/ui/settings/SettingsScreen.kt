@@ -1,85 +1,90 @@
 package com.eight87.whisperboy.ui.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.PlayCircle
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
-import com.eight87.whisperboy.data.library.RescanState
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import com.eight87.whisperboy.R
-import com.eight87.whisperboy.theme.CategoryAccent
-import com.eight87.whisperboy.theme.PlaybackAccent
-import com.eight87.whisperboy.theme.accentFor
-import kotlinx.coroutines.launch
+import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
+import com.eight87.whisperboy.data.library.LibraryScanFilterSettings
+import com.eight87.whisperboy.data.library.LibraryUiSettings
+import com.eight87.whisperboy.data.playback.PlaybackSettings
+import com.eight87.whisperboy.data.playback.SleepTimerSettings
+import com.eight87.whisperboy.data.theme.ThemeSettings
+import com.eight87.whisperboy.ui.settings.catalog.RenderSection
+import com.eight87.whisperboy.ui.settings.catalog.Section
+import com.eight87.whisperboy.ui.settings.catalog.SettingsBindings
+import com.eight87.whisperboy.ui.settings.catalog.SettingsDimens
+import com.eight87.whisperboy.ui.settings.catalog.SettingsSearchBar
 
 /**
- * Phase K.1 scaffold — entry surface for settings.
+ * Settings root surface (Phase K.1 → ported to tonearmboy's catalog
+ * architecture).
  *
- * Renders two grouped cards:
+ * Top chrome:
  *
- *   - "General" card: Playback / Sleep timer / Library / Theme rows. The
- *     subcategory screens for these land in K.2 / K.3 / K.4 / K.5; until
- *     then taps show a "Coming soon" snackbar.
- *   - "About" card: the About row, which navigates to [AboutScreen].
+ *   - Back arrow + "Settings" title in the [TopAppBar].
+ *   - Pill-shaped global search bar pinned just under it.
+ *   - Five grouped cards (Appearance / Behaviour / Sleep timer /
+ *     Library / About), each with a `primary`-coloured section header.
  *
- * Surface tier ladder follows the M3E plan: page background uses
- * `MaterialTheme.colorScheme.surface`, cards use `surfaceContainerHigh`.
- *
- * The row layout (icon + title + subtitle, full-width clickable) is
- * deliberately whisperboy-fresh rather than ported from tonearmboy's
- * catalog infrastructure — that catalog brings sub-page sharing,
- * search, accent derivation and several other affordances that
- * whisperboy doesn't need yet. A Phase C inch from `m3-expressive.md`
- * can later wrap the leading icon in a `CategoryAccent` coloured
- * circular avatar without restructuring rows.
+ * Every row is one entry in `SettingsCatalog`; the per-section
+ * renderer ([RenderSection]) does the wiring between catalog id ↔
+ * data facet ↔ trailing widget ↔ dialog picker. Sliders, radios,
+ * multi-selects and switches all live in dialog pickers — there
+ * are no per-knob sub-page screens anymore for Theme / Playback /
+ * Sleep timer / Library defaults. The three surfaces that DO keep
+ * a sub-page (Library folders, About, Licenses) get a Navigate-shape
+ * row that fires the matching `on…` callback.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    themeSettings: ThemeSettings,
+    playbackSettings: PlaybackSettings,
+    sleepTimerSettings: SleepTimerSettings,
+    libraryUiSettings: LibraryUiSettings,
+    libraryScanFilterSettings: LibraryScanFilterSettings,
     libraryRescanCoordinator: LibraryRescanCoordinator,
     onBack: () -> Unit,
-    onAboutClick: () -> Unit,
     onLibraryFoldersClick: () -> Unit,
-    onPlaybackClick: () -> Unit,
-    onSleepTimerClick: () -> Unit,
-    onThemeClick: () -> Unit,
+    onAboutClick: () -> Unit,
+    onLicensesClick: () -> Unit,
+    onOpenSearch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val rescanState by libraryRescanCoordinator.state.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val bindings = SettingsBindings(
+        themeSettings = themeSettings,
+        playbackSettings = playbackSettings,
+        sleepTimerSettings = sleepTimerSettings,
+        libraryUiSettings = libraryUiSettings,
+        libraryScanFilterSettings = libraryScanFilterSettings,
+        libraryRescanCoordinator = libraryRescanCoordinator,
+        onLibraryFolders = onLibraryFoldersClick,
+        onAbout = onAboutClick,
+        onLicenses = onLicensesClick,
+        snackbarHostState = snackbarHostState,
+    )
 
     Scaffold(
         modifier = modifier,
@@ -96,140 +101,29 @@ fun SettingsScreen(
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .semantics { testTag = "settings_screen" },
+            verticalArrangement = Arrangement.spacedBy(SettingsDimens.CardSpacing),
         ) {
-            SettingsCard {
-                SettingsCategoryRow(
-                    id = "playback",
-                    icon = Icons.Filled.PlayCircle,
-                    title = stringResource(R.string.settings_category_playback),
-                    subtitle = stringResource(R.string.settings_category_playback_subtitle),
-                    onClick = onPlaybackClick,
-                )
-                SettingsCategoryRow(
-                    id = "sleep",
-                    icon = Icons.Filled.Bedtime,
-                    title = stringResource(R.string.settings_category_sleep_timer),
-                    subtitle = stringResource(R.string.settings_category_sleep_timer_subtitle),
-                    onClick = onSleepTimerClick,
-                )
-                SettingsCategoryRow(
-                    id = "library",
-                    icon = Icons.Filled.FolderOpen,
-                    title = stringResource(R.string.settings_category_library),
-                    subtitle = stringResource(R.string.settings_category_library_subtitle),
-                    onClick = onLibraryFoldersClick,
-                )
-                // "Rescan now" — Phase K.4 partial. Sits inside the General card under
-                // the Library row so it's discoverable next to folder management. Disabled
-                // while a scan is in flight (RescanState.Running).
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    Button(
-                        // Phase P.8 — Settings "Rescan now" forces a full walk, bypassing
-                        // the fingerprint short-circuit so the user can demand a re-scan even
-                        // when the per-root `(docCount, maxMtime)` is unchanged.
-                        onClick = { libraryRescanCoordinator.requestRescan(force = true) },
-                        enabled = rescanState !is RescanState.Running,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(R.string.settings_rescan_now))
-                    }
-                }
-                SettingsCategoryRow(
-                    id = "theme",
-                    icon = Icons.Filled.Palette,
-                    title = stringResource(R.string.settings_category_theme),
-                    subtitle = stringResource(R.string.settings_category_theme_subtitle),
-                    onClick = onThemeClick,
-                )
-            }
-
-            SettingsCard {
-                SettingsCategoryRow(
-                    id = "about",
-                    icon = Icons.Filled.Info,
-                    title = stringResource(R.string.settings_category_about),
-                    subtitle = stringResource(R.string.settings_category_about_subtitle),
-                    onClick = onAboutClick,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsCard(content: @Composable () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(vertical = 4.dp),
-            content = { content() },
-        )
-    }
-}
-
-/**
- * One settings category row. Leading icon renders through
- * [SettingsCategoryIcon] (m3-expressive Phase C) — a 40-dp coloured
- * circle holding a filled glyph.
- *
- * Accent resolution follows gotcha #3 in `docs/plans/m3-expressive.md`:
- * an explicit [accent] wins; otherwise we derive from [id] via
- * `accentFor`; otherwise we fall back to [PlaybackAccent] so a row
- * without either still renders coloured rather than going monochrome.
- */
-@Composable
-private fun SettingsCategoryRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-    id: String? = null,
-    accent: CategoryAccent? = null,
-) {
-    val resolvedAccent = accent ?: id?.let { accentFor(it) } ?: PlaybackAccent
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SettingsCategoryIcon(
-            icon = icon,
-            accent = resolvedAccent,
-            contentDescription = null,
-        )
-        Spacer(Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
+            SettingsSearchBar(
+                onOpen = onOpenSearch,
+                modifier = Modifier.padding(
+                    start = SettingsDimens.PagePadding,
+                    end = SettingsDimens.PagePadding,
+                    top = 12.dp,
+                ),
             )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            RenderSection(Section.Appearance, bindings)
+            RenderSection(Section.Behaviour, bindings)
+            RenderSection(Section.SleepTimer, bindings)
+            RenderSection(Section.Library, bindings)
+            RenderSection(Section.About, bindings)
         }
     }
 }

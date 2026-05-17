@@ -202,6 +202,58 @@
     <string name="library_folders_back_cd">Zurück</string>
     <string name="library_folders_fab_add_cd">Ordner hinzufügen</string>
 
+    <!-- settings catalog port (tonearmboy shape): section headers, search bar, dialog labels, per-row catalog labels + subtitles. -->
+    <string name="settings_section_appearance">Darstellung</string>
+    <string name="settings_section_behaviour">Verhalten</string>
+    <string name="settings_section_sleep_timer">Sleep-Timer</string>
+    <string name="settings_section_library">Bibliothek</string>
+    <string name="settings_section_about">Über</string>
+
+    <string name="settings_search_placeholder">Einstellungen durchsuchen</string>
+    <string name="settings_search_cd_search">Suchen</string>
+    <string name="settings_search_cd_back">Zurück</string>
+    <string name="settings_search_cd_clear">Suche löschen</string>
+    <string name="settings_search_empty_hint">Tippen, um Einstellungen zu durchsuchen.</string>
+    <string name="settings_search_no_matches">Keine Einstellung entspricht \"%1$s\".</string>
+
+    <string name="settings_dialog_close">Schließen</string>
+    <string name="settings_dialog_cancel">Abbrechen</string>
+    <string name="settings_dialog_ok">OK</string>
+    <string name="settings_dialog_reset">Zurücksetzen</string>
+
+    <string name="settings_catalog_theme_mode_label">Design</string>
+    <string name="settings_catalog_dynamic_color_label">Dynamische Farben</string>
+    <string name="settings_catalog_dynamic_color_subtitle">Hintergrundfarben aus Material You verwenden.</string>
+    <string name="settings_catalog_custom_base_seed_label">Eigene Basisfarbe</string>
+    <string name="settings_catalog_custom_chrome_tint_label">Eigene Spielerfarbe</string>
+    <string name="settings_catalog_default_speed_label">Standard-Geschwindigkeit</string>
+    <string name="settings_catalog_default_skip_silence_label">Stille überspringen</string>
+    <string name="settings_catalog_default_skip_silence_subtitle">Stille Passagen während der Wiedergabe überspringen.</string>
+    <string name="settings_catalog_default_gain_label">Standard-Lautstärke</string>
+    <string name="settings_catalog_rewind_seconds_label">Zurückspul-Sekunden</string>
+    <string name="settings_catalog_forward_seconds_label">Vorspul-Sekunden</string>
+    <string name="settings_catalog_auto_rewind_seconds_label">Automatisches Zurückspulen</string>
+    <string name="settings_catalog_auto_rewind_off">Aus</string>
+    <string name="settings_catalog_system_equalizer_label">System-Equalizer</string>
+    <string name="settings_catalog_system_equalizer_subtitle">Geräte-Equalizer öffnen.</string>
+    <string name="settings_catalog_sleep_default_duration_label">Standard-Dauer</string>
+    <string name="settings_catalog_sleep_fade_out_label">Ausblenden</string>
+    <string name="settings_catalog_sleep_shake_to_resume_label">Schütteln zum Fortsetzen</string>
+    <string name="settings_catalog_sleep_shake_to_resume_subtitle">Telefon aufheben, um nach dem Sleep-Timer fortzusetzen.</string>
+    <string name="settings_catalog_sleep_auto_arm_window_label">Automatischer Zeitraum</string>
+    <string name="settings_catalog_library_folders_label">Ordner verwalten</string>
+    <string name="settings_catalog_library_folders_subtitle">Hörbuch-Ordner, die die Bibliothek einliest.</string>
+    <string name="settings_catalog_library_sort_label">Standard-Sortierung</string>
+    <string name="settings_catalog_library_grid_mode_label">Standard-Raster</string>
+    <string name="settings_catalog_library_scan_filters_label">Scan-Filter</string>
+    <string name="settings_catalog_scan_filters_count">%1$d von %2$d Erweiterungen aktiv</string>
+    <string name="settings_catalog_library_rescan_label">Jetzt neu einlesen</string>
+    <string name="settings_catalog_library_rescan_subtitle">Vollständigen Neu-Scan der Bibliothek erzwingen.</string>
+    <string name="settings_catalog_about_label">Über</string>
+    <string name="settings_catalog_about_subtitle">Version, Lizenz, Mitwirkende.</string>
+    <string name="settings_catalog_licenses_label">Open-Source-Lizenzen</string>
+    <string name="settings_catalog_licenses_subtitle">Drittanbieter-Bibliotheken und ihre Lizenzen.</string>
+
     <!-- settings_library_ — Bibliotheks-Einstellungen und Unterseiten -->
     <string name="settings_library_hub_title">Bibliothek</string>
     <string name="settings_library_folders_section">Ordner</string>

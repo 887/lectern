@@ -223,6 +223,58 @@
     <string name="library_folders_back_cd">Back</string>
     <string name="library_folders_fab_add_cd">Add folder</string>
 
+    <!-- settings catalog port (tonearmboy shape): section headers, search bar, dialog labels, per-row catalog labels + subtitles. -->
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_behaviour">Behaviour</string>
+    <string name="settings_section_sleep_timer">Sleep timer</string>
+    <string name="settings_section_library">Library</string>
+    <string name="settings_section_about">About</string>
+
+    <string name="settings_search_placeholder">Search settings</string>
+    <string name="settings_search_cd_search">Search</string>
+    <string name="settings_search_cd_back">Back</string>
+    <string name="settings_search_cd_clear">Clear search</string>
+    <string name="settings_search_empty_hint">Start typing to search settings.</string>
+    <string name="settings_search_no_matches">No settings match \"%1$s\".</string>
+
+    <string name="settings_dialog_close">Close</string>
+    <string name="settings_dialog_cancel">Cancel</string>
+    <string name="settings_dialog_ok">OK</string>
+    <string name="settings_dialog_reset">Reset</string>
+
+    <string name="settings_catalog_theme_mode_label">Theme</string>
+    <string name="settings_catalog_dynamic_color_label">Dynamic color</string>
+    <string name="settings_catalog_dynamic_color_subtitle">Use Material You wallpaper colours.</string>
+    <string name="settings_catalog_custom_base_seed_label">Custom base color</string>
+    <string name="settings_catalog_custom_chrome_tint_label">Custom player tint</string>
+    <string name="settings_catalog_default_speed_label">Default speed</string>
+    <string name="settings_catalog_default_skip_silence_label">Skip silence</string>
+    <string name="settings_catalog_default_skip_silence_subtitle">Skip quiet pauses during playback.</string>
+    <string name="settings_catalog_default_gain_label">Default volume gain</string>
+    <string name="settings_catalog_rewind_seconds_label">Rewind seconds</string>
+    <string name="settings_catalog_forward_seconds_label">Forward seconds</string>
+    <string name="settings_catalog_auto_rewind_seconds_label">Auto-rewind on resume</string>
+    <string name="settings_catalog_auto_rewind_off">Off</string>
+    <string name="settings_catalog_system_equalizer_label">System equalizer</string>
+    <string name="settings_catalog_system_equalizer_subtitle">Open the device equalizer.</string>
+    <string name="settings_catalog_sleep_default_duration_label">Default duration</string>
+    <string name="settings_catalog_sleep_fade_out_label">Fade-out</string>
+    <string name="settings_catalog_sleep_shake_to_resume_label">Shake to resume</string>
+    <string name="settings_catalog_sleep_shake_to_resume_subtitle">Pick up the phone to resume after sleep.</string>
+    <string name="settings_catalog_sleep_auto_arm_window_label">Auto-arm window</string>
+    <string name="settings_catalog_library_folders_label">Manage folders</string>
+    <string name="settings_catalog_library_folders_subtitle">Audiobook folders the library scans.</string>
+    <string name="settings_catalog_library_sort_label">Default sort</string>
+    <string name="settings_catalog_library_grid_mode_label">Default grid mode</string>
+    <string name="settings_catalog_library_scan_filters_label">Scan filters</string>
+    <string name="settings_catalog_scan_filters_count">%1$d of %2$d extensions enabled</string>
+    <string name="settings_catalog_library_rescan_label">Rescan now</string>
+    <string name="settings_catalog_library_rescan_subtitle">Force a full library rescan.</string>
+    <string name="settings_catalog_about_label">About</string>
+    <string name="settings_catalog_about_subtitle">Version, license, credits.</string>
+    <string name="settings_catalog_licenses_label">Open-source licenses</string>
+    <string name="settings_catalog_licenses_subtitle">Third-party libraries and their licenses.</string>
+
     <!-- settings_library_ — Library settings hub + K.4 sub-screens (Phase K.4 sub-screens) -->
     <string name="settings_library_hub_title">Library</string>
     <string name="settings_library_folders_section">Folders</string>

@@ -3,7 +3,6 @@ package com.eight87.whisperboy.ui.settings
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,30 +50,18 @@ import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
 import kotlinx.coroutines.launch
 
 /**
- * Phase K.4 — Library settings hub.
+ * Library folders sub-page.
  *
- * Promotes the K.4 partial "Library folders" screen into the Library settings hub. Top
- * section keeps the configured-roots list + add FAB (the partial's job). Below sits a
- * card of three navigation rows pointing at the sub-screens that complete K.4:
- *
- *   - Default sort → [LibrarySortDefaultScreen]
- *   - Default grid mode → [LibraryGridModeDefaultScreen]
- *   - Scan filters → [LibraryScanFiltersScreen]
- *
- * The route key is still `LibraryFoldersRoute` so any persisted nav stack survives the
- * upgrade — only the screen file + composable name changed.
- *
- * Surface tier ladder matches [SettingsScreen] / [PlaybackSettingsScreen]: page bg uses
- * `surface`, cards use `surfaceContainerHigh`, no elevation.
+ * Lists the configured root folders + add FAB + remove button. The
+ * Library defaults (sort / grid mode / scan filters) that used to
+ * share this hub now live as dialog pickers on the Settings root
+ * (catalog port).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibrarySettingsScreen(
     persistedUriPermissionStore: PersistedUriPermissionStore,
     onBack: () -> Unit,
-    onSortDefaultClick: () -> Unit,
-    onGridModeDefaultClick: () -> Unit,
-    onScanFiltersClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val roots by persistedUriPermissionStore.observeRoots()
@@ -116,9 +103,6 @@ fun LibrarySettingsScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                item("folders-header") {
-                    SectionLabel(stringResource(R.string.settings_library_folders_section))
-                }
                 if (roots.isEmpty()) {
                     item("folders-empty") {
                         Card(
@@ -154,38 +138,6 @@ fun LibrarySettingsScreen(
                         }
                     }
                 }
-
-                item("defaults-spacer") { Spacer(Modifier.height(8.dp)) }
-                item("defaults-header") {
-                    SectionLabel(stringResource(R.string.settings_library_defaults_section))
-                }
-                item("defaults-card") {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    ) {
-                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                            HubNavRow(
-                                title = stringResource(R.string.settings_library_sort_default_title),
-                                subtitle = stringResource(R.string.settings_library_sort_default_subtitle),
-                                onClick = onSortDefaultClick,
-                            )
-                            HubNavRow(
-                                title = stringResource(R.string.settings_library_grid_default_title),
-                                subtitle = stringResource(R.string.settings_library_grid_default_subtitle),
-                                onClick = onGridModeDefaultClick,
-                            )
-                            HubNavRow(
-                                title = stringResource(R.string.settings_library_scan_filters_title),
-                                subtitle = stringResource(R.string.settings_library_scan_filters_subtitle),
-                                onClick = onScanFiltersClick,
-                            )
-                        }
-                    }
-                }
             }
         }
     }
@@ -201,47 +153,6 @@ fun LibrarySettingsScreen(
                 }
             },
         )
-    }
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontWeight = FontWeight.Medium,
-        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
-    )
-}
-
-@Composable
-private fun HubNavRow(
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 
