@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import com.eight87.whisperboy.data.library.RescanState
+import com.eight87.whisperboy.data.library.ScanPhase
 import com.eight87.whisperboy.ui.settings.TestApplication
 import org.junit.Rule
 import org.junit.Test
@@ -31,21 +32,52 @@ class LibraryScanProgressBannerTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun `renders content description + counts string for Running`() {
+    fun `renders Discovering phase with cumulative counts`() {
         composeRule.setContent {
-            LibraryScanProgressBanner(running = RescanState.Running(booksFound = 3, chaptersFound = 12))
+            LibraryScanProgressBanner(
+                running = RescanState.Running(
+                    booksFound = 3,
+                    chaptersFound = 12,
+                    phase = ScanPhase.Discovering,
+                ),
+            )
         }
         composeRule.onNodeWithContentDescription("Library scan progress").assertExists()
-        // The English string includes "3 books, 12 chapters" — assert substring presence.
-        composeRule.onNodeWithText("Scanning library — 3 books, 12 chapters").assertExists()
+        composeRule.onNodeWithText("Discovering — 3 books, 12 chapters").assertExists()
     }
 
     @Test
-    fun `renders with zero counts during structural pass`() {
+    fun `renders Discovering with zero counts at the very start of a scan`() {
         composeRule.setContent {
             LibraryScanProgressBanner(running = RescanState.Running())
         }
-        composeRule.onNodeWithText("Scanning library — 0 books, 0 chapters").assertExists()
+        composeRule.onNodeWithText("Discovering — 0 books, 0 chapters").assertExists()
+    }
+
+    @Test
+    fun `renders Analyzing phase as analyzed-over-total when totals are known`() {
+        composeRule.setContent {
+            LibraryScanProgressBanner(
+                running = RescanState.Running(
+                    booksFound = 5,
+                    chaptersFound = 100,
+                    phase = ScanPhase.Analyzing,
+                    analyzedChapters = 42,
+                    totalChapters = 100,
+                ),
+            )
+        }
+        composeRule.onNodeWithText("Analyzing — 42 / 100 chapters").assertExists()
+    }
+
+    @Test
+    fun `renders Writing phase with the updating-library string`() {
+        composeRule.setContent {
+            LibraryScanProgressBanner(
+                running = RescanState.Running(phase = ScanPhase.Writing),
+            )
+        }
+        composeRule.onNodeWithText("Updating library…").assertExists()
     }
 
     @Test

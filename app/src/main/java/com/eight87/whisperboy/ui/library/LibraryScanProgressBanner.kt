@@ -18,15 +18,23 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.eight87.whisperboy.R
 import com.eight87.whisperboy.data.library.RescanState
+import com.eight87.whisperboy.data.library.ScanPhase
 
 /**
  * Issue-3 — in-library scan progress banner. Renders at the top of [LibraryScreen]
- * beneath the TopAppBar while [RescanState.Running] is the active state. Two rows:
+ * beneath the TopAppBar while [RescanState.Running] is the active state.
  *
- * - Status: "Scanning library — N books, M chapters" (locale-aware).
- * - Indeterminate `LinearProgressIndicator` because the scanner doesn't know totals
- *   up front (the structural pass settles before per-file enrichment starts ticking
- *   chapter counts).
+ * Bug 1 fix: the status string is now phase-aware. Discovering shows the running
+ * books/chapters tally (ticks during the SAF tree walk); Analyzing shows
+ * `analyzed / total chapters` (ticks during per-file metadata reads); Writing shows
+ * a brief "Updating library…" string while the Room transaction commits.
+ *
+ * Bug 2 fix: the indeterminate progress indicator was visually frozen because the
+ * default M3 colors on a `surfaceContainerHigh` card made the moving segment blend
+ * into the track. We explicitly set `color = primary` / `trackColor = surfaceVariant`
+ * and bump the height to 6dp so the wave is unmistakably alive. When totals are known
+ * during the Analyzing phase the indicator switches to determinate progress, which is
+ * the most informative signal during the slow per-file metadata read.
  *
  * Visibility is decided by the caller — the composable itself renders unconditionally
  * for the running state passed in. Caller hides it on [RescanState.Idle] /
@@ -54,16 +62,45 @@ fun LibraryScanProgressBanner(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            Text(
-                text = stringResource(
-                    R.string.library_scan_progress_running,
+            val text = when (running.phase) {
+                ScanPhase.Discovering -> stringResource(
+                    R.string.library_scan_progress_discovering,
                     running.booksFound,
                     running.chaptersFound,
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-            )
+                )
+                ScanPhase.Analyzing -> stringResource(
+                    R.string.library_scan_progress_analyzing,
+                    running.analyzedChapters,
+                    running.totalChapters,
+                )
+                ScanPhase.Writing -> stringResource(R.string.library_scan_progress_writing)
+            }
+            Text(text = text, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(8.dp))
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            val color = MaterialTheme.colorScheme.primary
+            val trackColor = MaterialTheme.colorScheme.surfaceVariant
+            val barModifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+            // Determinate bar only during Analyzing once totals are known — that's the slow
+            // phase the user actually wants a percentage for. Discovering / Writing fall back
+            // to indeterminate because their durations aren't predictable up front.
+            if (running.phase == ScanPhase.Analyzing && running.totalChapters > 0) {
+                val ratio = (running.analyzedChapters.toFloat() / running.totalChapters.toFloat())
+                    .coerceIn(0f, 1f)
+                LinearProgressIndicator(
+                    progress = { ratio },
+                    modifier = barModifier,
+                    color = color,
+                    trackColor = trackColor,
+                )
+            } else {
+                LinearProgressIndicator(
+                    modifier = barModifier,
+                    color = color,
+                    trackColor = trackColor,
+                )
+            }
         }
     }
 }

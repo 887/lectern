@@ -42,10 +42,30 @@ class SafLibraryScanner(
     private val disabledExtensionsProvider: () -> Set<String> = { emptySet() },
 ) : LibraryScanner {
 
-    override suspend fun scan(roots: List<LibraryRoot>): ScanSnapshot = withContext(Dispatchers.IO) {
+    override suspend fun scan(
+        roots: List<LibraryRoot>,
+        onProgress: suspend (booksFound: Int, chaptersFound: Int, currentFolder: String?) -> Unit,
+    ): ScanSnapshot = withContext(Dispatchers.IO) {
         val disabled = disabledExtensionsProvider()
-        val books = roots.flatMap { scanRoot(it, disabled) }
-        ScanSnapshot(books)
+        val accumulated = mutableListOf<ScannedBook>()
+        // Mutable cumulative counters threaded into the per-folder helper so callers see the
+        // banner counts tick up *as* the SAF tree is walked — not only once the whole structural
+        // pass settles. This is Bug 1's fix: the old `scan` only returned at the end of the
+        // traversal, leaving the banner frozen at 0/0 for minutes on a large SD card.
+        var booksFound = 0
+        var chaptersFound = 0
+        suspend fun emit(currentFolder: String?) {
+            runCatching { onProgress(booksFound, chaptersFound, currentFolder) }
+        }
+        for (root in roots) {
+            scanRoot(root, disabled) { discovered, currentFolder ->
+                accumulated += discovered
+                booksFound += discovered.size
+                chaptersFound += discovered.sumOf { it.chapters.size }
+                emit(currentFolder)
+            }
+        }
+        ScanSnapshot(accumulated)
     }
 
     /**
@@ -100,42 +120,62 @@ class SafLibraryScanner(
         }
     }
 
-    private fun scanRoot(root: LibraryRoot, disabled: Set<String> = emptySet()): List<ScannedBook> {
-        val tree = DocumentFile.fromTreeUri(context, root.treeUri) ?: return emptyList()
+    /**
+     * Per-root walker. [onBookDiscovered] is invoked synchronously each time a [ScannedBook]
+     * is produced, paired with a human-readable "current folder" hint (the folder/file name
+     * currently being scanned). The hint is what the in-library progress banner surfaces so
+     * the user sees motion during the otherwise opaque SAF traversal.
+     */
+    private suspend fun scanRoot(
+        root: LibraryRoot,
+        disabled: Set<String> = emptySet(),
+        onBookDiscovered: suspend (books: List<ScannedBook>, currentFolder: String?) -> Unit = { _, _ -> },
+    ) {
+        val tree = DocumentFile.fromTreeUri(context, root.treeUri) ?: return
         val cached = CachedDocumentFile(tree)
-        return when (root.folderType) {
-            FolderType.SingleFile -> scanSingleFile(root, cached, disabled)
-            FolderType.SingleFolder -> scanFolderAsBook(
-                root = root,
-                folder = cached,
-                relativePath = "",
-                author = null,
-                disabled = disabled,
-            )
+        when (root.folderType) {
+            FolderType.SingleFile -> {
+                val books = scanSingleFile(root, cached, disabled)
+                if (books.isNotEmpty()) onBookDiscovered(books, cached.name)
+            }
+            FolderType.SingleFolder -> {
+                val books = scanFolderAsBook(
+                    root = root,
+                    folder = cached,
+                    relativePath = "",
+                    author = null,
+                    disabled = disabled,
+                )
+                if (books.isNotEmpty()) onBookDiscovered(books, cached.name)
+            }
             FolderType.Root -> cached.children
                 .filter { it.isDirectory }
-                .flatMap { sub ->
-                    scanFolderAsBook(
+                .forEach { sub ->
+                    val books = scanFolderAsBook(
                         root = root,
                         folder = sub,
                         relativePath = sub.name ?: "",
                         author = null,
                         disabled = disabled,
                     )
+                    if (books.isNotEmpty()) onBookDiscovered(books, sub.name)
                 }
             FolderType.Author -> cached.children
                 .filter { it.isDirectory }
-                .flatMap { authorFolder ->
+                .forEach { authorFolder ->
                     authorFolder.children
                         .filter { it.isDirectory }
-                        .flatMap { bookFolder ->
-                            scanFolderAsBook(
+                        .forEach { bookFolder ->
+                            val books = scanFolderAsBook(
                                 root = root,
                                 folder = bookFolder,
                                 relativePath = "${authorFolder.name ?: ""}/${bookFolder.name ?: ""}",
                                 author = authorFolder.name,
                                 disabled = disabled,
                             )
+                            if (books.isNotEmpty()) {
+                                onBookDiscovered(books, "${authorFolder.name ?: ""}/${bookFolder.name ?: ""}")
+                            }
                         }
                 }
         }

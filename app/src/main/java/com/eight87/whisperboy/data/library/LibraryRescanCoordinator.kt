@@ -55,23 +55,43 @@ sealed class RescanState {
     data object Idle : RescanState()
 
     /**
-     * Active scan. [booksFound] / [chaptersFound] tick up as the enrichment pipeline
-     * finishes each book (the structural pass emits the initial book count once the
-     * tree walk completes; enrichment refines `chaptersFound` per book). [currentFolder]
-     * (when set) is the folder/title of the book currently being enriched and is
-     * surfaced by the in-library progress banner.
+     * Active scan. [booksFound] / [chaptersFound] tick up continuously: during the
+     * [ScanPhase.Discovering] phase the structural SAF walker emits per-book progress
+     * as folders are visited (Bug 1 fix — the prior shape kept the counts frozen at 0
+     * for the entire structural pass); during [ScanPhase.Analyzing] the enrichment
+     * pipeline increments `analyzedChapters` toward `totalChapters` (known up front
+     * once discovery settles, so the banner can render a *determinate* progress bar
+     * for the slow per-file metadata read); during [ScanPhase.Writing] the snapshot
+     * is being applied to Room.
      *
-     * Defaults of 0 / null keep the indeterminate-progress UX rendering correctly
-     * during the structural walk before any per-book numbers are available.
+     * [currentFolder] (when set) is the folder/title of the book currently being
+     * walked or enriched and is surfaced by the in-library progress banner.
      */
     data class Running(
         val booksFound: Int = 0,
         val chaptersFound: Int = 0,
         val currentFolder: String? = null,
+        val phase: ScanPhase = ScanPhase.Discovering,
+        val analyzedChapters: Int = 0,
+        val totalChapters: Int = 0,
     ) : RescanState()
 
     data class Failed(val cause: Throwable) : RescanState()
 }
+
+/**
+ * Phase hint for the in-library scan progress banner. The three phases correspond to the
+ * three sequential pipeline stages [AndroidLibraryRescanCoordinator] runs:
+ *
+ *  - [Discovering] — SAF tree walk via [SafLibraryScanner]. Indeterminate progress (we don't
+ *    know how many books are out there until the walk settles).
+ *  - [Analyzing] — per-chapter [MediaAnalyzer.extract] pass via [LibraryScannerEnrichment].
+ *    Determinate progress: `analyzedChapters / totalChapters`. This is the slow phase on real
+ *    libraries, so the determinate bar is the most important UX signal here.
+ *  - [Writing] — `ScanWriter.applyScan` transaction. Indeterminate, usually sub-second; we
+ *    still surface it so the banner doesn't go dark between "100% analyzed" and "Idle".
+ */
+enum class ScanPhase { Discovering, Analyzing, Writing }
 
 /**
  * Phase P.4 — library health snapshot. [unreadableRoots] is the list of [LibraryRoot]s

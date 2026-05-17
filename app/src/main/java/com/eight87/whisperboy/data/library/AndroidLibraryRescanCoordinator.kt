@@ -160,21 +160,53 @@ internal class AndroidLibraryRescanCoordinator(
                 return
             }
 
-            val structural = libraryScanner.scan(rootsToWalk)
-            // Initial progress emission once the structural walk has settled — the user
-            // sees "N books, 0 chapters" while enrichment grinds through the file metadata.
+            // Bug 1 fix: feed the scanner a progress callback so the banner ticks during the
+            // SAF tree walk too — not just during the enrichment phase. A simple per-emission
+            // monotonic-clock throttle (PROGRESS_THROTTLE_MS) keeps the StateFlow from thrashing
+            // when the walker rips through a fast SD card.
+            var lastEmit = 0L
+            val structural = libraryScanner.scan(rootsToWalk) { books, chapters, folder ->
+                val now = clock()
+                if (now - lastEmit >= PROGRESS_THROTTLE_MS) {
+                    lastEmit = now
+                    _state.value = RescanState.Running(
+                        booksFound = books,
+                        chaptersFound = chapters,
+                        currentFolder = folder,
+                        phase = ScanPhase.Discovering,
+                    )
+                }
+            }
+            // Snap to the final discovery counts (the throttle may have swallowed the last tick)
+            // and flip into the Analyzing phase. `totalChapters` is now known and feeds the
+            // banner's determinate progress bar.
+            val totalChapters = structural.books.sumOf { it.chapters.size }
             _state.value = RescanState.Running(
                 booksFound = structural.books.size,
-                chaptersFound = 0,
+                chaptersFound = totalChapters,
                 currentFolder = null,
+                phase = ScanPhase.Analyzing,
+                analyzedChapters = 0,
+                totalChapters = totalChapters,
             )
             val enriched = libraryScannerEnrichment.enrich(structural) { booksDone, chaptersDone, folder ->
                 _state.value = RescanState.Running(
                     booksFound = structural.books.size,
-                    chaptersFound = chaptersDone,
+                    chaptersFound = totalChapters,
                     currentFolder = folder,
+                    phase = ScanPhase.Analyzing,
+                    analyzedChapters = chaptersDone,
+                    totalChapters = totalChapters,
                 )
             }
+            _state.value = RescanState.Running(
+                booksFound = enriched.books.size,
+                chaptersFound = enriched.books.sumOf { it.chapters.size },
+                currentFolder = null,
+                phase = ScanPhase.Writing,
+                analyzedChapters = totalChapters,
+                totalChapters = totalChapters,
+            )
             scanWriter.applyScan(enriched)
 
             // Persist new fingerprints for roots we successfully walked.
@@ -220,5 +252,9 @@ internal class AndroidLibraryRescanCoordinator(
     companion object {
         const val DEFAULT_FOREGROUND_DEBOUNCE_MS: Long = 30_000L
         private const val SMOKE_TAG: String = "whisperboy.scan"
+        /** Bug 1: per-emission throttle on the discovery-phase progress callback so a fast SD
+         *  card's flurry of book-found callbacks doesn't thrash the StateFlow / banner. 200ms
+         *  matches Compose's perceived-update budget — the banner still feels live. */
+        private const val PROGRESS_THROTTLE_MS: Long = 200L
     }
 }

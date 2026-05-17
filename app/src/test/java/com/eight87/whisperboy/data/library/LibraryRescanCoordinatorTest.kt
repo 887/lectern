@@ -178,6 +178,38 @@ class LibraryRescanCoordinatorTest {
     }
 
     @Test
+    fun `LibraryScanner emits per-book progress before returning the full snapshot`() = scope.runTest {
+        // Direct contract test for Bug 1: the scanner must invoke onProgress at every-book
+        // granularity so the in-library banner ticks during the structural walk, not only at
+        // the end of it.
+        val books = (1..5).map { i ->
+            ScannedBook(
+                bookId = "b$i",
+                treeUriString = "content://tree/r",
+                relativePath = "Book$i",
+                title = "Book $i",
+                chapters = listOf(
+                    ScannedChapter(chapterId = "b$i-c0", chapterIndex = 0, fileUri = "file:///fake/$i-0"),
+                    ScannedChapter(chapterId = "b$i-c1", chapterIndex = 1, fileUri = "file:///fake/$i-1"),
+                ),
+            )
+        }
+        fakeScanner.perBookEmissions = books
+
+        val captured = mutableListOf<Triple<Int, Int, String?>>()
+        val snapshot = fakeScanner.scan(emptyList()) { booksFound, chaptersFound, folder ->
+            captured += Triple(booksFound, chaptersFound, folder)
+        }
+
+        // Five emissions, one per book, with the cumulative tally rising monotonically.
+        assertEquals(5, captured.size)
+        assertEquals(listOf(1, 2, 3, 4, 5), captured.map { it.first })
+        assertEquals(listOf(2, 4, 6, 8, 10), captured.map { it.second })
+        assertEquals(listOf("Book 1", "Book 2", "Book 3", "Book 4", "Book 5"), captured.map { it.third })
+        assertEquals(books, snapshot.books)
+    }
+
+    @Test
     fun `requestRescan does not crash when state machine has been idle for a while`() = scope.runTest {
         val coordinator = newCoordinator()
         advanceUntilIdle()
@@ -207,8 +239,28 @@ private class FakePersistedUriPermissionStore : PersistedUriPermissionStore {
 private class FakeLibraryScanner : LibraryScanner {
     val scanCallCount = AtomicInteger(0)
     var snapshot: ScanSnapshot = ScanSnapshot(emptyList())
-    override suspend fun scan(roots: List<LibraryRoot>): ScanSnapshot {
+    /**
+     * If non-null, the fake "discovers" books one-at-a-time via [onProgress] before returning
+     * the full snapshot — lets `LibraryRescanCoordinatorTest` assert the banner ticks at
+     * every-book granularity instead of only at the end of the structural pass.
+     */
+    var perBookEmissions: List<ScannedBook>? = null
+    override suspend fun scan(
+        roots: List<LibraryRoot>,
+        onProgress: suspend (booksFound: Int, chaptersFound: Int, currentFolder: String?) -> Unit,
+    ): ScanSnapshot {
         scanCallCount.incrementAndGet()
+        val emissions = perBookEmissions
+        if (emissions != null) {
+            var booksFound = 0
+            var chaptersFound = 0
+            for (book in emissions) {
+                booksFound += 1
+                chaptersFound += book.chapters.size
+                onProgress(booksFound, chaptersFound, book.title)
+            }
+            return ScanSnapshot(emissions)
+        }
         return snapshot
     }
 }
