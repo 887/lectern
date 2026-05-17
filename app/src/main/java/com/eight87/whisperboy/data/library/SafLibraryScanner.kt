@@ -1,6 +1,9 @@
 package com.eight87.whisperboy.data.library
 
 import android.content.Context
+import android.net.Uri
+import android.provider.DocumentsContract
+import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +39,58 @@ class SafLibraryScanner(
     override suspend fun scan(roots: List<LibraryRoot>): ScanSnapshot = withContext(Dispatchers.IO) {
         val books = roots.flatMap { scanRoot(it) }
         ScanSnapshot(books)
+    }
+
+    /**
+     * Phase P.8 — cheap "is this tree the same as last scan?" probe.
+     *
+     * Walks [treeUri]'s tree shallow via [DocumentsContract.buildChildDocumentsUriUsingTree],
+     * summing the document count and tracking max `COLUMN_LAST_MODIFIED`. Returns the pair
+     * as a [LibraryFingerprint]; the coordinator compares against the previously-persisted
+     * fingerprint and skips the full structural walk when unchanged.
+     *
+     * Returns `null` on [SecurityException] (revoked SAF permission) or any other failure —
+     * the coordinator treats null as "permission revoked, walk anyway so the structural pass
+     * can surface the failure into [LibraryHealth.unreadableRoots]".
+     *
+     * Cost note: this is one shallow `query()` per root, not a full tree walk. Even a 500-book
+     * library returns in milliseconds because we stop at the root's immediate children plus
+     * the metadata columns; the full content walk in [scan] is the expensive path we're
+     * trying to skip.
+     */
+    suspend fun computeFingerprint(treeUri: Uri): LibraryFingerprint? = withContext(Dispatchers.IO) {
+        try {
+            val docId = DocumentsContract.getTreeDocumentId(treeUri)
+            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, docId)
+            var count = 0
+            var maxMtime = 0L
+            context.contentResolver.query(
+                childrenUri,
+                arrayOf(
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+                ),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                val mtimeIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+                while (cursor.moveToNext()) {
+                    count += 1
+                    if (mtimeIdx >= 0 && !cursor.isNull(mtimeIdx)) {
+                        val m = cursor.getLong(mtimeIdx)
+                        if (m > maxMtime) maxMtime = m
+                    }
+                }
+            } ?: return@withContext null
+            LibraryFingerprint(documentCount = count, maxMtime = maxMtime)
+        } catch (se: SecurityException) {
+            Log.w("whisperboy.scan", "FINGERPRINT_SECURITY treeUri=$treeUri: ${se.message}")
+            null
+        } catch (t: Throwable) {
+            Log.w("whisperboy.scan", "FINGERPRINT_FAILED treeUri=$treeUri: ${t.javaClass.simpleName}: ${t.message}")
+            null
+        }
     }
 
     private fun scanRoot(root: LibraryRoot): List<ScannedBook> {

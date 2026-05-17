@@ -21,13 +21,30 @@ import kotlinx.coroutines.flow.StateFlow
  * The coordinator does NOT use a `ContentObserver` on the SAF tree — SAF doesn't surface
  * change events the same way `MediaStore` does. Phase D's design is **rescan on signal,
  * not on observation**.
+ *
+ * Phase P.4 extension: [health] surfaces unreadable roots (revoked SAF permission, missing
+ * SD card, etc.) to the library screen so it can render a banner offering re-pick.
+ *
+ * Phase P.8 extension: [requestRescan] takes an optional `force` flag. When `false` (the
+ * default for foreground / root-change auto-triggers and the implicit-trigger paths), the
+ * coordinator consults the per-root [LibraryFingerprint] cache and skips the structural
+ * walk for roots whose `(documentCount, maxMtime)` is unchanged since the last scan. Settings
+ * → "Rescan now" passes `force = true` so the user can demand a full walk on suspicion of
+ * a missed change.
  */
 interface LibraryRescanCoordinator {
 
     val state: StateFlow<RescanState>
 
-    /** Trigger a rescan. Conflated — calling repeatedly while a scan is running queues at most one follow-up. */
-    fun requestRescan()
+    /** Phase P.4 — set of roots that failed to read on the most recent scan attempt. */
+    val health: StateFlow<LibraryHealth>
+
+    /**
+     * Trigger a rescan. Conflated — calling repeatedly while a scan is running queues at most
+     * one follow-up. Pass `force = true` to bypass the per-root fingerprint short-circuit
+     * (Phase P.8).
+     */
+    fun requestRescan(force: Boolean = false)
 }
 
 /**
@@ -39,3 +56,15 @@ sealed class RescanState {
     data object Running : RescanState()
     data class Failed(val cause: Throwable) : RescanState()
 }
+
+/**
+ * Phase P.4 — library health snapshot. [unreadableRoots] is the list of [LibraryRoot]s
+ * whose SAF tree could not be opened on the most recent scan pass (typically because the
+ * persisted URI permission was revoked, or the SD card holding the tree was removed).
+ *
+ * When this list is non-empty the library screen renders a banner above the rail+content
+ * row offering to navigate to the folder-management screen so the user can re-pick.
+ */
+data class LibraryHealth(
+    val unreadableRoots: List<LibraryRoot> = emptyList(),
+)

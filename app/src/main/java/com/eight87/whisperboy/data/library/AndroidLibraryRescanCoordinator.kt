@@ -1,6 +1,8 @@
 package com.eight87.whisperboy.data.library
 
+import android.content.Context
 import android.util.Log
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -37,12 +39,25 @@ import kotlinx.coroutines.launch
  * manual press and the channel pickup still gets scanned.
  *
  * Suspend throughout. R.F.3 holds — no `runBlocking` on the scan path.
+ *
+ * Phase P.4 + P.8 extensions:
+ *  - Per-root [LibraryFingerprint] cache lets unchanged roots skip the structural walk
+ *    entirely (P.8). The `force` parameter on [requestRescan] is carried through the
+ *    channel as a `Boolean` payload so the "Rescan now" button can demand a full walk.
+ *  - [health] surfaces unreadable roots (revoked SAF permission, missing SD card) for the
+ *    P.4 banner. We detect these by trying [SafLibraryScanner.computeFingerprint] AND
+ *    [DocumentFile.fromTreeUri] on each root before the walk; a root that fails both is
+ *    classified unreadable, surfaced in [health], and skipped on the walk (so the scanner
+ *    can't crash mid-walk).
  */
 internal class AndroidLibraryRescanCoordinator(
+    private val context: Context,
     private val persistedUriPermissionStore: PersistedUriPermissionStore,
     private val libraryScanner: LibraryScanner,
     private val libraryScannerEnrichment: LibraryScannerEnrichment,
     private val scanWriter: ScanWriter,
+    private val fingerprintStore: LibraryFingerprintStore,
+    private val safLibraryScanner: SafLibraryScanner,
     private val applicationScope: CoroutineScope,
     private val lifecycle: Lifecycle = ProcessLifecycleOwner.get().lifecycle,
     private val foregroundDebounceMs: Long = DEFAULT_FOREGROUND_DEBOUNCE_MS,
@@ -52,7 +67,11 @@ internal class AndroidLibraryRescanCoordinator(
     private val _state = MutableStateFlow<RescanState>(RescanState.Idle)
     override val state: StateFlow<RescanState> = _state.asStateFlow()
 
-    private val rescanChannel: Channel<Unit> = Channel(capacity = Channel.CONFLATED)
+    private val _health = MutableStateFlow(LibraryHealth())
+    override val health: StateFlow<LibraryHealth> = _health.asStateFlow()
+
+    /** Channel payload: `true` = force full walk, bypassing the fingerprint short-circuit. */
+    private val rescanChannel: Channel<Boolean> = Channel(capacity = Channel.CONFLATED)
     private var lastForegroundRescan: Long = 0L
 
     private val foregroundObserver = object : DefaultLifecycleObserver {
@@ -79,26 +98,80 @@ internal class AndroidLibraryRescanCoordinator(
 
         // 3. Drain the channel — one scan at a time, picks up the latest roots each time.
         applicationScope.launch {
-            rescanChannel.consumeAsFlow().collect { _ -> runScan() }
+            rescanChannel.consumeAsFlow().collect { force -> runScan(force = force) }
         }
     }
 
-    override fun requestRescan() {
-        rescanChannel.trySend(Unit)
+    override fun requestRescan(force: Boolean) {
+        rescanChannel.trySend(force)
     }
 
-    private suspend fun runScan() {
+    private suspend fun runScan(force: Boolean) {
         _state.value = RescanState.Running
         try {
             val roots = persistedUriPermissionStore.observeRoots().first()
-            val structural = libraryScanner.scan(roots)
+
+            // Classify roots: readable (with current fingerprint), unreadable. Skip the walk
+            // entirely for unreadable roots — they're surfaced via [health] for the P.4 banner.
+            // The fingerprint probe also feeds the P.8 short-circuit further down.
+            val readableRoots = mutableListOf<LibraryRoot>()
+            val unreadable = mutableListOf<LibraryRoot>()
+            // Per-root fingerprint indexed by treeUri string. null = "no fingerprint available
+            // for this root" (probe failed but the tree was still readable enough for the walk).
+            val currentFingerprints = mutableMapOf<String, LibraryFingerprint?>()
+
+            for (root in roots) {
+                val fp = safLibraryScanner.computeFingerprint(root.treeUri)
+                val tree = DocumentFile.fromTreeUri(context, root.treeUri)
+                val canRead = tree != null && runCatching { tree.canRead() }.getOrDefault(false)
+                if (fp == null && !canRead) {
+                    unreadable += root
+                } else {
+                    readableRoots += root
+                    currentFingerprints[root.treeUri.toString()] = fp
+                }
+            }
+            _health.value = LibraryHealth(unreadableRoots = unreadable)
+
+            // P.8 short-circuit: drop roots whose fingerprint is unchanged AND not forced.
+            val rootsToWalk = if (force) {
+                readableRoots
+            } else {
+                readableRoots.filter { root ->
+                    val key = root.treeUri.toString()
+                    val current = currentFingerprints[key]
+                    val stored = fingerprintStore.get(key)
+                    val unchanged = current != null && stored != null && current == stored
+                    if (unchanged) {
+                        Log.i(SMOKE_TAG, "SCAN_SKIP_UNCHANGED root=$key fp=$current")
+                    }
+                    !unchanged
+                }
+            }
+
+            if (rootsToWalk.isEmpty()) {
+                Log.i(SMOKE_TAG, "SCAN_COMPLETE_NOOP roots=${roots.size} (all unchanged or unreadable)")
+                _state.value = RescanState.Idle
+                return
+            }
+
+            val structural = libraryScanner.scan(rootsToWalk)
             val enriched = libraryScannerEnrichment.enrich(structural)
             scanWriter.applyScan(enriched)
+
+            // Persist new fingerprints for roots we successfully walked.
+            for (root in rootsToWalk) {
+                val fp = currentFingerprints[root.treeUri.toString()]
+                if (fp != null) {
+                    fingerprintStore.set(root.treeUri.toString(), fp)
+                }
+            }
+
             // Smoke-test marker (D.6): emit book + chapter counts so a smoke script can
             // poll logcat for scan completion + assert the result. Cheap; one line per scan.
             val books = enriched.books.size
             val chapters = enriched.books.sumOf { it.chapters.size }
-            Log.i(SMOKE_TAG, "SCAN_COMPLETE roots=${roots.size} books=$books chapters=$chapters")
+            Log.i(SMOKE_TAG, "SCAN_COMPLETE roots=${rootsToWalk.size}/${roots.size} books=$books chapters=$chapters force=$force")
             _state.value = RescanState.Idle
         } catch (t: Throwable) {
             Log.e(SMOKE_TAG, "SCAN_FAILED ${t.javaClass.simpleName}: ${t.message}", t)

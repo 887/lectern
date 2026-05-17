@@ -52,6 +52,24 @@ interface BookDao {
     @Query("UPDATE books SET lastPlayedAt = :timestamp WHERE bookId = :id")
     suspend fun setLastPlayedAt(id: String, timestamp: Long?)
 
+    /**
+     * Phase P.7 — event-driven position save. Writes the (chapter, in-chapter position,
+     * last-played-at) tuple atomically. Voice's "experimental playback persistence"
+     * pattern: save on real events (transition / pause / background / shutdown), not on
+     * a 1Hz timer. Battery-friendly and survives process death without an in-flight DB
+     * write being orphaned.
+     */
+    @Query(
+        """
+        UPDATE books
+           SET currentChapterIndex = :chapterIndex,
+               position_in_chapter_ms = :positionMs,
+               lastPlayedAt = :lastPlayedAt
+         WHERE bookId = :id
+        """
+    )
+    suspend fun setLastPlayedPosition(id: String, chapterIndex: Int, positionMs: Long, lastPlayedAt: Long)
+
     @Query("UPDATE books SET speed = :speed WHERE bookId = :id")
     suspend fun setSpeed(id: String, speed: Float)
 

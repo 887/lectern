@@ -65,6 +65,15 @@ internal class LibraryRepository(
         bookDao.setGainDb(bookId, gainDb)
     }
 
+    override suspend fun updatePosition(
+        bookId: String,
+        chapterIndex: Int,
+        positionInChapterMs: Long,
+        lastPlayedAt: Long,
+    ) {
+        bookDao.setLastPlayedPosition(bookId, chapterIndex, positionInChapterMs, lastPlayedAt)
+    }
+
     override suspend fun setCustomCover(bookId: String, bytes: ByteArray) {
         // Phase A.6 (`cover-art.md`): write the bytes through [CoverStore] (atomic tmp+rename),
         // then flip the cached row to point at the new path with `coverSource = Custom` so

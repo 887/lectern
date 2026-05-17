@@ -5,6 +5,10 @@ import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.eight87.whisperboy.data.library.BookEntity
@@ -197,6 +201,10 @@ internal class PlaybackController(
                 // trigger the auto-rewind (F.4). We use `System.currentTimeMillis()` for the
                 // wall-clock delta because the threshold is in real seconds, not media time.
                 pausedAtEpochMs = System.currentTimeMillis()
+                // Phase P.7 — save the resume point on pause. Voice's pattern: save on real
+                // events, not on a 1Hz timer. Cheap (single UPDATE row on the books table) and
+                // survives process death without an in-flight write being orphaned.
+                saveCurrentPosition()
             }
             // Re-arm or stop the ticker on play state changes.
             restartTickerIfNeeded()
@@ -211,6 +219,12 @@ internal class PlaybackController(
             }
             // A media-item transition is an event-driven projection tick (R.C.5).
             controller?.let { c -> positionMs.value = c.currentPosition }
+            // Phase P.7 — save the resume point at the chapter boundary. The new chapter index
+            // is already on the snapshot above; position is whatever the controller reports
+            // just after the transition (typically ~0 for a natural chapter-end transition,
+            // potentially non-zero for a seek-driven transition — either way, that's the
+            // correct "where the user is" value to persist).
+            saveCurrentPosition()
             // Phase G — broadcast the chapter boundary to the sleep timer. tryEmit is fine here
             // because the SharedFlow has `extraBufferCapacity = 1` and we never miss a meaningful
             // edge (the collector is interested in *that there was* a transition).
@@ -222,7 +236,25 @@ internal class PlaybackController(
         }
     }
 
+    /**
+     * Phase P.7 — observer on [ProcessLifecycleOwner] that calls [saveCurrentPosition] on
+     * `ON_STOP` (app goes to background — Home, recent apps, screen off). Registered in [init]
+     * and removed in [release] so this doesn't leak across the activity / service lifecycle.
+     */
+    private val processLifecycleObserver = object : DefaultLifecycleObserver {
+        override fun onStop(owner: LifecycleOwner) {
+            saveCurrentPosition()
+        }
+    }
+    private val processLifecycle: Lifecycle = ProcessLifecycleOwner.get().lifecycle
+
     init {
+        // Phase P.7 — register the background-save observer. The ProcessLifecycleOwner emits
+        // ON_STOP when the last visible activity goes invisible (Home, lock, app-switch).
+        // Reigstered on Main per Lifecycle's contract; the application context wires up before
+        // the first frame so this lands during app graph construction without races.
+        processLifecycle.addObserver(processLifecycleObserver)
+
         // F.3 + F.4 — keep the three seek-seconds knobs synced from DataStore. Cold-path values
         // that change rarely; a single collector per field is plenty (no need to combine() into a
         // hot Flow that would re-emit on every position tick).
@@ -583,7 +615,42 @@ internal class PlaybackController(
         return id
     }
 
+    /**
+     * Phase P.7 — read the current `(bookId, chapterIndex, positionInChapterMs)` triple off the
+     * live controller and persist it via [BookSource.updatePosition]. Called from:
+     *
+     *  - [playerListener.onMediaItemTransition] — chapter boundary
+     *  - [playerListener.onIsPlayingChanged] when `isPlaying == false` — pause
+     *  - [processLifecycleObserver.onStop] — app went to background
+     *  - [com.eight87.whisperboy.AppGraph.flushPlaybackPosition] — called by
+     *    [PlaybackService.onDestroy] before service teardown
+     *
+     * No-op when there's no targeted book or the controller hasn't connected yet. Read of
+     * [MediaController.currentPosition] / `currentMediaItemIndex` is done synchronously on
+     * the caller's thread; both fields are safe to read from any thread per Media3's
+     * [MediaController] contract (they internally marshal to the player thread).
+     *
+     * `lastPlayedAt` is wall-clock `System.currentTimeMillis()` because that's what the UI
+     * sorts on ("Recently played") and it's also what the existing `playBook` path bumps via
+     * downstream listener events. Position math uses the controller's in-chapter position,
+     * NOT a book-absolute value — book-absolute is a UI projection (see [projectLoaded]);
+     * the BookEntity row stores `(currentChapterIndex, positionInChapterMs)`.
+     */
+    fun saveCurrentPosition() {
+        val bookId = targetedBookId.value ?: return
+        val c = controller ?: return
+        val chapterIndex = c.currentMediaItemIndex
+        val positionMs = c.currentPosition.coerceAtLeast(0L)
+        val now = System.currentTimeMillis()
+        applicationScope.launch {
+            bookSource.updatePosition(bookId, chapterIndex, positionMs, now)
+        }
+    }
+
     fun release() {
+        // Phase P.7 — make sure the latest position is flushed before we tear down.
+        saveCurrentPosition()
+        processLifecycle.removeObserver(processLifecycleObserver)
         tickerJob?.cancel()
         controller?.release()
         controller = null
