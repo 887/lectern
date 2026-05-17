@@ -4,6 +4,11 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.ksp)
   alias(libs.plugins.room)
+  // cold-start-perf F.1 — apply the Baseline Profile plugin so the
+  // `:app:generateBaselineProfile` task is wired and the consumed profile
+  // is packaged into the release APK. The sibling `:baselineprofile`
+  // module produces the rules; this side consumes them.
+  alias(libs.plugins.androidx.baselineprofile)
 }
 
 android {
@@ -136,4 +141,13 @@ dependencies {
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.androidx.paging.runtime)
   implementation(libs.androidx.paging.compose)
+
+  // cold-start-perf F.3 — profileinstaller picks up the baseline-prof.txt
+  // packaged into the APK and hands it to ART at app install time, which is
+  // the mechanism that gives us the ~25–35% cold-start win.
+  implementation(libs.androidx.profileinstaller)
+
+  // cold-start-perf F.1 — declare the sibling test module as the producer
+  // of the baseline profile this app consumes.
+  "baselineProfile"(project(":baselineprofile"))
 }

@@ -8,6 +8,12 @@
 #
 # Combine: --gh-release --install is fine (this is the "phone-vibing" happy path).
 #
+# --skip-baseline: skip the `:app:generateBaselineProfile` step that normally
+# runs before the assemble. By default the script regenerates the Baseline
+# Profile against a connected AVD/device — needed for the ~25–35% cold-start
+# win to stay fresh. Pass --skip-baseline for dev builds without a device
+# attached; the last-committed app/src/main/baseline-prof.txt will be reused.
+#
 # Output: release/whisperboy-<version>-<sha7>.apk and a release/latest.apk symlink.
 #
 # Signing: this uses Gradle's debug keystore by default (good for personal
@@ -34,10 +40,12 @@ export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
 
 PUSH_TO_GH=false
 INSTALL_TO_DEVICE=false
+SKIP_BASELINE=false
 for arg in "$@"; do
     case "$arg" in
         --gh-release|--github)   PUSH_TO_GH=true ;;
         --install|--adb-install) INSTALL_TO_DEVICE=true ;;
+        --skip-baseline)         SKIP_BASELINE=true ;;
         --help|-h)
             sed -n '1,/^$/p' "$0" | sed 's/^# \?//'
             exit 0
@@ -73,6 +81,25 @@ else
     echo "[build-release-apk] debug-signed build (set WHISPER_RELEASE_KEYSTORE for production signing)"
     GRADLE_TASK="assembleDebug"
     BUILD_APK="app/build/outputs/apk/debug/whisperboy-debug.apk"
+fi
+
+# cold-start-perf F.4 — regenerate the Baseline Profile before the APK
+# build so every shipped APK ships with a fresh ART profile. This step
+# requires a connected device or AVD (the macrobenchmark in
+# :baselineprofile records the cold-boot path on real hardware); use
+# --skip-baseline to fall back to the committed app/src/main/baseline-prof.txt
+# when no device is connected (e.g. quick dev builds, CI fallbacks).
+if "${SKIP_BASELINE}"; then
+    echo "[build-release-apk] --skip-baseline set; using committed app/src/main/baseline-prof.txt"
+else
+    echo "[build-release-apk] generating baseline profile (this may take 2-3 min)..."
+    if ! ./gradlew :app:generateBaselineProfile --console=plain; then
+        echo "[build-release-apk] generateBaselineProfile failed." >&2
+        echo "[build-release-apk] common cause: no connected device. Start the AVD:" >&2
+        echo "[build-release-apk]   scripts/start-avd.sh" >&2
+        echo "[build-release-apk] or rerun with --skip-baseline to reuse the committed profile." >&2
+        exit 1
+    fi
 fi
 
 echo "[build-release-apk] running ./gradlew :app:${GRADLE_TASK}..."

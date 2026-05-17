@@ -35,6 +35,15 @@ retrofit = "2.11.0"
 okhttp = "4.12.0"
 paging = "3.3.5"
 kotlinxSerialization = "1.7.3"
+# cold-start-perf F.1 — Baseline Profile generation. AGP 9.0.1 (the
+# version pinned above) requires the 1.5.0-alpha track of the baseline
+# profile + benchmark artifacts; the 1.4.x stable line still expects
+# AGP 8.x and fails with "Module `:app` is not a supported android module".
+# Bump the alpha track when the next 1.5.0 stable lands.
+# profileinstaller 1.4.1 stays stable — runtime side, no AGP coupling.
+androidxBaselineProfile = "1.5.0-alpha06"
+androidxBenchmark = "1.5.0-alpha06"
+androidxProfileinstaller = "1.4.1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
@@ -79,6 +88,12 @@ okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhtt
 androidx-paging-runtime = { group = "androidx.paging", name = "paging-runtime", version.ref = "paging" }
 androidx-paging-compose = { group = "androidx.paging", name = "paging-compose", version.ref = "paging" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+# cold-start-perf F.3 — profileinstaller is the runtime that picks up the
+# baseline-prof.txt packaged into assets/ and hands it to ART at install time.
+androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "androidxProfileinstaller" }
+# cold-start-perf F.2 — macrobenchmark + BaselineProfileRule for the
+# :baselineprofile sibling module that records the cold-boot path.
+androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "androidxBenchmark" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
@@ -86,3 +101,10 @@ compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" }
+# cold-start-perf F.1 — the baselineprofile plugin is applied to both `:app`
+# (to consume the generated profile + wire `generateBaselineProfile`) and to
+# the sibling `:baselineprofile` test module (to expose the macrobenchmark).
+androidx-baselineprofile = { id = "androidx.baselineprofile", version.ref = "androidxBaselineProfile" }
+# cold-start-perf F.1 — `com.android.test` is the AGP plugin for the test-only
+# sibling module that houses the macrobenchmark (it must NOT be an app module).
+android-test = { id = "com.android.test", version.ref = "androidGradlePlugin" }

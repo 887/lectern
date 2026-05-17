@@ -1,0 +1,17 @@
+# cold-start-perf F.2 placeholder.
+#
+# This file is intentionally empty — it is a stub committed alongside the
+# Phase O.5 wiring so the `:app` module has a valid (if no-op) baseline
+# profile resource until someone runs `./gradlew :app:generateBaselineProfile`
+# against an attached AVD / device.
+#
+# To regenerate (overwrites this file with real ART profile rules):
+#
+#     scripts/build-release-apk.sh                  # generates by default
+#     scripts/build-release-apk.sh --skip-baseline  # reuses this file as-is
+#
+# The macrobenchmark that records the cold-boot path lives in
+# baselineprofile/src/main/java/com/eight87/whisperboy/baselineprofile/
+# BaselineProfileGenerator.kt — it taps LAUNCHER, waits for the activity's
+# first frame, and dumps an HRF text file that `androidx.baselineprofile`
+# copies here. The release-script wiring is in `scripts/build-release-apk.sh`.

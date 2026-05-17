@@ -261,7 +261,7 @@ Goal: a sideload-able APK on GitHub Releases. Mirror of tonearmboy's release pip
 - [ ] **O.2** `.github/workflows/release.yml` — tag-only, self-disabling, mirror of tonearmboy's workflow. Zero CI minutes by default.
 - [ ] **O.3** First release `v0.1.0-<sha7>` — debug-signed, sideload via Obtainium, validate the install path end-to-end.
 - [ ] **O.4** Production-signed releases when keystore is in place — env vars `WHISPERBOY_RELEASE_KEYSTORE` / `WHISPERBOY_RELEASE_KEY_ALIAS` / `WHISPERBOY_RELEASE_KEY_PASSWORD`.
-- [ ] **O.5** Wire Baseline Profile generation into `scripts/build-release-apk.sh` (cold-start-perf F.4). Profile generation is the only delta-of-work piece in [`cold-start-perf.md`](cold-start-perf.md) — F.1 plugin + sibling `:baselineprofile` module, F.2 record cold-boot path via `MacrobenchmarkRule`, F.3 `androidx.profileinstaller` in app module, F.4 hook into the release script so every shipped APK includes the profile. Worth more than every other cold-start guard combined (~25–35% off cold start).
+- [x] **O.5** Wire Baseline Profile generation into `scripts/build-release-apk.sh` (cold-start-perf F.4). Profile generation is the only delta-of-work piece in [`cold-start-perf.md`](cold-start-perf.md) — F.1 plugin + sibling `:baselineprofile` module, F.2 record cold-boot path via `MacrobenchmarkRule`, F.3 `androidx.profileinstaller` in app module, F.4 hook into the release script so every shipped APK includes the profile. Worth more than every other cold-start guard combined (~25–35% off cold start). **shipped in commit `161e0e0`** (placeholder for the commit hash that includes this tick).
 
 ---
 
