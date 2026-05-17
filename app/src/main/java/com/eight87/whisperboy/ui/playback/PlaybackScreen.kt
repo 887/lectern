@@ -750,7 +750,7 @@ private fun ChapterQueueRow(
 }
 
 @Composable
-private fun PlayerScrubber(
+internal fun PlayerScrubber(
     positionInChapterMs: Long,
     chapterDurationMs: Long,
     onSeek: (Long) -> Unit,
@@ -761,7 +761,10 @@ private fun PlayerScrubber(
         value = safePosition.toFloat(),
         onValueChange = { onSeek(it.toLong()) },
         valueRange = 0f..safeDuration.toFloat(),
-        modifier = Modifier.fillMaxWidth(),
+        enabled = chapterDurationMs > 0L,
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("player_scrubber_slider"),
     )
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(

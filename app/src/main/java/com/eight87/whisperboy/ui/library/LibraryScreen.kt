@@ -610,7 +610,7 @@ private fun LibraryContent(
 }
 
 @Composable
-private fun LibraryEmptyState(modifier: Modifier = Modifier) {
+internal fun LibraryEmptyState(modifier: Modifier = Modifier) {
     // m3-expressive D.1 — elevate the empty-state copy onto a `surfaceContainerHigh`
     // card so the welcome message reads as a callout against the bare page surface
     // rather than floating text. M3E surface ladder: page = `surface`, card-tier
@@ -909,7 +909,7 @@ private fun folderTypeSubtitle(type: com.eight87.whisperboy.data.library.FolderT
  * `library_health_unreadable_banner` so "1 folder unreadable" reads naturally.
  */
 @Composable
-private fun LibraryHealthBanner(
+internal fun LibraryHealthBanner(
     unreadableCount: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
