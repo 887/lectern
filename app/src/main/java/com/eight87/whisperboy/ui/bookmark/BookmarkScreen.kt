@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -51,6 +52,7 @@ import com.eight87.whisperboy.data.library.BookmarkEntity
 import com.eight87.whisperboy.data.library.BookmarkSource
 import com.eight87.whisperboy.data.library.ChapterEntity
 import com.eight87.whisperboy.data.library.ChapterSource
+import com.eight87.whisperboy.theme.PlaybackAccent
 import kotlinx.coroutines.launch
 
 /**
@@ -169,9 +171,14 @@ fun BookmarkScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     if (actionTarget != null) {
         val target = actionTarget!!
+        // m3-expressive D.3 — bookmark long-press sheet pinned to M3E
+        // `surfaceContainer` + drag handle tinted with PlaybackAccent
+        // (bookmarks live in the playback flow; no dedicated bookmark accent).
         ModalBottomSheet(
             onDismissRequest = { actionTarget = null },
             sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = PlaybackAccent.onContainer) },
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
                 Text(

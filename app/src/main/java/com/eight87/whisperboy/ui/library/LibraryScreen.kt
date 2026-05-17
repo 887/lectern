@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -81,6 +82,7 @@ import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.LibraryRoot
 import com.eight87.whisperboy.data.library.LibraryUiSettings
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
+import com.eight87.whisperboy.theme.LibraryAccent
 import com.eight87.whisperboy.ui.common.CoverArt
 import com.eight87.whisperboy.ui.common.refreshCoverArt
 import com.eight87.whisperboy.ui.common.FastScrollbar
@@ -403,7 +405,15 @@ private fun BookActionSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val isCompleted = book.completedAt != null
     val refreshContext = LocalContext.current
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    // m3-expressive D.3 — pin sheet container to the M3E `surfaceContainer` tier
+    // (one notch above the page `surface`) + drag handle tinted with the library
+    // accent so the long-press sheet visually anchors to the library category.
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = LibraryAccent.onContainer) },
+    ) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(
                 text = stringResource(R.string.library_book_action_sheet_title, book.title),
@@ -580,21 +590,38 @@ private fun LibraryContent(
 
 @Composable
 private fun LibraryEmptyState(modifier: Modifier = Modifier) {
-    Column(
+    // m3-expressive D.1 — elevate the empty-state copy onto a `surfaceContainerHigh`
+    // card so the welcome message reads as a callout against the bare page surface
+    // rather than floating text. M3E surface ladder: page = `surface`, card-tier
+    // banner = `surfaceContainerHigh`.
+    Box(
         modifier = modifier.padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = stringResource(R.string.library_empty_title),
-            style = MaterialTheme.typography.headlineSmall,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = stringResource(R.string.library_empty_subtitle),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.library_empty_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.library_empty_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
@@ -649,10 +676,14 @@ private fun LibraryCoverGrid(
 
 @Composable
 private fun SectionHeader(label: String) {
+    // m3-expressive D.1 — section header rendered as a card-tier chip
+    // (`surfaceContainerHigh`) so it sits one notch above the page surface,
+    // matching the M3E ladder we apply to list rows + bottom sheets.
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Text(
@@ -795,7 +826,14 @@ private fun ManageFoldersFolderTypeSheet(
     onSelect: (com.eight87.whisperboy.data.library.FolderType) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    // m3-expressive D.3 — same M3E sheet tier + accented drag handle as the
+    // long-press action sheet; folder-type picker is also a library surface.
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = LibraryAccent.onContainer) },
+    ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Text(
                 text = stringResource(R.string.folder_type_dialog_title),

@@ -213,22 +213,47 @@ Two supporting niceties:
   container differs from its onContainer + every `accentFor` arm
   returns the canonical top-level `val`.
 
-## Phase D — the rest of the chrome
+## Phase D — the rest of the chrome — D.1/D.2/D.3 shipped in commit `5a14e69`
 
-- [ ] **D.1** Library grid (book covers) chrome — top app bar, FAB,
-  empty state. Pull through `surfaceContainer`-on-`surface`.
-- [ ] **D.2** Player screen — chapter list cards, sleep-timer sheet,
-  speed/skip controls. Verify they respect the new container
-  surface.
-- [ ] **D.3** Bookmark / chapter sheets — `ModalBottomSheet` defaults
-  pick up M3 tokens automatically; confirm the new expressive
-  containers flow through.
-- [ ] **D.4** **`MediaLibraryService` browse-tree branding (Android
-  Auto / Automotive):** while M3E doesn't directly affect the AAOS
-  rendering of the browse tree (the car system theme dominates),
-  any custom in-car UI we add — e.g. a settings activity reachable
-  from the car launcher — should use the same theme entry. Note
-  for the Phase N (AAOS) branch.
+- [x] **D.1** Library grid chrome — section headers pulled onto the
+  M3E card tier (`surfaceContainerHigh`, 12-dp rounded clip) so they
+  read as chips against the page `surface`; empty-state copy
+  elevated onto a `surfaceContainerHigh` card so the welcome
+  message lands as a callout instead of floating text. Top app bar
+  / FAB stay on M3 defaults — both already honour the surface
+  ladder via the `MaterialExpressiveTheme` from Phase A.
+- [x] **D.2** Player chrome — chapter list rows elevated onto rounded
+  M3E surfaces (active = `secondaryContainer`, inactive =
+  `surfaceContainerHigh` at 55 % alpha so the F.6 Palette-tinted
+  gradient still bleeds through, giving the queue a glassy-card
+  look against the book's cover tint). Sleep-timer sheet header now
+  carries the `SleepTimerAccent.onContainer` indigo so the sheet
+  reads as a sleep surface end-to-end. Scrubber slider colours
+  unchanged — the M3 default `primary` reads cleanly against the
+  tinted gradient.
+- [x] **D.3** Bottom sheets — every `ModalBottomSheet` in the app now
+  pins `containerColor = MaterialTheme.colorScheme.surfaceContainer`
+  (M3E card tier, one notch above the page `surface`) and supplies
+  a per-category accent `DragHandle` via `BottomSheetDefaults`:
+  Library long-press + folder-type picker use `LibraryAccent`,
+  sleep-timer sheet uses `SleepTimerAccent`, playback-options
+  sheet uses `PlaybackAccent`, bookmark long-press sheet uses
+  `PlaybackAccent` (bookmarks live in the playback flow; no
+  dedicated bookmark accent in the six-pair palette).
+- [ ] **D.4** — deferred: per-category accent artwork on the
+  `MediaLibraryService` browse-tree folders (Currently listening /
+  Not started / All books / Authors) would require authoring
+  accent-coloured raster or vector drawables and exposing them via
+  `MediaMetadata.Builder.setArtworkUri(...)`. No such drawables
+  exist in `app/src/main/res/drawable/` yet — only
+  `widget_book_glyph.xml` and the launcher mipmaps. The six
+  accent-coloured folder icons + the
+  `WhisperboyLibrarySessionCallback.browseableFolder(...)` wiring
+  live more naturally with the Phase N (AAOS) branch where the
+  rest of the car-UI polish happens. Leaving the browse tree on
+  bare text for now keeps Auto's system theme in charge (the
+  locked decision from the original D.4 note), and the browse
+  tree still works — it just isn't branded.
 
 ## References
 
