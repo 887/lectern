@@ -29,6 +29,7 @@ import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
 import com.eight87.whisperboy.data.library.SafLibraryScanner
 import com.eight87.whisperboy.data.library.ScanWriter
 import com.eight87.whisperboy.data.library.parser.ChapterParser
+import com.eight87.whisperboy.data.library.parser.CoverExtractorDispatcher
 import com.eight87.whisperboy.data.onboarding.AndroidOnboardingSettings
 import com.eight87.whisperboy.data.onboarding.OnboardingSettings
 import com.eight87.whisperboy.data.playback.AndroidPlaybackSettings
@@ -166,9 +167,18 @@ class AppGraph(context: Context) {
      */
     val chapterParser: ChapterParser = ChapterParser(appContext)
 
+    /**
+     * Cover-art Phase A.3 — container-aware embedded cover extractors (MP4 `covr`, Matroska
+     * `AttachedFile`, MP3 `APIC`). Used by [LibraryScannerEnrichment] as a fallback when
+     * Media3's [MediaAnalyzer] / [android.media.MediaMetadataRetriever] returns no embedded
+     * cover for any of a book's first 5 chapter files.
+     */
+    val coverExtractorDispatcher: CoverExtractorDispatcher = CoverExtractorDispatcher(appContext)
+
     val libraryScannerEnrichment: LibraryScannerEnrichment = LibraryScannerEnrichment(
         mediaAnalyzer = mediaAnalyzer,
         chapterParser = chapterParser,
+        coverExtractorDispatcher = coverExtractorDispatcher,
     )
 
     /** Phase D.4 — atomic cover-bytes-to-disk store at `<filesDir>/covers/<bookId>`. */
