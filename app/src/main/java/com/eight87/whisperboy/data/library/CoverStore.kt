@@ -50,4 +50,39 @@ class CoverStore(context: Context) {
 
     /** Path that [writeCover] will use for a given book id (stable, deterministic). */
     fun pathFor(bookId: String): String = File(coversDir, bookId).absolutePath
+
+    /**
+     * Returns every cover file basename currently on disk in [coversDir]. Tmp files (`*.tmp`
+     * left over from a crashed [writeCover]) are excluded. Used by [gcOrphans] to compute
+     * the orphan set; also useful for tests + diagnostics.
+     */
+    suspend fun listBookIdsOnDisk(): Set<String> {
+        val files = coversDir.listFiles() ?: return emptySet()
+        return files.asSequence()
+            .filter { it.isFile && !it.name.endsWith(".tmp") }
+            .map { it.name }
+            .toSet()
+    }
+
+    /**
+     * Deletes every cover file on disk whose basename is not in [activeBookIds]. Returns the
+     * number of files deleted. Wired into [com.eight87.whisperboy.data.library.AndroidLibraryRescanCoordinator]
+     * at the END of a successful scan so orphans from `forgetBook`, `markRootInactive`, and
+     * scan-removed books are reaped on the next scan. Disk-leak proof — even if `deleteCover`
+     * failed earlier or the process died mid-call, the orphan is collected here.
+     *
+     * Tmp files (`<bookId>.tmp`) are also reaped — they are by definition partial writes from a
+     * crashed [writeCover].
+     */
+    suspend fun gcOrphans(activeBookIds: Set<String>): Int {
+        val files = coversDir.listFiles() ?: return 0
+        var deleted = 0
+        for (file in files) {
+            if (!file.isFile) continue
+            if (file.name.endsWith(".tmp") || file.name !in activeBookIds) {
+                if (file.delete()) deleted += 1
+            }
+        }
+        return deleted
+    }
 }

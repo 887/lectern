@@ -181,6 +181,63 @@ class LibraryRepositoryTest {
     }
 
     @Test
+    fun `applyScan preserves position and per-book playback knobs on existing rows`() = runTest {
+        // Seed a book + advance its playback state via the position-saving path.
+        repo.applyScan(snapshotWithOneBook("b1", "The Test"))
+        repo.updatePosition(
+            bookId = "b1",
+            chapterIndex = 5,
+            positionInChapterMs = 42_000L,
+            lastPlayedAt = 1_700_000_000_000L,
+        )
+        repo.setSpeed("b1", 1.75f)
+        repo.setSkipSilence("b1", true)
+        repo.setGain("b1", 4.5f)
+        repo.markCompleted("b1")
+
+        // Re-scan with the same book id but different structural fields. Position + playback
+        // knobs + completion must survive — closes the read-modify-write race where a stale
+        // scan-time snapshot would otherwise stomp a fresher playback-written position.
+        repo.applyScan(
+            ScanSnapshot(
+                books = listOf(
+                    ScannedBook(
+                        bookId = "b1",
+                        treeUriString = "content://tree/r1",
+                        relativePath = "b1.m4b",
+                        title = "The Test (Renamed)",
+                        author = "A",
+                        durationMs = 30_000L,
+                        chapters = listOf(
+                            ScannedChapter(
+                                chapterId = "b1-c0",
+                                chapterIndex = 0,
+                                title = "Only",
+                                durationMs = 30_000L,
+                                fileUri = "content://tree/r1/b1.m4b",
+                                positionInBookMs = 0L,
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        )
+
+        val after = repo.observeBook("b1").first()!!
+        // Structural fields updated.
+        assertEquals("The Test (Renamed)", after.title)
+        assertEquals(30_000L, after.durationMs)
+        // Position + playback knobs + completion preserved.
+        assertEquals(5, after.currentChapterIndex)
+        assertEquals(42_000L, after.positionInChapterMs)
+        assertEquals(1_700_000_000_000L, after.lastPlayedAt)
+        assertEquals(1.75f, after.speed, 0.0001f)
+        assertTrue(after.skipSilenceEnabled)
+        assertEquals(4.5f, after.gainDb, 0.0001f)
+        assertNotNull("completedAt must survive a rescan", after.completedAt)
+    }
+
+    @Test
     fun `observeBook emits the inserted book and null for unknown id`() = runTest {
         repo.applyScan(snapshotWithOneBook("b1", "The Test"))
 

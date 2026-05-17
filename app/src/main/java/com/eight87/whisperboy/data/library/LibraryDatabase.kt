@@ -21,7 +21,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ChapterEntity::class,
         BookmarkEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(CoverSourceConverter::class)
@@ -53,5 +53,16 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
 val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE books ADD COLUMN coverSource TEXT NOT NULL DEFAULT 'Scanned'")
+    }
+}
+
+/**
+ * v3 → v4: add an index on `books.author` to back [BookDao.observeByAuthor]'s
+ * `WHERE author = ? COLLATE NOCASE` lookup. Negligible at current library sizes;
+ * keeps the per-author detail screen cheap as libraries grow into the thousands.
+ */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_books_author ON books(author)")
     }
 }

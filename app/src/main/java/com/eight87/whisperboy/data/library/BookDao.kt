@@ -48,6 +48,43 @@ interface BookDao {
     @Upsert
     suspend fun upsertAll(books: List<BookEntity>)
 
+    /**
+     * Scan-time structural update for an EXISTING book row. Deliberately omits the
+     * position columns (`currentChapterIndex`, `position_in_chapter_ms`, `lastPlayedAt`,
+     * `completedAt`) and the per-book playback knobs (`speed`, `skipSilenceEnabled`,
+     * `gain_db`) — those are owned by the playback writer and must never be stomped by
+     * a stale scan-time snapshot. Closes the read-modify-write race in
+     * `LibraryRepository.applyScan` where a `findById` → `upsert` round-trip could clobber
+     * a position written by [setLastPlayedPosition] between the read and the write.
+     *
+     * Always sets `active = 1` because incoming books in the scan are by definition active.
+     * NEW books still flow through [upsert] (above) — they have no prior position to preserve.
+     */
+    @Query(
+        """
+        UPDATE books
+           SET treeUriString = :treeUriString,
+               relativePath = :relativePath,
+               title = :title,
+               author = :author,
+               duration_ms = :durationMs,
+               coverPath = :coverPath,
+               coverSource = :coverSource,
+               active = 1
+         WHERE bookId = :bookId
+        """
+    )
+    suspend fun updateStructural(
+        bookId: String,
+        treeUriString: String,
+        relativePath: String,
+        title: String,
+        author: String?,
+        durationMs: Long,
+        coverPath: String?,
+        coverSource: CoverSource,
+    )
+
     @Query("UPDATE books SET active = 0 WHERE treeUriString = :treeUriString")
     suspend fun markRootInactive(treeUriString: String)
 
