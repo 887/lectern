@@ -2,7 +2,9 @@ package com.eight87.whisperboy
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
@@ -66,9 +68,21 @@ class AppGraph(context: Context) {
 
     val playerHolder: PlayerHolder = PlayerHolder(appContext)
 
-    private val libraryRootsDataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
-        produceFile = { appContext.preferencesDataStoreFile("library_roots") }
-    )
+    /**
+     * Create a Preferences DataStore for [name], with a [ReplaceFileCorruptionHandler]
+     * that resets the file to [emptyPreferences] on `CorruptionException`. Without this,
+     * a corrupted prefs file throws `IOException` through every `data.map { … }` Flow
+     * collector and ultimately into Compose recomposition → crash. We trade
+     * "user loses settings for that one facet" for "app stays alive" — same
+     * call Voice makes on every facet. DRYs up the eight DataStore sites below.
+     */
+    private fun createPrefs(name: String): DataStore<Preferences> =
+        PreferenceDataStoreFactory.create(
+            corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+            produceFile = { appContext.preferencesDataStoreFile(name) },
+        )
+
+    private val libraryRootsDataStore: DataStore<Preferences> = createPrefs("library_roots")
 
     val persistedUriPermissionStore: PersistedUriPermissionStore =
         AndroidPersistedUriPermissionStore(appContext, libraryRootsDataStore)
@@ -78,9 +92,7 @@ class AppGraph(context: Context) {
      * Backed by its own `library_ui` Preferences file so it stays decoupled from the
      * `library_roots` store above; deleting one (e.g. on a settings reset) doesn't nuke the other.
      */
-    private val libraryUiDataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
-        produceFile = { appContext.preferencesDataStoreFile("library_ui") }
-    )
+    private val libraryUiDataStore: DataStore<Preferences> = createPrefs("library_ui")
 
     val libraryUiSettings: LibraryUiSettings =
         AndroidLibraryUiSettings(libraryUiDataStore)
@@ -89,9 +101,7 @@ class AppGraph(context: Context) {
      * Phase K.4 sub-screen — persisted scan-filter prefs (set of DISABLED audio extensions).
      * Own `scan_filters` DataStore-Preferences file per R.B store-split.
      */
-    private val scanFiltersDataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
-        produceFile = { appContext.preferencesDataStoreFile("scan_filters") }
-    )
+    private val scanFiltersDataStore: DataStore<Preferences> = createPrefs("scan_filters")
 
     val libraryScanFilterSettings: LibraryScanFilterSettings =
         AndroidLibraryScanFilterSettings(scanFiltersDataStore)
@@ -101,9 +111,7 @@ class AppGraph(context: Context) {
      * own DataStore file (`playback_settings`) so a future "reset playback prefs" affordance can
      * delete this without touching the library UI store. R.B (store split) pattern.
      */
-    private val playbackSettingsDataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
-        produceFile = { appContext.preferencesDataStoreFile("playback_settings") }
-    )
+    private val playbackSettingsDataStore: DataStore<Preferences> = createPrefs("playback_settings")
 
     val playbackSettings: PlaybackSettings =
         AndroidPlaybackSettings(playbackSettingsDataStore)
@@ -114,9 +122,7 @@ class AppGraph(context: Context) {
      * can delete this alone without touching library / playback prefs
      * (R.B store-split pattern).
      */
-    private val themeSettingsDataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
-        produceFile = { appContext.preferencesDataStoreFile("theme_settings") }
-    )
+    private val themeSettingsDataStore: DataStore<Preferences> = createPrefs("theme_settings")
 
     val themeSettings: ThemeSettings =
         AndroidThemeSettings(themeSettingsDataStore)
@@ -126,9 +132,7 @@ class AppGraph(context: Context) {
      * (`onboarding`) so a future "reset onboarding" debug affordance can `clear()`
      * this without touching any of the other persisted prefs.
      */
-    private val onboardingDataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
-        produceFile = { appContext.preferencesDataStoreFile("onboarding") }
-    )
+    private val onboardingDataStore: DataStore<Preferences> = createPrefs("onboarding")
 
     val onboardingSettings: OnboardingSettings =
         AndroidOnboardingSettings(onboardingDataStore)
@@ -138,9 +142,7 @@ class AppGraph(context: Context) {
      * auto-arm window). Own DataStore file so a future "reset sleep timer" affordance in K.3
      * can delete this without touching `playback_settings` (R.B store-split pattern).
      */
-    private val sleepTimerSettingsDataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
-        produceFile = { appContext.preferencesDataStoreFile("sleep_timer_settings") }
-    )
+    private val sleepTimerSettingsDataStore: DataStore<Preferences> = createPrefs("sleep_timer_settings")
 
     val sleepTimerSettings: SleepTimerSettings =
         AndroidSleepTimerSettings(sleepTimerSettingsDataStore)
@@ -271,9 +273,7 @@ class AppGraph(context: Context) {
      * (`library_fingerprints`) so a future "Reset fingerprints" debug
      * affordance can `clear()` this without touching any other prefs.
      */
-    private val libraryFingerprintsDataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
-        produceFile = { appContext.preferencesDataStoreFile("library_fingerprints") }
-    )
+    private val libraryFingerprintsDataStore: DataStore<Preferences> = createPrefs("library_fingerprints")
 
     val libraryFingerprintStore: LibraryFingerprintStore =
         AndroidLibraryFingerprintStore(libraryFingerprintsDataStore)

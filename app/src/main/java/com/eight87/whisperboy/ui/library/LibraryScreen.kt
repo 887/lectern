@@ -734,11 +734,15 @@ private fun LibraryCoverGrid(
                     item(
                         key = "section:$header",
                         span = { GridItemSpan(maxLineSpan) },
+                        contentType = "section",
                     ) {
                         SectionHeader(label = header)
                     }
                 }
-                item(key = "book:${book.bookId}") {
+                item(
+                    key = "book:${book.bookId}",
+                    contentType = "book",
+                ) {
                     BookGridTile(
                         book = book,
                         onTap = { onBookTap(book.bookId) },
@@ -797,11 +801,11 @@ private fun LibraryCoverList(
             books.forEachIndexed { index, book ->
                 val header = headerByIndex[index]
                 if (header != null) {
-                    item(key = "section:$header") {
+                    item(key = "section:$header", contentType = "section") {
                         SectionHeader(label = header)
                     }
                 }
-                item(key = "book:${book.bookId}") {
+                item(key = "book:${book.bookId}", contentType = "book") {
                     BookListRow(
                         book = book,
                         onTap = { onBookTap(book.bookId) },

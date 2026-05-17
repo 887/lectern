@@ -50,6 +50,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
@@ -263,6 +264,7 @@ private fun ContentGrid(
         items(
             count = items.itemCount,
             key = items.itemKey { "${it.image}#${it.thumbnail}" },
+            contentType = items.itemContentType { "cover" },
         ) { index ->
             val result = items[index] ?: return@items
             val ratio = remember(result.width, result.height) {

@@ -79,6 +79,13 @@ fun NowPlayingSheet(
     val showSheet = state is PlaybackUiState.Loaded
     if (!showSheet) return
 
+    // Subscribe to the configured rewind / forward seconds here (sheet/app
+    // level) so the mini-player stays stateless. Used only for the TalkBack
+    // contentDescription on the rewind/forward buttons — without these the
+    // CD reads "Rewind 0 seconds" / "Forward 0 seconds".
+    val rewindSeconds by playbackSettings.rewindSeconds.collectAsStateWithLifecycle(initialValue = 30)
+    val forwardSeconds by playbackSettings.forwardSeconds.collectAsStateWithLifecycle(initialValue = 30)
+
     val configuration = LocalConfiguration.current
     val screenHeightDp = configuration.screenHeightDp.dp
     val density = LocalDensity.current
@@ -185,6 +192,8 @@ fun NowPlayingSheet(
                         nowPlayingState = nowPlayingState,
                         transport = transportCommands,
                         onExpand = { scope.launch { sheetProgress.animateTo(1f) } },
+                        rewindSeconds = rewindSeconds,
+                        forwardSeconds = forwardSeconds,
                         onSheetDragDelta = onSheetDragDelta,
                         onSheetDragSettle = onSheetDragSettle,
                     )

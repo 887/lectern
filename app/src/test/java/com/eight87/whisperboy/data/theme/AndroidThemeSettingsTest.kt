@@ -1,9 +1,11 @@
 package com.eight87.whisperboy.data.theme
 
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.CoroutineScope
@@ -95,6 +97,38 @@ class AndroidThemeSettingsTest {
         }
         assertEquals(ThemeMode.FollowSystem, settings.mode.first())
     }
+
+    @Test
+    fun `corrupted prefs file falls back to defaults via ReplaceFileCorruptionHandler`() =
+        scope.runTest {
+            // Simulate a corrupted DataStore-Preferences file by writing garbage bytes
+            // to the backing file BEFORE the DataStore reads it for the first time.
+            // Without the corruption handler the first read throws IOException up
+            // through `data.map { … }` Flow collectors and crashes recomposition;
+            // with `ReplaceFileCorruptionHandler { emptyPreferences() }` (the helper
+            // [AppGraph.createPrefs] installs) the file is silently reset to empty
+            // defaults — settings are lost for that facet, the app stays alive.
+            val context =
+                ApplicationProvider.getApplicationContext<android.content.Context>()
+            val corruptFile = File(
+                context.filesDir,
+                "theme_settings_corrupt_${UUID.randomUUID()}.preferences_pb",
+            )
+            try {
+                corruptFile.writeBytes(byteArrayOf(0x00, 0x01, 0x02, 0x03, 0x04, 0x05))
+                val corruptStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
+                    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+                    scope = dataStoreScope,
+                    produceFile = { corruptFile },
+                )
+                val recoveredSettings = AndroidThemeSettings(corruptStore)
+                // Reads succeed and return defaults — no IOException propagates.
+                assertEquals(ThemeMode.FollowSystem, recoveredSettings.mode.first())
+                assertEquals(true, recoveredSettings.dynamicColor.first())
+            } finally {
+                corruptFile.delete()
+            }
+        }
 
     @Test
     fun `setters persist across a recreated settings instance backed by the same store`() =

@@ -79,6 +79,14 @@ fun NowPlayingBar(
     onExpand: () -> Unit,
     modifier: Modifier = Modifier,
     /**
+     * Configured rewind seconds (PlaybackSettings.rewindSeconds). Threaded in so the
+     * mini-player's TalkBack contentDescription reads e.g. "Rewind 30 seconds" instead
+     * of "Rewind 0 seconds". Default 30 keeps standalone callers / previews honest.
+     */
+    rewindSeconds: Int = 30,
+    /** Configured forward seconds (PlaybackSettings.forwardSeconds). See [rewindSeconds]. */
+    forwardSeconds: Int = 30,
+    /**
      * Sheet-drag forwarder. Each vertical drag delta on the outer Row arrives
      * here as a Y-pixel offset (negative = swipe up). Default no-op keeps
      * standalone callers / preview / tests working without the sheet plumbing.
@@ -143,9 +151,10 @@ fun NowPlayingBar(
         }
 
         // Row 2 — five-button transport row. Replay / SkipPrev / Play-Pause /
-        // SkipNext / Forward, space-evenly. Rewind/Forward seconds come from
-        // PlaybackSettings via the transport bridge — the mini-player doesn't
-        // need to know the configured values, just call rewind()/forward().
+        // SkipNext / Forward, space-evenly. Rewind/Forward call rewind()/forward()
+        // on the transport bridge; the configured seconds value is threaded in
+        // (params [rewindSeconds] / [forwardSeconds]) purely for TalkBack content
+        // descriptions ("Rewind 30 seconds" not "Rewind 0 seconds").
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -159,7 +168,7 @@ fun NowPlayingBar(
             ) {
                 Icon(
                     imageVector = Icons.Filled.FastRewind,
-                    contentDescription = stringResource(R.string.player_rewind_cd, 0),
+                    contentDescription = stringResource(R.string.player_rewind_cd, rewindSeconds),
                     modifier = Modifier.size(24.dp),
                 )
             }
@@ -205,7 +214,7 @@ fun NowPlayingBar(
             ) {
                 Icon(
                     imageVector = Icons.Filled.FastForward,
-                    contentDescription = stringResource(R.string.player_forward_cd, 0),
+                    contentDescription = stringResource(R.string.player_forward_cd, forwardSeconds),
                     modifier = Modifier.size(24.dp),
                 )
             }
