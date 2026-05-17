@@ -20,6 +20,10 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["treeUriString"]),
         Index(value = ["lastPlayedAt"]),
+        // Backs [BookDao.observeByAuthor]'s `WHERE author = ? COLLATE NOCASE` query.
+        // At ~500 books the unindexed query lands at ~5ms (P.5 profile) — fine today,
+        // but a forward-cost item once libraries grow past a few thousand books.
+        Index(value = ["author"]),
     ],
 )
 data class BookEntity(

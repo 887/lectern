@@ -51,6 +51,8 @@ class LibraryRescanCoordinatorTest {
     private lateinit var enrichment: LibraryScannerEnrichment
     private lateinit var lifecycleRegistry: LifecycleRegistry
     private lateinit var safScanner: SafLibraryScanner
+    private lateinit var coverStore: CoverStore
+    private lateinit var bookSource: FakeBookSource
 
     @Before
     fun setUp() {
@@ -73,6 +75,8 @@ class LibraryRescanCoordinatorTest {
         lifecycleRegistry = ownerHolder.registry
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         safScanner = SafLibraryScanner(context)
+        coverStore = CoverStore(context)
+        bookSource = FakeBookSource()
     }
 
     @After
@@ -91,6 +95,8 @@ class LibraryRescanCoordinatorTest {
             fingerprintStore = fingerprintStore,
             safLibraryScanner = safScanner,
             applicationScope = appScope,
+            bookSource = bookSource,
+            coverStore = coverStore,
             lifecycle = lifecycleRegistry,
             foregroundDebounceMs = 30_000L,
             clock = { 0L },
@@ -142,6 +148,33 @@ class LibraryRescanCoordinatorTest {
         advanceUntilIdle()
         assertEquals(RescanState.Idle, coordinator.state.value)
         assertEquals(0, fakeScanner.scanCallCount.get())
+    }
+
+    @Test
+    fun `scan completion reaps orphan covers for books no longer in the active set`() = scope.runTest {
+        // Pre-seed three cover files on disk; bookSource only knows about one of them.
+        coverStore.writeCover("b-active", byteArrayOf(1))
+        coverStore.writeCover("b-orphan-1", byteArrayOf(2))
+        coverStore.writeCover("b-orphan-2", byteArrayOf(3))
+        bookSource.booksState.value = listOf(
+            BookEntity(
+                bookId = "b-active",
+                treeUriString = "content://tree/r1",
+                relativePath = "a/",
+                title = "Active",
+                durationMs = 10_000L,
+            ),
+        )
+        assertEquals(setOf("b-active", "b-orphan-1", "b-orphan-2"), coverStore.listBookIdsOnDisk())
+
+        val coordinator = newCoordinator()
+        advanceUntilIdle()
+        coordinator.requestRescan()
+        advanceUntilIdle()
+
+        // Two orphans (`b-orphan-1`, `b-orphan-2`) reaped; the active cover survives.
+        assertEquals(setOf("b-active"), coverStore.listBookIdsOnDisk())
+        assertEquals(RescanState.Idle, coordinator.state.value)
     }
 
     @Test
@@ -201,4 +234,26 @@ private class RecordingScanWriter : ScanWriter {
 
 private object NoopMediaAnalyzer : MediaAnalyzer {
     override suspend fun extract(fileUri: Uri): FileMetadata? = null
+}
+
+private class FakeBookSource : BookSource {
+    val booksState = MutableStateFlow<List<BookEntity>>(emptyList())
+    override fun observeBooks() = booksState
+    override fun observeBook(id: String) = MutableStateFlow<BookEntity?>(booksState.value.firstOrNull { it.bookId == id })
+    override fun observeBooksByAuthor(authorName: String) =
+        MutableStateFlow<List<BookEntity>>(booksState.value.filter { it.author.equals(authorName, ignoreCase = true) })
+    override suspend fun search(query: String): List<BookEntity> = emptyList()
+    override suspend fun markCompleted(bookId: String) = Unit
+    override suspend fun markNotStarted(bookId: String) = Unit
+    override suspend fun forgetBook(bookId: String) = Unit
+    override suspend fun setCustomCover(bookId: String, bytes: ByteArray) = Unit
+    override suspend fun setSpeed(bookId: String, speed: Float) = Unit
+    override suspend fun setSkipSilence(bookId: String, enabled: Boolean) = Unit
+    override suspend fun setGain(bookId: String, gainDb: Float) = Unit
+    override suspend fun updatePosition(
+        bookId: String,
+        chapterIndex: Int,
+        positionInChapterMs: Long,
+        lastPlayedAt: Long,
+    ) = Unit
 }

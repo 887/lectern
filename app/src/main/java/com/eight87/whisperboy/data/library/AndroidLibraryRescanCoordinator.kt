@@ -59,6 +59,8 @@ internal class AndroidLibraryRescanCoordinator(
     private val fingerprintStore: LibraryFingerprintStore,
     private val safLibraryScanner: SafLibraryScanner,
     private val applicationScope: CoroutineScope,
+    private val bookSource: BookSource,
+    private val coverStore: CoverStore,
     private val lifecycle: Lifecycle = ProcessLifecycleOwner.get().lifecycle,
     private val foregroundDebounceMs: Long = DEFAULT_FOREGROUND_DEBOUNCE_MS,
     private val clock: () -> Long = System::currentTimeMillis,
@@ -151,6 +153,9 @@ internal class AndroidLibraryRescanCoordinator(
 
             if (rootsToWalk.isEmpty()) {
                 Log.i(SMOKE_TAG, "SCAN_COMPLETE_NOOP roots=${roots.size} (all unchanged or unreadable)")
+                // Still GC orphan covers — `forgetBook` may have run since the last scan, and
+                // a no-op scan is still a "scan completed successfully" point for cleanup.
+                gcOrphanCovers()
                 _state.value = RescanState.Idle
                 return
             }
@@ -185,10 +190,30 @@ internal class AndroidLibraryRescanCoordinator(
             val books = enriched.books.size
             val chapters = enriched.books.sumOf { it.chapters.size }
             Log.i(SMOKE_TAG, "SCAN_COMPLETE roots=${rootsToWalk.size}/${roots.size} books=$books chapters=$chapters force=$force")
+
+            gcOrphanCovers()
             _state.value = RescanState.Idle
         } catch (t: Throwable) {
             Log.e(SMOKE_TAG, "SCAN_FAILED ${t.javaClass.simpleName}: ${t.message}", t)
             _state.value = RescanState.Failed(t)
+        }
+    }
+
+    /**
+     * Orphan-cover GC: after the Room write lands, sweep any cover file on disk whose basename
+     * doesn't match an active book. Catches leaks from `forgetBook` (a process death between
+     * `deleteById` and `deleteCover` left the file), `markRootInactive` (soft-deleted books
+     * accumulate covers indefinitely), and scan-removed books.
+     *
+     * Soft-deleted (inactive) books are NOT in `observeBooks()` (which delegates to the
+     * `active = 1` query), so their covers are reaped here — acceptable because a re-add of the
+     * same folder re-scans cover bytes from disk / embedded source.
+     */
+    private suspend fun gcOrphanCovers() {
+        val activeBookIds = bookSource.observeBooks().first().map { it.bookId }.toSet()
+        val orphansDeleted = coverStore.gcOrphans(activeBookIds)
+        if (orphansDeleted > 0) {
+            Log.i(SMOKE_TAG, "SCAN_GC_COVERS deleted=$orphansDeleted active=${activeBookIds.size}")
         }
     }
 

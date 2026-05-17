@@ -165,30 +165,18 @@ internal class LibraryRepository(
                     } ?: book.coverPath
                     derived to CoverSource.Scanned
                 }
-                val data = if (existing != null) {
-                    PerBookScanData(
-                        coverPath = coverPath,
-                        coverSource = coverSource,
-                        speed = existing.speed,
-                        skipSilenceEnabled = existing.skipSilenceEnabled,
-                        gainDb = existing.gainDb,
-                        currentChapterIndex = existing.currentChapterIndex,
-                        positionInChapterMs = existing.positionInChapterMs,
-                        lastPlayedAt = existing.lastPlayedAt,
-                    )
-                } else {
+                val data = PerBookScanData(
+                    coverPath = coverPath,
+                    coverSource = coverSource,
+                    isExisting = existing != null,
                     // First-time scan: seed per-book settings from the global defaults (J.4 / K.2).
-                    PerBookScanData(
-                        coverPath = coverPath,
-                        coverSource = coverSource,
-                        speed = defaultSpeed,
-                        skipSilenceEnabled = defaultSkipSilence,
-                        gainDb = defaultGainDb,
-                        currentChapterIndex = 0,
-                        positionInChapterMs = 0L,
-                        lastPlayedAt = null,
-                    )
-                }
+                    // For existing rows these values are IGNORED — `updateStructural` doesn't
+                    // touch the position / playback-knob columns, closing the read-modify-write
+                    // race vs. concurrent position writes from playback.
+                    speed = defaultSpeed,
+                    skipSilenceEnabled = defaultSkipSilence,
+                    gainDb = defaultGainDb,
+                )
                 book to data
             }
 
@@ -206,7 +194,23 @@ internal class LibraryRepository(
                 bookDao.markRootInactive(root)
             }
             for ((book, data) in booksWithScanData) {
-                bookDao.upsert(book.toEntity(data))
+                if (data.isExisting) {
+                    // Existing row: structural-only update so concurrent position writes from
+                    // playback (between `findById` above and this DAO call) can't be stomped.
+                    bookDao.updateStructural(
+                        bookId = book.bookId,
+                        treeUriString = book.treeUriString,
+                        relativePath = book.relativePath,
+                        title = book.title,
+                        author = book.author,
+                        durationMs = book.durationMs,
+                        coverPath = data.coverPath,
+                        coverSource = data.coverSource,
+                    )
+                } else {
+                    // New row: full insert seeded with global playback defaults + zero position.
+                    bookDao.upsert(book.toEntity(data))
+                }
                 // Replace the chapter set wholesale. CASCADE on chapter delete is fine here:
                 // bookmarks have `onDelete = SET_NULL` on chapterId, so they survive a
                 // chapter-row disappearing (the bookmark just unpins from the chapter and
@@ -226,28 +230,27 @@ internal class LibraryRepository(
         durationMs = durationMs,
         coverPath = data.coverPath,
         coverSource = data.coverSource,
-        currentChapterIndex = data.currentChapterIndex,
-        positionInChapterMs = data.positionInChapterMs,
+        currentChapterIndex = 0,
+        positionInChapterMs = 0L,
         speed = data.speed,
         skipSilenceEnabled = data.skipSilenceEnabled,
         gainDb = data.gainDb,
-        lastPlayedAt = data.lastPlayedAt,
+        lastPlayedAt = null,
         active = true,
     )
 
     /**
-     * Per-book scan state assembled in [applyScan] and consumed by [toEntity]. New rows get the
-     * global defaults; existing rows preserve their per-book overrides + resume state.
+     * Per-book scan state assembled in [applyScan]. Only consumed by [toEntity] for NEW rows;
+     * existing rows go through [BookDao.updateStructural] which preserves their position
+     * + per-book playback knobs. [isExisting] picks the branch.
      */
     private data class PerBookScanData(
         val coverPath: String?,
         val coverSource: CoverSource,
+        val isExisting: Boolean,
         val speed: Float,
         val skipSilenceEnabled: Boolean,
         val gainDb: Float,
-        val currentChapterIndex: Int,
-        val positionInChapterMs: Long,
-        val lastPlayedAt: Long?,
     )
 
     private fun ScannedChapter.toEntity(bookId: String): ChapterEntity = ChapterEntity(
