@@ -2,26 +2,23 @@ package com.eight87.whisperboy.ui.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Bedtime
-import androidx.compose.material.icons.outlined.FolderOpen
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,6 +45,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.eight87.whisperboy.R
+import com.eight87.whisperboy.theme.CategoryAccent
+import com.eight87.whisperboy.theme.PlaybackAccent
+import com.eight87.whisperboy.theme.accentFor
 import kotlinx.coroutines.launch
 
 /**
@@ -117,19 +117,22 @@ fun SettingsScreen(
         ) {
             SettingsCard {
                 SettingsCategoryRow(
-                    icon = Icons.Outlined.PlayCircle,
+                    id = "playback",
+                    icon = Icons.Filled.PlayCircle,
                     title = stringResource(R.string.settings_category_playback),
                     subtitle = stringResource(R.string.settings_category_playback_subtitle),
                     onClick = pendingClick,
                 )
                 SettingsCategoryRow(
-                    icon = Icons.Outlined.Bedtime,
+                    id = "sleep",
+                    icon = Icons.Filled.Bedtime,
                     title = stringResource(R.string.settings_category_sleep_timer),
                     subtitle = stringResource(R.string.settings_category_sleep_timer_subtitle),
                     onClick = onSleepTimerClick,
                 )
                 SettingsCategoryRow(
-                    icon = Icons.Outlined.FolderOpen,
+                    id = "library",
+                    icon = Icons.Filled.FolderOpen,
                     title = stringResource(R.string.settings_category_library),
                     subtitle = stringResource(R.string.settings_category_library_subtitle),
                     onClick = onLibraryFoldersClick,
@@ -151,7 +154,8 @@ fun SettingsScreen(
                     }
                 }
                 SettingsCategoryRow(
-                    icon = Icons.Outlined.Palette,
+                    id = "theme",
+                    icon = Icons.Filled.Palette,
                     title = stringResource(R.string.settings_category_theme),
                     subtitle = stringResource(R.string.settings_category_theme_subtitle),
                     onClick = onThemeClick,
@@ -160,7 +164,8 @@ fun SettingsScreen(
 
             SettingsCard {
                 SettingsCategoryRow(
-                    icon = Icons.Outlined.Info,
+                    id = "about",
+                    icon = Icons.Filled.Info,
                     title = stringResource(R.string.settings_category_about),
                     subtitle = stringResource(R.string.settings_category_about_subtitle),
                     onClick = onAboutClick,
@@ -187,10 +192,14 @@ private fun SettingsCard(content: @Composable () -> Unit) {
 }
 
 /**
- * One settings category row. Icon is a plain [Icon] for now; the M3E
- * Phase C inch (per `docs/plans/m3-expressive.md`) can later wrap this
- * in a `CategoryAccent` coloured circular avatar by editing this single
- * composable.
+ * One settings category row. Leading icon renders through
+ * [SettingsCategoryIcon] (m3-expressive Phase C) — a 40-dp coloured
+ * circle holding a filled glyph.
+ *
+ * Accent resolution follows gotcha #3 in `docs/plans/m3-expressive.md`:
+ * an explicit [accent] wins; otherwise we derive from [id] via
+ * `accentFor`; otherwise we fall back to [PlaybackAccent] so a row
+ * without either still renders coloured rather than going monochrome.
  */
 @Composable
 private fun SettingsCategoryRow(
@@ -198,7 +207,10 @@ private fun SettingsCategoryRow(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
+    id: String? = null,
+    accent: CategoryAccent? = null,
 ) {
+    val resolvedAccent = accent ?: id?.let { accentFor(it) } ?: PlaybackAccent
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -206,16 +218,11 @@ private fun SettingsCategoryRow(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier.size(40.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        SettingsCategoryIcon(
+            icon = icon,
+            accent = resolvedAccent,
+            contentDescription = null,
+        )
         Spacer(Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(

@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,10 +18,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.Article
-import androidx.compose.material.icons.automirrored.outlined.Launch
-import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.automirrored.filled.Launch
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +45,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.eight87.whisperboy.R
+import com.eight87.whisperboy.theme.AboutAccent
+import com.eight87.whisperboy.theme.CategoryAccent
+import com.eight87.whisperboy.theme.PlaybackAccent
+import com.eight87.whisperboy.theme.accentFor
 import kotlinx.coroutines.launch
 
 /**
@@ -131,19 +134,24 @@ fun AboutScreen(
             // License / source / OSS-licenses card.
             AboutCard {
                 AboutRow(
-                    icon = Icons.AutoMirrored.Outlined.Article,
+                    id = "about",
+                    icon = Icons.AutoMirrored.Filled.Article,
                     title = stringResource(R.string.about_license),
                     subtitle = stringResource(R.string.about_license_subtitle),
                     onClick = { openExternalBrowser(context, LICENSE_URL) },
                 )
                 AboutRow(
-                    icon = Icons.AutoMirrored.Outlined.Launch,
+                    // No bespoke "github" accent; lean on the About teal
+                    // for the whole About card to read as one section.
+                    accent = AboutAccent,
+                    icon = Icons.AutoMirrored.Filled.Launch,
                     title = stringResource(R.string.about_github_label),
                     subtitle = GITHUB_URL,
                     onClick = { openExternalBrowser(context, GITHUB_URL) },
                 )
                 AboutRow(
-                    icon = Icons.Outlined.Code,
+                    id = "licenses",
+                    icon = Icons.Filled.Code,
                     title = stringResource(R.string.about_oss_licenses_label),
                     subtitle = stringResource(R.string.about_oss_licenses_subtitle),
                     onClick = {
@@ -161,10 +169,10 @@ fun AboutScreen(
             AboutCard {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Outlined.Favorite,
+                        SettingsCategoryIcon(
+                            icon = Icons.Filled.Favorite,
+                            accent = AboutAccent,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(Modifier.width(16.dp))
                         Text(
@@ -207,7 +215,10 @@ private fun AboutRow(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
+    id: String? = null,
+    accent: CategoryAccent? = null,
 ) {
+    val resolvedAccent = accent ?: id?.let { accentFor(it) } ?: PlaybackAccent
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -215,16 +226,11 @@ private fun AboutRow(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier.size(40.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        SettingsCategoryIcon(
+            icon = icon,
+            accent = resolvedAccent,
+            contentDescription = null,
+        )
         Spacer(Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
