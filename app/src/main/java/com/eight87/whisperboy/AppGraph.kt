@@ -30,6 +30,8 @@ import com.eight87.whisperboy.data.library.SafLibraryScanner
 import com.eight87.whisperboy.data.library.ScanWriter
 import com.eight87.whisperboy.data.playback.AndroidPlaybackSettings
 import com.eight87.whisperboy.data.playback.PlaybackSettings
+import com.eight87.whisperboy.data.theme.AndroidThemeSettings
+import com.eight87.whisperboy.data.theme.ThemeSettings
 import com.eight87.whisperboy.playback.BookCommands
 import com.eight87.whisperboy.playback.NowPlayingState
 import com.eight87.whisperboy.playback.PlaybackController
@@ -81,6 +83,19 @@ class AppGraph(context: Context) {
 
     val playbackSettings: PlaybackSettings =
         AndroidPlaybackSettings(playbackSettingsDataStore)
+
+    /**
+     * Phase K.5 — persisted theme preferences (mode + dynamic-color). Own
+     * `theme_settings` DataStore file so a future "reset theme" affordance
+     * can delete this alone without touching library / playback prefs
+     * (R.B store-split pattern).
+     */
+    private val themeSettingsDataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
+        produceFile = { appContext.preferencesDataStoreFile("theme_settings") }
+    )
+
+    val themeSettings: ThemeSettings =
+        AndroidThemeSettings(themeSettingsDataStore)
 
     /**
      * Library cache database. Eagerly constructed so a misconfigured schema fails fast at app

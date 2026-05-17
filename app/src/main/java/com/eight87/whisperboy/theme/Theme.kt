@@ -10,7 +10,11 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.expressiveLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.eight87.whisperboy.data.theme.ThemeMode
+import com.eight87.whisperboy.data.theme.ThemeSettings
 
 // m3-expressive A.4 / B.1 — fall through to the expressive seed
 // schemes. They produce brighter container pairs (`primaryContainer` /
@@ -25,13 +29,30 @@ internal val DarkColorScheme = darkColorScheme(primary = Purple80, secondary = P
 
 internal val LightColorScheme = expressiveLightColorScheme()
 
+/**
+ * Phase K.5 — reads the user's theme mode + dynamic-color preference
+ * from [ThemeSettings] and applies them. The mode/flag flow into
+ * `colorScheme` selection here; everything below stays unchanged from
+ * the M3E A.3 wiring (MaterialExpressiveTheme + Typography).
+ *
+ * Initial values mirror the persisted defaults
+ * ([ThemeMode.FollowSystem], dynamic-color = `true`) so first-frame
+ * rendering before DataStore emits matches the steady-state default.
+ */
 @Composable
 fun WhisperboyTheme(
-  darkTheme: Boolean = isSystemInDarkTheme(),
-  // Dynamic color is available on Android 12+
-  dynamicColor: Boolean = true,
+  themeSettings: ThemeSettings,
   content: @Composable () -> Unit,
 ) {
+  val mode by themeSettings.mode.collectAsStateWithLifecycle(initialValue = ThemeMode.FollowSystem)
+  val dynamicColor by themeSettings.dynamicColor.collectAsStateWithLifecycle(initialValue = true)
+
+  val darkTheme = when (mode) {
+    ThemeMode.Light -> false
+    ThemeMode.Dark -> true
+    ThemeMode.FollowSystem -> isSystemInDarkTheme()
+  }
+
   val colorScheme =
     when {
       dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {

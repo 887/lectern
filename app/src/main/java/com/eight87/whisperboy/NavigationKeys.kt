@@ -48,3 +48,10 @@ import kotlinx.serialization.Serializable
  * adds a new root via the SAF tree picker.
  */
 @Serializable data object LibraryFoldersRoute : NavKey
+
+/**
+ * Phase K.5 — Theme sub-page. Pushed from Settings. Hosts the theme-mode
+ * radio group (Light / Dark / Follow system) plus the dynamic-color
+ * (Material You) toggle. Selection persists via [com.eight87.whisperboy.data.theme.ThemeSettings].
+ */
+@Serializable data object ThemeSettingsRoute : NavKey
