@@ -170,6 +170,23 @@
     <string name="settings_theme_dynamic_color_body">Use colors from your wallpaper (Material You).</string>
     <string name="settings_theme_dynamic_color_unavailable">Requires Android 12 or later.</string>
 
+    <!-- settings_sleep_ — Sleep timer sub-page (Phase K.3) -->
+    <string name="settings_sleep_title">Sleep timer</string>
+    <string name="settings_sleep_back_cd">Back</string>
+    <string name="settings_sleep_default_duration_title">Default duration</string>
+    <string name="settings_sleep_duration_format">%1$d minutes</string>
+    <string name="settings_sleep_fade_out_title">Fade-out</string>
+    <string name="settings_sleep_fade_out_format">%1$d seconds</string>
+    <string name="settings_sleep_fade_out_subtitle">Volume ramps down to silent over this period before pausing.</string>
+    <string name="settings_sleep_shake_title">Shake to resume</string>
+    <string name="settings_sleep_shake_subtitle">Pick up the phone after the timer pauses to keep playing.</string>
+    <string name="settings_sleep_window_title">Auto-arm window</string>
+    <string name="settings_sleep_window_subtitle">Automatically start the timer when playback begins in this time range.</string>
+    <string name="settings_sleep_window_start_label">Start</string>
+    <string name="settings_sleep_window_end_label">End</string>
+    <string name="settings_sleep_window_clear">Disable window</string>
+    <string name="settings_sleep_window_disabled">Off</string>
+
     <!-- about_ — About sub-page (Phase K.6) -->
     <string name="about_title">About</string>
     <string name="about_version_format">Version %1$s (%2$s)</string>

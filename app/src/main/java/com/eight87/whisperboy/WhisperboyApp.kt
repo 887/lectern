@@ -29,6 +29,7 @@ import com.eight87.whisperboy.ui.playback.NowPlayingSheet
 import com.eight87.whisperboy.ui.settings.AboutScreen
 import com.eight87.whisperboy.ui.settings.LibraryFoldersScreen
 import com.eight87.whisperboy.ui.settings.SettingsScreen
+import com.eight87.whisperboy.ui.settings.SleepTimerSettingsScreen
 import com.eight87.whisperboy.ui.settings.ThemeSettingsScreen
 import kotlinx.coroutines.launch
 
@@ -163,7 +164,16 @@ fun WhisperboyApp() {
                         onBack = { backStack.removeLastOrNull() },
                         onAboutClick = { backStack.add(AboutRoute) },
                         onLibraryFoldersClick = { backStack.add(LibraryFoldersRoute) },
+                        onSleepTimerClick = { backStack.add(SleepTimerSettingsRoute) },
                         onThemeClick = { backStack.add(ThemeSettingsRoute) },
+                        modifier = Modifier.safeDrawingPadding(),
+                    )
+                }
+                entry<SleepTimerSettingsRoute> {
+                    // Phase K.3 — sleep-timer defaults + auto-arm window.
+                    SleepTimerSettingsScreen(
+                        sleepTimerSettings = graph.sleepTimerSettings,
+                        onBack = { backStack.removeLastOrNull() },
                         modifier = Modifier.safeDrawingPadding(),
                     )
                 }
