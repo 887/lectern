@@ -55,6 +55,15 @@ glance = "1.1.1"
 # `app/build/reports/licensee/android<Variant>/artifacts.json`. Apache-2.0
 # itself (build-only, never shipped in the APK).
 licensee = "1.13.0"
+# Robolectric — JVM-side Android shadows so `Context`-dependent unit tests run
+# without an emulator. 4.14.1 is the current stable line (May 2026) and supports
+# `@Config(sdk = [34])`. Pairs with `androidx.test:core-ktx` + `ext:junit-ktx`
+# for the AndroidX test runner shims; Compose UI tests under Robolectric reuse
+# the `androidx.compose.ui:ui-test-junit4` artifact already declared via the
+# Compose BOM, plus the `ui-test-manifest` sibling for the host harness.
+robolectric = "4.14.1"
+androidxTestCoreKtx = "1.6.1"
+androidxTestExtJunitKtx = "1.2.1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
@@ -76,6 +85,13 @@ androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "a
 androidx-test-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "androidxTestEspresso" }
 androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
 junit = { module = "junit:junit", version.ref = "junit" }
+# Robolectric + AndroidX test core-ktx / ext-junit-ktx — JVM-only Android-shadow
+# host that lets `Context`-dependent unit tests (DataStore, AssetManager, the
+# Compose `createComposeRule()` harness) run on `./gradlew :app:testDebugUnitTest`
+# without an emulator. `@Config(sdk = [34])` per test class.
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+androidx-test-core-ktx = { module = "androidx.test:core-ktx", version.ref = "androidxTestCoreKtx" }
+androidx-test-ext-junit-ktx = { module = "androidx.test.ext:junit-ktx", version.ref = "androidxTestExtJunitKtx" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 # Phase N — `scope.future { ... }` bridge for the Media3 MediaLibrarySession callback API,
 # whose `onGetChildren` / `onGetLibraryRoot` / etc. return `ListenableFuture<LibraryResult<...>>`.
