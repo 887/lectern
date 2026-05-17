@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eight87.whisperboy.data.theme.ThemeMode
 import com.eight87.whisperboy.data.theme.ThemeSettings
+import com.eight87.whisperboy.playback.NowPlayingState
 
 // m3-expressive A.4 / B.1 — fall through to the expressive seed
 // schemes. They produce brighter container pairs (`primaryContainer` /
@@ -85,6 +86,7 @@ val LocalTintByAlbumArt = staticCompositionLocalOf { true }
 @Composable
 fun WhisperboyTheme(
   themeSettings: ThemeSettings,
+  nowPlayingState: NowPlayingState,
   content: @Composable () -> Unit,
 ) {
   val mode by themeSettings.mode.collectAsStateWithLifecycle(initialValue = ThemeMode.FollowSystem)
@@ -101,7 +103,7 @@ fun WhisperboyTheme(
 
   // Override order: customBaseSeed (when set) wins outright, otherwise
   // dynamic-color on API 31+, otherwise the static fallback.
-  val colorScheme = if (customBaseSeed != 0L) {
+  val baseScheme = if (customBaseSeed != 0L) {
     deriveCustomScheme(customBaseSeed, darkTheme)
   } else when {
     dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
@@ -114,9 +116,41 @@ fun WhisperboyTheme(
 
   val chromeTint: Color? = if (customChromeTint == 0L) null else colorFromRgbLong(customChromeTint)
 
+  // Lift the album-art tint out of `PlaybackScreen` and into the
+  // theme so the whole app chrome (library cards, settings rows,
+  // bookmark surfaces, mini-player) shifts toward the currently-
+  // playing book's dominant cover color — not just the player
+  // screen's vertical gradient. Mirrors tonearmboy's pattern
+  // (`AlbumPalette` + `LocalAlbumPalette` + 9-slot surface blend).
+  val albumPalette = rememberPlayingBookPalette(nowPlayingState)
+
+  // Effective tint resolution: user-picked override beats Palette
+  // extraction, and the "tint by album art" toggle gates Palette.
+  // `null` means "no blending, surfaces stay at their base scheme".
+  val effectiveTint: Color? = chromeTint
+    ?: if (tintByAlbumArt) albumPalette.surfaceTint else null
+
+  // Blend the nine surface slots tonearmboy blends (Theme.kt:50-120).
+  // Bias 0.12 = a *gentle* shift — chrome remains chrome, "tinted by
+  // the cover" not "becomes the cover". Identical surface ladder
+  // tonearmboy uses; readable across light/dark + Material You + the
+  // custom-base-seed scheme above.
+  val colorScheme = if (effectiveTint == null) baseScheme else baseScheme.copy(
+    surface = blendSurface(baseScheme.surface, effectiveTint, 0.12f),
+    surfaceVariant = blendSurface(baseScheme.surfaceVariant, effectiveTint, 0.12f),
+    background = blendSurface(baseScheme.background, effectiveTint, 0.10f),
+    surfaceContainerLowest = blendSurface(baseScheme.surfaceContainerLowest, effectiveTint, 0.08f),
+    surfaceContainerLow = blendSurface(baseScheme.surfaceContainerLow, effectiveTint, 0.10f),
+    surfaceContainer = blendSurface(baseScheme.surfaceContainer, effectiveTint, 0.12f),
+    surfaceContainerHigh = blendSurface(baseScheme.surfaceContainerHigh, effectiveTint, 0.14f),
+    surfaceContainerHighest = blendSurface(baseScheme.surfaceContainerHighest, effectiveTint, 0.16f),
+    secondaryContainer = blendSurface(baseScheme.secondaryContainer, effectiveTint, 0.18f),
+  )
+
   CompositionLocalProvider(
     LocalCustomChromeTint provides chromeTint,
     LocalTintByAlbumArt provides tintByAlbumArt,
+    LocalAlbumPalette provides albumPalette,
   ) {
     // m3-expressive A.3 — `MaterialExpressiveTheme` pulls in the new
     // motion / typography / shape defaults (rounded extra-large group

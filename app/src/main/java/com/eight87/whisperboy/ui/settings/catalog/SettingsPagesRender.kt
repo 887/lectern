@@ -164,9 +164,13 @@ private fun ThemeModeRow(entry: SettingsCatalogEntry, themeSettings: ThemeSettin
         onClick = picker::show,
     )
     val themeLabels = ThemeMode.entries.associateWith { stringResource(themeModeLabelRes(it)) }
+    // User-requested ordering: "Follow system" first (the most common
+    // pick + the persisted default), then explicit Light / Dark. Don't
+    // touch the enum's declaration order — other code may rely on it.
+    val themeOptions = listOf(ThemeMode.FollowSystem, ThemeMode.Light, ThemeMode.Dark)
     picker.RadioPicker(
         title = stringResource(entry.labelRes),
-        options = ThemeMode.entries,
+        options = themeOptions,
         label = { themeLabels[it].orEmpty() },
         current = mode,
         onPick = { scope.launch { themeSettings.setMode(it) } },

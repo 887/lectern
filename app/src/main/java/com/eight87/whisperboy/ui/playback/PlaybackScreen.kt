@@ -126,25 +126,16 @@ fun PlaybackScreen(
     var optionsSheetOpen by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    // F.6 — extract a single dominant accent color from the current book's cover.
-    // Off-main (Dispatchers.IO inside extractTint). Re-keys on the cover path so a
-    // book switch retriggers extraction; nulls out cleanly when there's no cover.
-    val coverPath = (uiState as? PlaybackUiState.Loaded)?.book?.coverPath
-    // K.5 follow-up — user-picked chrome tint override (ported from
-    // tonearmboy `82d6248`). When the user has set a custom tint in
-    // Settings → Theme, the override wins regardless of cover-art
-    // extraction or the album-art-tint toggle.
+    // F.6 — player-screen vertical gradient. Reads the album palette
+    // from [LocalAlbumPalette] (published by [WhisperboyTheme] off
+    // the currently-playing book's cover) — single source of truth,
+    // same tint that's already blending the rest of the app chrome.
+    // User-picked custom tint still wins; album-art toggle still gates.
     val customTint = com.eight87.whisperboy.theme.LocalCustomChromeTint.current
-    // Tint-chrome-by-album-art toggle (tonearmboy parity). When `false`
-    // we skip the Palette extraction entirely — cheaper, and the
-    // gradient falls back to the static surface colour.
     val tintByAlbumArt = com.eight87.whisperboy.theme.LocalTintByAlbumArt.current
-    var tint by remember { mutableStateOf<Color?>(null) }
-    LaunchedEffect(coverPath, tintByAlbumArt, customTint) {
-        tint = if (tintByAlbumArt && customTint == null) extractTint(coverPath) else null
-    }
+    val albumTint = com.eight87.whisperboy.theme.LocalAlbumPalette.current.surfaceTint
     val surface = MaterialTheme.colorScheme.surface
-    val effectiveTint = customTint ?: tint
+    val effectiveTint = customTint ?: if (tintByAlbumArt) albumTint else null
     // Animate the top-of-gradient color so book changes cross-fade instead of snap.
     // Single per-screen animation (not a 9-call theme crossfade — see cold-start-perf B.2);
     // the alpha multiply is folded into the target so we don't allocate a second `Color`.

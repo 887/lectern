@@ -17,7 +17,10 @@ class WhisperboyActivity : ComponentActivity() {
     enableEdgeToEdge()
     val graph = (application as WhisperboyApplication).graph
     setContent {
-      WhisperboyTheme(themeSettings = graph.themeSettings) {
+      WhisperboyTheme(
+        themeSettings = graph.themeSettings,
+        nowPlayingState = graph.nowPlayingState,
+      ) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { WhisperboyApp() }
       }
     }
