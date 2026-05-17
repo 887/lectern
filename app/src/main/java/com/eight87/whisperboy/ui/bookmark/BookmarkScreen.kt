@@ -154,6 +154,7 @@ fun BookmarkScreen(
                     items(
                         items = group.bookmarks,
                         key = { it.bookmarkId },
+                        contentType = { "bookmark" },
                     ) { bookmark ->
                         BookmarkRow(
                             bookmark = bookmark,

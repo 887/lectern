@@ -107,7 +107,7 @@ fun SleepTimerSheet(
 
             // Quick-pick chips. LazyRow so 5/10/15/30/60 stay on one line on narrow screens.
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(QUICK_PICKS) { minutes ->
+                items(QUICK_PICKS, key = { it }) { minutes ->
                     val activeMode = running?.mode
                     val isActive = activeMode is SleepTimerMode.Timed &&
                         activeMode.duration == minutes.minutes

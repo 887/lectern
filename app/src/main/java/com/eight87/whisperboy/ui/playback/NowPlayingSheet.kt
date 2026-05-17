@@ -18,8 +18,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -117,8 +117,10 @@ fun NowPlayingSheet(
 
     val progress = sheetProgress.value
     // Auxio-style staggered crossfade: mini 0..0.5, full 0.5..1.
-    val miniAlpha = (1f - min(progress * 2f, 1f)).coerceIn(0f, 1f)
-    val fullAlpha = (max(progress - 0.5f, 0f) * 2f).coerceIn(0f, 1f)
+    // C.2: alpha is read inside `graphicsLayer { ... }` lambdas below so the
+    // sheetProgress State read defers to the draw phase, skipping recomposition.
+    val miniAlpha: () -> Float = { (1f - min(sheetProgress.value * 2f, 1f)).coerceIn(0f, 1f) }
+    val fullAlpha: () -> Float = { (max(sheetProgress.value - 0.5f, 0f) * 2f).coerceIn(0f, 1f) }
 
     val sheetHeightPx = peekPx + progress * dragRangePx
     val sheetHeightDp = with(density) { sheetHeightPx.toDp() }
@@ -157,7 +159,7 @@ fun NowPlayingSheet(
                 // PlaybackScreen mounts its own LaunchedEffects /
                 // Flows / cover load, all deferred off the first frame.
                 if (progress > 0.45f) {
-                    Box(modifier = Modifier.fillMaxSize().alpha(fullAlpha)) {
+                    Box(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = fullAlpha() }) {
                         PlaybackScreen(
                             state = nowPlayingState,
                             transport = transportCommands,
@@ -177,7 +179,7 @@ fun NowPlayingSheet(
                         .align(Alignment.TopCenter)
                         .fillMaxWidth()
                         .height(peekDp)
-                        .alpha(miniAlpha),
+                        .graphicsLayer { alpha = miniAlpha() },
                 ) {
                     NowPlayingBar(
                         nowPlayingState = nowPlayingState,
