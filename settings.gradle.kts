@@ -19,3 +19,7 @@ plugins {
 
 rootProject.name = "whisperboy"
 include(":app")
+// cold-start-perf F.1 — sibling com.android.test module that hosts the
+// macrobenchmark recording the cold-boot path. See baselineprofile/README
+// of intent in baselineprofile/build.gradle.kts.
+include(":baselineprofile")
