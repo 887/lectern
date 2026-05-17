@@ -3,11 +3,11 @@ package com.eight87.whisperboy.data.playback
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import com.eight87.whisperboy.data.settings.Setting
+import com.eight87.whisperboy.data.settings.setting
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 /**
  * Narrow facet (R.A pattern, R.B store split) for the player's user-tunable defaults.
@@ -52,65 +52,67 @@ interface PlaybackSettings {
 }
 
 /**
- * DataStore-backed [PlaybackSettings]. Mirrors [com.eight87.whisperboy.data.library.AndroidLibraryUiSettings]
- * — typed preference keys + `data.map { ... }` Flows + `edit { ... }` setters, with
- * coerce-to-default on out-of-range reads.
+ * DataStore-backed [PlaybackSettings].
+ *
+ * R.B.2 migration: every knob is a [Setting]. Knobs with non-trivial validation
+ * (seek-seconds coerce-to-set, speed/gain clamp-to-range) use the
+ * `setting(key, decode, encode)` overload so the coercion lives next to the key
+ * declaration instead of in hand-rolled `data.map { ... }` Flows.
  */
 class AndroidPlaybackSettings(
-    private val dataStore: DataStore<Preferences>,
+    dataStore: DataStore<Preferences>,
 ) : PlaybackSettings {
 
-    override val rewindSeconds: Flow<Int> =
-        dataStore.data.map { prefs -> coerceSeconds(prefs[KEY_REWIND_SECONDS], DEFAULT_SEEK_SECONDS) }
+    private val rewindSetting: Setting<Int> = dataStore.setting(
+        key = intPreferencesKey("rewind_seconds"),
+        decode = { raw -> if (raw != null && raw in SECONDS_ALLOWED) raw else DEFAULT_SEEK_SECONDS },
+        encode = { raw -> if (raw in SECONDS_ALLOWED) raw else DEFAULT_SEEK_SECONDS },
+    )
 
-    override val forwardSeconds: Flow<Int> =
-        dataStore.data.map { prefs -> coerceSeconds(prefs[KEY_FORWARD_SECONDS], DEFAULT_SEEK_SECONDS) }
+    private val forwardSetting: Setting<Int> = dataStore.setting(
+        key = intPreferencesKey("forward_seconds"),
+        decode = { raw -> if (raw != null && raw in SECONDS_ALLOWED) raw else DEFAULT_SEEK_SECONDS },
+        encode = { raw -> if (raw in SECONDS_ALLOWED) raw else DEFAULT_SEEK_SECONDS },
+    )
 
-    override val autoRewindSeconds: Flow<Int> =
-        dataStore.data.map { prefs -> coerceAutoRewindSeconds(prefs[KEY_AUTO_REWIND_SECONDS]) }
+    private val autoRewindSetting: Setting<Int> = dataStore.setting(
+        key = intPreferencesKey("auto_rewind_seconds"),
+        decode = { raw -> if (raw != null && raw in AUTO_REWIND_ALLOWED) raw else DEFAULT_AUTO_REWIND_SECONDS },
+        encode = { raw -> if (raw in AUTO_REWIND_ALLOWED) raw else DEFAULT_AUTO_REWIND_SECONDS },
+    )
 
-    override val defaultSpeed: Flow<Float> =
-        dataStore.data.map { prefs -> coerceSpeed(prefs[KEY_DEFAULT_SPEED]) }
+    private val defaultSpeedSetting: Setting<Float> = dataStore.setting(
+        key = floatPreferencesKey("default_speed"),
+        decode = { raw -> if (raw != null && raw in MIN_SPEED..MAX_SPEED) raw else DEFAULT_SPEED },
+        encode = { raw -> raw.coerceIn(MIN_SPEED, MAX_SPEED) },
+    )
 
-    override val defaultSkipSilence: Flow<Boolean> =
-        dataStore.data.map { prefs -> prefs[KEY_DEFAULT_SKIP_SILENCE] ?: DEFAULT_SKIP_SILENCE }
+    private val defaultSkipSilenceSetting: Setting<Boolean> = dataStore.setting(
+        key = booleanPreferencesKey("default_skip_silence"),
+        default = DEFAULT_SKIP_SILENCE,
+    )
 
-    override val defaultGainDb: Flow<Float> =
-        dataStore.data.map { prefs -> coerceGain(prefs[KEY_DEFAULT_GAIN_DB]) }
+    private val defaultGainSetting: Setting<Float> = dataStore.setting(
+        key = floatPreferencesKey("default_gain_db"),
+        decode = { raw -> if (raw != null && raw in MIN_GAIN_DB..MAX_GAIN_DB) raw else DEFAULT_GAIN_DB },
+        encode = { raw -> raw.coerceIn(MIN_GAIN_DB, MAX_GAIN_DB) },
+    )
 
-    override suspend fun setRewindSeconds(seconds: Int) {
-        dataStore.edit { it[KEY_REWIND_SECONDS] = sanitizeSeconds(seconds, DEFAULT_SEEK_SECONDS) }
-    }
+    override val rewindSeconds: Flow<Int> = rewindSetting.flow
+    override val forwardSeconds: Flow<Int> = forwardSetting.flow
+    override val autoRewindSeconds: Flow<Int> = autoRewindSetting.flow
+    override val defaultSpeed: Flow<Float> = defaultSpeedSetting.flow
+    override val defaultSkipSilence: Flow<Boolean> = defaultSkipSilenceSetting.flow
+    override val defaultGainDb: Flow<Float> = defaultGainSetting.flow
 
-    override suspend fun setForwardSeconds(seconds: Int) {
-        dataStore.edit { it[KEY_FORWARD_SECONDS] = sanitizeSeconds(seconds, DEFAULT_SEEK_SECONDS) }
-    }
-
-    override suspend fun setAutoRewindSeconds(seconds: Int) {
-        dataStore.edit { it[KEY_AUTO_REWIND_SECONDS] = sanitizeAutoRewindSeconds(seconds) }
-    }
-
-    override suspend fun setDefaultSpeed(speed: Float) {
-        dataStore.edit { it[KEY_DEFAULT_SPEED] = clampSpeed(speed) }
-    }
-
-    override suspend fun setDefaultSkipSilence(enabled: Boolean) {
-        dataStore.edit { it[KEY_DEFAULT_SKIP_SILENCE] = enabled }
-    }
-
-    override suspend fun setDefaultGainDb(db: Float) {
-        dataStore.edit { it[KEY_DEFAULT_GAIN_DB] = clampGain(db) }
-    }
+    override suspend fun setRewindSeconds(seconds: Int) = rewindSetting.set(seconds)
+    override suspend fun setForwardSeconds(seconds: Int) = forwardSetting.set(seconds)
+    override suspend fun setAutoRewindSeconds(seconds: Int) = autoRewindSetting.set(seconds)
+    override suspend fun setDefaultSpeed(speed: Float) = defaultSpeedSetting.set(speed)
+    override suspend fun setDefaultSkipSilence(enabled: Boolean) = defaultSkipSilenceSetting.set(enabled)
+    override suspend fun setDefaultGainDb(db: Float) = defaultGainSetting.set(db)
 
     private companion object {
-        val KEY_REWIND_SECONDS = intPreferencesKey("rewind_seconds")
-        val KEY_FORWARD_SECONDS = intPreferencesKey("forward_seconds")
-        val KEY_AUTO_REWIND_SECONDS = intPreferencesKey("auto_rewind_seconds")
-
-        val KEY_DEFAULT_SPEED = floatPreferencesKey("default_speed")
-        val KEY_DEFAULT_SKIP_SILENCE = booleanPreferencesKey("default_skip_silence")
-        val KEY_DEFAULT_GAIN_DB = floatPreferencesKey("default_gain_db")
-
         const val DEFAULT_SEEK_SECONDS = 30
         const val DEFAULT_AUTO_REWIND_SECONDS = 5
 
@@ -124,34 +126,7 @@ class AndroidPlaybackSettings(
         const val MIN_GAIN_DB = -3.0f
         const val MAX_GAIN_DB = 12.0f
 
-        /** Coerce a persisted seek-seconds value; unknown / null / out-of-set → [default]. */
-        fun coerceSeconds(raw: Int?, default: Int): Int =
-            if (raw != null && raw in SECONDS_ALLOWED) raw else default
-
-        /** Sanitize a seek-seconds setter input the same way. */
-        fun sanitizeSeconds(raw: Int, default: Int): Int =
-            if (raw in SECONDS_ALLOWED) raw else default
-
-        /** Auto-rewind picker offers 0 (off) / 3 / 5 / 10 per K.2 spec. */
-        fun sanitizeAutoRewindSeconds(raw: Int): Int =
-            if (raw in AUTO_REWIND_ALLOWED) raw else DEFAULT_AUTO_REWIND_SECONDS
-
-        /** Coerce a persisted auto-rewind value; unknown / null / out-of-set → default 5. */
-        fun coerceAutoRewindSeconds(raw: Int?): Int =
-            if (raw != null && raw in AUTO_REWIND_ALLOWED) raw else DEFAULT_AUTO_REWIND_SECONDS
-
         val SECONDS_ALLOWED = setOf(5, 10, 30, 60)
-
         val AUTO_REWIND_ALLOWED = setOf(0, 3, 5, 10)
-
-        fun coerceSpeed(raw: Float?): Float =
-            if (raw != null && raw in MIN_SPEED..MAX_SPEED) raw else DEFAULT_SPEED
-
-        fun clampSpeed(raw: Float): Float = raw.coerceIn(MIN_SPEED, MAX_SPEED)
-
-        fun coerceGain(raw: Float?): Float =
-            if (raw != null && raw in MIN_GAIN_DB..MAX_GAIN_DB) raw else DEFAULT_GAIN_DB
-
-        fun clampGain(raw: Float): Float = raw.coerceIn(MIN_GAIN_DB, MAX_GAIN_DB)
     }
 }

@@ -2,11 +2,10 @@ package com.eight87.whisperboy.data.library
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.eight87.whisperboy.data.settings.Setting
+import com.eight87.whisperboy.data.settings.stringSetSetting
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 
 /**
  * Phase K.4 sub-screen — persisted scan-filter preferences.
@@ -24,6 +23,10 @@ import kotlinx.coroutines.flow.map
  * The scanner consumes the disabled set via [SupportedAudioFormats.isAudioFile]'s
  * disabled-extensions parameter, plumbed through [SafLibraryScanner]'s
  * `disabledExtensionsProvider`.
+ *
+ * R.B.2 migration: the `disabledExtensions` Flow + setter are backed by [Setting]
+ * via the [stringSetSetting] factory (lowercases on read AND on write). `snapshot()`
+ * remains as a small helper that takes a single emission off the same Flow.
  */
 interface LibraryScanFilterSettings {
     /** Lowercase extensions the user has disabled. Empty default = all enabled. */
@@ -36,27 +39,16 @@ interface LibraryScanFilterSettings {
 }
 
 class AndroidLibraryScanFilterSettings(
-    private val dataStore: DataStore<Preferences>,
+    dataStore: DataStore<Preferences>,
 ) : LibraryScanFilterSettings {
 
-    override val disabledExtensions: Flow<Set<String>> =
-        dataStore.data.map { prefs ->
-            (prefs[KEY_DISABLED_EXTENSIONS] ?: emptySet())
-                .mapTo(mutableSetOf()) { it.lowercase() }
-        }
+    private val setting: Setting<Set<String>> =
+        dataStore.stringSetSetting("disabled_extensions", normalise = String::lowercase)
 
-    override suspend fun setDisabledExtensions(extensions: Set<String>) {
-        val normalized = extensions.mapTo(mutableSetOf()) { it.lowercase() }
-        dataStore.edit { it[KEY_DISABLED_EXTENSIONS] = normalized }
-    }
+    override val disabledExtensions: Flow<Set<String>> = setting.flow
 
-    override suspend fun snapshot(): Set<String> {
-        val prefs = dataStore.data.first()
-        return (prefs[KEY_DISABLED_EXTENSIONS] ?: emptySet())
-            .mapTo(mutableSetOf()) { it.lowercase() }
-    }
+    override suspend fun setDisabledExtensions(extensions: Set<String>) =
+        setting.set(extensions)
 
-    private companion object {
-        val KEY_DISABLED_EXTENSIONS = stringSetPreferencesKey("disabled_extensions")
-    }
+    override suspend fun snapshot(): Set<String> = setting.flow.first()
 }
