@@ -527,7 +527,7 @@ private fun BookForgetConfirmDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LibrarySearchBar(
+internal fun LibrarySearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onClose: () -> Unit,
@@ -760,7 +760,7 @@ private fun LibraryCoverList(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun BookGridTile(
+internal fun BookGridTile(
     book: BookEntity,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
