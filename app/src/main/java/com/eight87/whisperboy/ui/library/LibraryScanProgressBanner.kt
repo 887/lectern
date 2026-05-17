@@ -1,15 +1,17 @@
 package com.eight87.whisperboy.ui.library
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -40,8 +42,10 @@ import com.eight87.whisperboy.data.library.ScanPhase
  * for the running state passed in. Caller hides it on [RescanState.Idle] /
  * [RescanState.Failed].
  *
- * M3E surface ladder — `surfaceContainerHigh`, the same tier the empty-state card
- * and list rows use. No elevation (M3E flat surfaces).
+ * Visual shape ported from tonearmboy's `ScanProgressBar` — a **flat full-width
+ * `Surface` flush with the bottom of the TopAppBar**, no rounded card, no horizontal
+ * margin, tight 8dp vertical padding, `labelMedium` typography, optional percent on
+ * the right. Reads as an extension of the toolbar chrome, not a content card.
  */
 @Composable
 fun LibraryScanProgressBanner(
@@ -49,18 +53,17 @@ fun LibraryScanProgressBanner(
     modifier: Modifier = Modifier,
 ) {
     val cd = stringResource(R.string.library_scan_progress_cd)
-    Card(
-        modifier = modifier.semantics { contentDescription = cd },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    Surface(
+        tonalElevation = 2.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = cd },
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             val text = when (running.phase) {
                 ScanPhase.Discovering -> stringResource(
@@ -75,19 +78,39 @@ fun LibraryScanProgressBanner(
                 )
                 ScanPhase.Writing -> stringResource(R.string.library_scan_progress_writing)
             }
-            Text(text = text, style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(8.dp))
+            val determinate = running.phase == ScanPhase.Analyzing && running.totalChapters > 0
+            val ratio = if (determinate) {
+                (running.analyzedChapters.toFloat() / running.totalChapters.toFloat())
+                    .coerceIn(0f, 1f)
+            } else 0f
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (determinate) {
+                    Text(
+                        text = stringResource(
+                            R.string.library_scan_progress_percent,
+                            (ratio * 100).toInt(),
+                        ),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Spacer(Modifier.height(2.dp))
             val color = MaterialTheme.colorScheme.primary
             val trackColor = MaterialTheme.colorScheme.surfaceVariant
             val barModifier = Modifier
                 .fillMaxWidth()
-                .height(6.dp)
-            // Determinate bar only during Analyzing once totals are known — that's the slow
-            // phase the user actually wants a percentage for. Discovering / Writing fall back
-            // to indeterminate because their durations aren't predictable up front.
-            if (running.phase == ScanPhase.Analyzing && running.totalChapters > 0) {
-                val ratio = (running.analyzedChapters.toFloat() / running.totalChapters.toFloat())
-                    .coerceIn(0f, 1f)
+                .height(4.dp)
+            if (determinate) {
                 LinearProgressIndicator(
                     progress = { ratio },
                     modifier = barModifier,

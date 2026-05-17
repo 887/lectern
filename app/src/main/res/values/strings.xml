@@ -96,6 +96,7 @@
     <string name="library_scan_progress_discovering">Discovering — %1$d books, %2$d chapters</string>
     <string name="library_scan_progress_analyzing">Analyzing — %1$d / %2$d chapters</string>
     <string name="library_scan_progress_writing">Updating library…</string>
+    <string name="library_scan_progress_percent">%1$d%%</string>
     <string name="library_scan_progress_complete_format">Found %1$d new books</string>
     <string name="library_scan_progress_cd">Library scan progress</string>
     <string name="library_cover_placeholder_cd">Cover art placeholder</string>
