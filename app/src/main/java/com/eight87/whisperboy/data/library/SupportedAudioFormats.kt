@@ -5,7 +5,7 @@ package com.eight87.whisperboy.data.library
  * the ones whisperboy explicitly exercises in its B.5 codec smoke test (mp3 / m4a / m4b /
  * ogg / flac / webm).
  */
-internal object SupportedAudioFormats {
+object SupportedAudioFormats {
 
     val extensions: Set<String> = setOf(
         "mp3", "m4a", "m4b", "aac", "3gp",
@@ -15,13 +15,27 @@ internal object SupportedAudioFormats {
         "mp4",
     )
 
-    fun isAudioFile(file: CachedDocumentFile): Boolean {
+    /**
+     * Whether the file looks like a supported audio file.
+     *
+     * Phase K.4 sub-screen — [disabledExtensions] (lowercase) lets the user exclude specific
+     * extensions from scans via the "Scan filters" sub-page. A disabled extension is excluded
+     * regardless of whether MIME-type detection or extension detection identified it.
+     */
+    fun isAudioFile(
+        file: CachedDocumentFile,
+        disabledExtensions: Set<String> = emptySet(),
+    ): Boolean {
         if (!file.isFile) return false
+        val name = file.name
+        val ext = name?.substringAfterLast('.', missingDelimiterValue = "")?.lowercase().orEmpty()
+        if (ext.isNotEmpty() && ext in disabledExtensions) return false
         val type = file.type
-        if (type != null && type.startsWith("audio/")) return true
-        // Some providers don't fill MIME type for SAF entries — fall back to the extension.
-        val name = file.name ?: return false
-        val ext = name.substringAfterLast('.', missingDelimiterValue = "").lowercase()
+        if (type != null && type.startsWith("audio/")) {
+            // Even if MIME-type matched, honour the disabled-extension exclusion above.
+            return true
+        }
+        if (name == null) return false
         return ext in extensions
     }
 }

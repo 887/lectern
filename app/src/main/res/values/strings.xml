@@ -206,6 +206,23 @@
     <string name="library_folders_back_cd">Back</string>
     <string name="library_folders_fab_add_cd">Add folder</string>
 
+    <!-- settings_library_ — Library settings hub + K.4 sub-screens (Phase K.4 sub-screens) -->
+    <string name="settings_library_hub_title">Library</string>
+    <string name="settings_library_folders_section">Folders</string>
+    <string name="settings_library_defaults_section">Defaults</string>
+    <string name="settings_library_sort_default_title">Default sort</string>
+    <string name="settings_library_sort_default_subtitle">How books are ordered in the library.</string>
+    <string name="settings_library_sort_recent">Recent</string>
+    <string name="settings_library_sort_title">Title</string>
+    <string name="settings_library_sort_author">Author</string>
+    <string name="settings_library_grid_default_title">Default grid mode</string>
+    <string name="settings_library_grid_default_subtitle">Grid or list layout for the library.</string>
+    <string name="settings_library_grid_mode_grid">Grid</string>
+    <string name="settings_library_grid_mode_list">List</string>
+    <string name="settings_library_scan_filters_title">Scan filters</string>
+    <string name="settings_library_scan_filters_subtitle">Choose which audio file extensions to include in scans.</string>
+    <string name="settings_library_scan_filters_rescan_snackbar">Rescanning library…</string>
+
     <!-- settings_playback_ — Playback sub-page (Phase K.2) -->
     <string name="settings_playback_title">Playback</string>
     <string name="settings_playback_back_cd">Back</string>

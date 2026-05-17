@@ -28,7 +28,10 @@ import com.eight87.whisperboy.ui.onboarding.OnboardingPermissionsScreen
 import com.eight87.whisperboy.ui.onboarding.OnboardingWelcomeScreen
 import com.eight87.whisperboy.ui.playback.NowPlayingSheet
 import com.eight87.whisperboy.ui.settings.AboutScreen
-import com.eight87.whisperboy.ui.settings.LibraryFoldersScreen
+import com.eight87.whisperboy.ui.settings.LibraryGridModeDefaultScreen
+import com.eight87.whisperboy.ui.settings.LibraryScanFiltersScreen
+import com.eight87.whisperboy.ui.settings.LibrarySettingsScreen
+import com.eight87.whisperboy.ui.settings.LibrarySortDefaultScreen
 import com.eight87.whisperboy.ui.settings.LicensesScreen
 import com.eight87.whisperboy.ui.settings.PlaybackSettingsScreen
 import com.eight87.whisperboy.ui.settings.SettingsScreen
@@ -200,9 +203,40 @@ fun WhisperboyApp() {
                     )
                 }
                 entry<LibraryFoldersRoute> {
-                    // Phase K.4 (partial) — folder management lives in Settings now.
-                    LibraryFoldersScreen(
+                    // Phase K.4 — Library settings hub (folder list + add FAB +
+                    // three sub-screen rows). Route key kept as LibraryFoldersRoute
+                    // so persisted nav stacks survive the K.4 partial → full rename.
+                    LibrarySettingsScreen(
                         persistedUriPermissionStore = graph.persistedUriPermissionStore,
+                        onBack = { backStack.removeLastOrNull() },
+                        onSortDefaultClick = { backStack.add(LibrarySortDefaultRoute) },
+                        onGridModeDefaultClick = { backStack.add(LibraryGridModeDefaultRoute) },
+                        onScanFiltersClick = { backStack.add(LibraryScanFiltersRoute) },
+                        modifier = Modifier.safeDrawingPadding(),
+                    )
+                }
+                entry<LibrarySortDefaultRoute> {
+                    // Phase K.4 sub-screen — default sort radio group.
+                    LibrarySortDefaultScreen(
+                        libraryUiSettings = graph.libraryUiSettings,
+                        onBack = { backStack.removeLastOrNull() },
+                        modifier = Modifier.safeDrawingPadding(),
+                    )
+                }
+                entry<LibraryGridModeDefaultRoute> {
+                    // Phase K.4 sub-screen — default grid mode radio group.
+                    LibraryGridModeDefaultScreen(
+                        libraryUiSettings = graph.libraryUiSettings,
+                        onBack = { backStack.removeLastOrNull() },
+                        modifier = Modifier.safeDrawingPadding(),
+                    )
+                }
+                entry<LibraryScanFiltersRoute> {
+                    // Phase K.4 sub-screen — scan-filter checkboxes; toggling triggers
+                    // a forced rescan + snackbar.
+                    LibraryScanFiltersScreen(
+                        libraryScanFilterSettings = graph.libraryScanFilterSettings,
+                        libraryRescanCoordinator = graph.libraryRescanCoordinator,
                         onBack = { backStack.removeLastOrNull() },
                         modifier = Modifier.safeDrawingPadding(),
                     )
