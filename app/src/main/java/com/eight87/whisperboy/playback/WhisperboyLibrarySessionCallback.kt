@@ -13,11 +13,14 @@ import androidx.media3.session.MediaSession
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession.ConnectionResult
 import androidx.media3.session.MediaSession.ControllerInfo
+import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.eight87.whisperboy.R
 import com.eight87.whisperboy.data.library.BookEntity
 import com.eight87.whisperboy.data.library.BookSource
+import com.eight87.whisperboy.data.library.ChapterEntity
+import com.eight87.whisperboy.data.library.ChapterSource
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -49,6 +52,7 @@ import java.io.File
 class WhisperboyLibrarySessionCallback(
     context: Context,
     private val bookSource: BookSource,
+    private val chapterSource: ChapterSource,
     private val transportCommands: TransportCommands,
     private val bookCommands: BookCommands,
     private val sleepTimerCommands: SleepTimerCommands,
@@ -265,6 +269,62 @@ class WhisperboyLibrarySessionCallback(
             .firstOrNull { book ->
                 book.active && (book.author?.lowercase()?.contains(needle) == true)
             }
+    }
+
+    // ---------------------------------------------------------------- playback resumption
+
+    /**
+     * Called by Media3 when the user presses a media button (Bluetooth play, lockscreen play
+     * tile, headset hook) while the service is **cold-dead** — process not running, session
+     * never connected. Without this override, the press is silently dropped; the user taps
+     * play on their headphones and nothing happens because the system has no resume queue.
+     *
+     * Resolution: pick the most-recently-played active book (highest [BookEntity.lastPlayedAt]),
+     * load its chapters, and hand Media3 a `MediaItemsWithStartPosition` seeded at the book's
+     * saved `currentChapterIndex` + `positionInChapterMs`. Media3 then sets the items,
+     * prepares the player, and dispatches the queued play command.
+     *
+     * Mirrors Voice's `LibrarySessionCallback.onPlaybackResumption` shape. No corresponding
+     * unit test — this path requires the system MediaButtonReceiver wakeup, which only
+     * fires in an instrumented Android environment, not Robolectric.
+     */
+    override fun onPlaybackResumption(
+        mediaSession: MediaSession,
+        controller: ControllerInfo,
+    ): ListenableFuture<MediaItemsWithStartPosition> = scope.future {
+        val candidate = bookSource.observeBooks().first()
+            .filter { it.active && it.lastPlayedAt != null }
+            .maxByOrNull { it.lastPlayedAt ?: 0L }
+            ?: throw IllegalStateException("No resumable book available")
+        val chapters = chapterSource.chaptersFor(candidate.bookId)
+        if (chapters.isEmpty()) {
+            throw IllegalStateException("Book ${candidate.bookId} has no chapters")
+        }
+        val items = chapters.map { ch -> resumptionMediaItem(candidate, ch) }
+        val startIndex = candidate.currentChapterIndex.coerceIn(0, items.lastIndex)
+        val startPositionMs = candidate.positionInChapterMs.coerceAtLeast(0L)
+        MediaItemsWithStartPosition(ImmutableList.copyOf(items), startIndex, startPositionMs)
+    }
+
+    private fun resumptionMediaItem(book: BookEntity, chapter: ChapterEntity): MediaItem {
+        val uri = chapter.fileUri ?: book.relativePath
+        val metadata = MediaMetadata.Builder()
+            .setTitle(chapter.title ?: book.title)
+            .setArtist(book.author ?: appContext.getString(R.string.auto_browse_unknown_author))
+            .setAlbumTitle(book.title)
+            .setIsBrowsable(false)
+            .setIsPlayable(true)
+            .setMediaType(MediaMetadata.MEDIA_TYPE_AUDIO_BOOK)
+            .also { meta ->
+                book.coverPath?.let { path -> meta.setArtworkUri(Uri.fromFile(File(path))) }
+            }
+            .setDurationMs(chapter.durationMs)
+            .build()
+        return MediaItem.Builder()
+            .setMediaId(chapter.chapterId)
+            .setUri(uri.toUri())
+            .setMediaMetadata(metadata)
+            .build()
     }
 
     // ---------------------------------------------------------------- custom commands

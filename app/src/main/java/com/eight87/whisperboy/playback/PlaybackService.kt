@@ -2,12 +2,15 @@ package com.eight87.whisperboy.playback
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
 import androidx.core.content.getSystemService
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.eight87.whisperboy.R
 import com.eight87.whisperboy.WhisperboyApplication
+import com.eight87.whisperboy.WhisperboyActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -54,6 +57,7 @@ class PlaybackService : MediaLibraryService() {
         val callback = WhisperboyLibrarySessionCallback(
             context = this,
             bookSource = graph.bookSource,
+            chapterSource = graph.chapterSource,
             transportCommands = graph.transportCommands,
             bookCommands = graph.bookCommands,
             sleepTimerCommands = graph.sleepTimerCommands,
@@ -61,7 +65,35 @@ class PlaybackService : MediaLibraryService() {
             exoPlayer = playerHolder.exoPlayer,
             volumeGain = playerHolder.volumeGain,
         )
-        session = MediaLibrarySession.Builder(this, playerHolder.player, callback).build()
+        session = MediaLibrarySession.Builder(this, playerHolder.player, callback)
+            .setSessionActivity(buildSessionActivityIntent())
+            .build()
+    }
+
+    /**
+     * PendingIntent fired when the user taps the media notification body / lockscreen art.
+     * Without this, Media3 falls back to whatever the launcher activity happens to be —
+     * undefined for our package (we have one activity, but the contract isn't documented).
+     *
+     * `SINGLE_TOP` keeps an already-open [WhisperboyActivity] foreground rather than spawning
+     * a second instance; `UPDATE_CURRENT` keeps the in-flight PendingIntent reusable across
+     * service rebinds; `IMMUTABLE` is required on Android 12+ for PendingIntents handed to
+     * the system without a per-launch payload (no extras to mutate here).
+     *
+     * Per refactor-solid.md R.E.6: `playback/` MUST NOT import from `ui/`. WhisperboyActivity
+     * lives at the package root (`com.eight87.whisperboy.WhisperboyActivity`), not under
+     * `ui/`, so this direct import is clean — no SessionActivityIntentFactory hop needed.
+     */
+    private fun buildSessionActivityIntent(): PendingIntent {
+        val intent = Intent(this, WhisperboyActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        return PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 
     private fun createPlaybackNotificationChannel() {
