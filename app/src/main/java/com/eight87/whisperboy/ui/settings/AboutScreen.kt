@@ -36,7 +36,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -46,7 +45,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.eight87.whisperboy.R
-import kotlinx.coroutines.launch
 
 /**
  * Phase K.6 — About surface.
@@ -66,13 +64,11 @@ import kotlinx.coroutines.launch
 @Composable
 fun AboutScreen(
     onBack: () -> Unit,
+    onLicensesClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-
-    val licensesComingSoon = stringResource(R.string.settings_category_pending_snackbar)
 
     Scaffold(
         modifier = modifier,
@@ -146,10 +142,7 @@ fun AboutScreen(
                     icon = Icons.Outlined.Code,
                     title = stringResource(R.string.about_oss_licenses_label),
                     subtitle = stringResource(R.string.about_oss_licenses_subtitle),
-                    onClick = {
-                        // TODO: wire to LicensesScreen when docs/plans/oss-licenses.md ships.
-                        scope.launch { snackbarHostState.showSnackbar(licensesComingSoon) }
-                    },
+                    onClick = onLicensesClick,
                 )
             }
 

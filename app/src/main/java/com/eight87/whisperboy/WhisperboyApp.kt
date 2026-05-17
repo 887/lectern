@@ -29,6 +29,7 @@ import com.eight87.whisperboy.ui.onboarding.OnboardingWelcomeScreen
 import com.eight87.whisperboy.ui.playback.NowPlayingSheet
 import com.eight87.whisperboy.ui.settings.AboutScreen
 import com.eight87.whisperboy.ui.settings.LibraryFoldersScreen
+import com.eight87.whisperboy.ui.settings.LicensesScreen
 import com.eight87.whisperboy.ui.settings.SettingsScreen
 import com.eight87.whisperboy.ui.settings.SleepTimerSettingsScreen
 import com.eight87.whisperboy.ui.settings.ThemeSettingsScreen
@@ -197,6 +198,14 @@ fun WhisperboyApp() {
                 entry<AboutRoute> {
                     // Phase K.6 — About sub-page.
                     AboutScreen(
+                        onBack = { backStack.removeLastOrNull() },
+                        onLicensesClick = { backStack.add(LicensesRoute) },
+                        modifier = Modifier.safeDrawingPadding(),
+                    )
+                }
+                entry<LicensesRoute> {
+                    // oss-licenses Phase B — Open-source licenses sub-page.
+                    LicensesScreen(
                         onBack = { backStack.removeLastOrNull() },
                         modifier = Modifier.safeDrawingPadding(),
                     )

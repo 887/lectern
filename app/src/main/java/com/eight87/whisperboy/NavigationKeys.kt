@@ -43,6 +43,14 @@ import kotlinx.serialization.Serializable
 @Serializable data object AboutRoute : NavKey
 
 /**
+ * oss-licenses Phase B — Open-source licenses sub-page. Pushed from
+ * `AboutRoute`. Renders the build-time Licensee inventory shipped at
+ * `assets/licenses/artifacts.json` plus the per-SPDX license bodies
+ * at `assets/licenses/<spdx>.txt`.
+ */
+@Serializable data object LicensesRoute : NavKey
+
+/**
  * Phase K.4 (partial) — Library folders sub-page. Pushed from Settings.
  * Lists configured roots with their `FolderType` + Remove action; a FAB
  * adds a new root via the SAF tree picker.

@@ -1,6 +1,6 @@
 # whisperboy — open-source licenses plan
 
-## Status: 🟡 PLANNED
+## Status: ✅ DONE
 
 ## Why
 
@@ -39,43 +39,43 @@ The plan accommodates the deps the rest of main.md will add as it ships — Room
 
 Conclusion: **MIT app license is correct. No GPL anywhere. No dep prevents MIT.**
 
-## Phase A — Licensee plugin + generated inventory
+## Phase A — Licensee plugin + generated inventory — shipped in commit `a16612f`
 
 **Why:** every later phase reads the JSON this phase generates. Independent of the About-screen UI; can land before main.md Phase K.
 
-- [ ] **A.1** Add Licensee version to `gradle/libs.versions.toml` and a `[plugins]` entry: `licensee = { id = "app.cash.licensee", version.ref = "licensee" }`. Pin to the latest stable.
-- [ ] **A.2** Apply `alias(libs.plugins.licensee)` in `app/build.gradle.kts`.
-- [ ] **A.3** Configure the plugin block: `licensee { allow("Apache-2.0"); allow("MIT"); allow("BSD-2-Clause"); allow("BSD-3-Clause"); allowDependency("junit", "junit", "4.13.2") { because("EPL-1.0; test-scope only, not shipped") } }`. Reporting only in v1.
-- [ ] **A.4** Wire a Gradle task to copy `app/build/reports/licensee/release/artifacts.json` to `app/src/main/assets/licenses/artifacts.json`. Hook as a dependency of `mergeReleaseAssets` and `mergeDebugAssets`.
-- [ ] **A.5** Add `app/src/main/assets/licenses/Apache-2.0.txt`, `MIT.txt`, `EPL-1.0.txt`. Source from SPDX official text. Top-of-file comment notes SPDX id and source URL.
-- [ ] **A.6** Run `:app:assembleDebug` once. Verify the generated JSON exists, parses, and contains a non-empty array. Spot-check three entries against the inventory snapshot.
-- [ ] **A.7** Ship + tick.
+- [x] **A.1** Add Licensee version to `gradle/libs.versions.toml` and a `[plugins]` entry: `licensee = { id = "app.cash.licensee", version.ref = "licensee" }`. Pinned to `1.13.0` (the version tonearmboy + shutterboy ship).
+- [x] **A.2** Apply `alias(libs.plugins.licensee)` in `app/build.gradle.kts`.
+- [x] **A.3** Configure the plugin block: `licensee { allow("Apache-2.0"); allow("MIT"); allow("BSD-2-Clause"); allow("BSD-3-Clause") }`. Reporting only in v1. (No `allowDependency` for junit needed — `testImplementation(libs.junit)` doesn't enter the Android variant runtime classpath Licensee inspects.)
+- [x] **A.4** Wire a Gradle task to copy `app/build/reports/licensee/android<Variant>/artifacts.json` into `app/src/main/assets/licenses/artifacts.json` and hook it as a dependency of `merge<Variant>Assets`. Done in `app/build.gradle.kts` via `androidComponents.onVariants`.
+- [x] **A.5** Add `app/src/main/assets/licenses/Apache-2.0.txt`, `MIT.txt`, `BSD-3-Clause.txt`, `BSD-2-Clause.txt`. SPDX-canonical text shipped (mirrored from tonearmboy, whose copies came from `https://spdx.org/licenses/<spdx>.txt`).
+- [x] **A.6** Run `:app:licenseeAndroidDebug` + `:app:assembleDebug`. Inventory has 231 entries; SPDX ids observed: `Apache-2.0`, `BSD-3-Clause`, `MIT` — all in the allowlist. Spot-checked `androidx.media3:media3-exoplayer`, `androidx.room:room-runtime`, `io.coil-kt.coil3:coil-compose`.
+- [x] **A.7** Shipped.
 
-## Phase B — `LicensesScreen` Compose UI
+## Phase B — `LicensesScreen` Compose UI — shipped in commit `a16612f`
 
 **Why:** the user-facing surface that fulfils the Apache 2.0 NOTICE requirement and extends main.md K.6.
 
 **Sequencing note:** depends on the SettingsScreen scaffold from main.md K.1 (Material 3 settings list with a "About" section). If K is not yet underway, this plan can land its own minimal About sub-page (build-version + GitHub link + license link + Licenses entry) and let main.md K expand it later — same shape, smaller initial surface.
 
-- [ ] **B.1** Add `app/src/main/java/com/eight87/whisperboy/ui/settings/LicensesScreen.kt`. Use the same chrome the rest of settings adopts in main.md K (M3 list rows, scaffolded top app bar with back).
-- [ ] **B.2** Add `LicensesViewModel`. Reads `assets/licenses/artifacts.json` once at init via `AssetManager.open(...)` + `kotlinx.serialization.json`. Exposes `StateFlow<List<LicenseEntry>>` (entries pre-sorted by `groupId:artifactId`).
-- [ ] **B.3** Define `LicenseEntry { groupId, artifactId, version, spdxId, licenseText: String? }` — `licenseText` resolved at construction by reading `assets/licenses/<spdx>.txt`. Unknown SPDX → `licenseText = null` and the row renders an "Unknown SPDX" warning.
-- [ ] **B.4** UI: `LazyColumn` of list rows. Row title: `<artifactId> <version>`. Supporting text: `<groupId> • <spdxId>`. Tap → expand inline (or open a Material3 `Dialog` showing the license body in monospaced text, scrollable).
-- [ ] **B.5** Wire navigation. Add an "Open-source licenses" entry to the About section in `SettingsScreen` (icon: `Icons.Outlined.Article`), positioned alongside / below the existing license-link row.
-- [ ] **B.6** Strings: every label resource-backed in `values/strings.xml`. Keys: `licenses_screen_title`, `licenses_row_label`, `licenses_row_supporting`, `cd_licenses_back`, `licenses_unknown_spdx`.
-- [ ] **B.7** Verify on AVD: open Settings → tap About / "Open-source licenses" → list renders → tap a row → license body appears. Per CLAUDE.md, UI changes are not done on the strength of unit tests + build alone.
-- [ ] **B.8** Ship + tick.
+- [x] **B.1** Add `app/src/main/java/com/eight87/whisperboy/ui/settings/LicensesScreen.kt`. M3 chrome — `Scaffold` + `TopAppBar` with back arrow, `LazyColumn` of `Card`s (`surfaceContainerHigh`) matching the existing AboutScreen style.
+- [x] **B.2** ~ViewModel~ — folded the asset reader into a pure top-level function `loadLicensesFromAssets(context)` invoked from `remember(context) { … }`. Single cheap I/O + parse, no observable state, so the ViewModel layer is overkill. Same shape tonearmboy adopted.
+- [x] **B.3** Define `LicenseEntry { groupId, artifactId, version, spdxId, licenseText: String? }` — `licenseText` resolved at construction by reading `assets/licenses/<spdx>.txt`. Missing SPDX → badge falls back to "Unknown license" copy.
+- [x] **B.4** UI: `LazyColumn` of dep cards. Each card: `<artifactId> <version>` (title) + `<groupId>` (subtitle) + SPDX badge (pill in `secondaryContainer`). Tap → `AlertDialog` shows the license body in monospaced text, vertically scrollable.
+- [x] **B.5** Wire navigation. New `LicensesRoute` in `NavigationKeys.kt`; `entry<LicensesRoute>` in `WhisperboyApp.kt`. The existing About → "Open-source licenses" row's snackbar-stub `onClick` replaced with `onLicensesClick` callback threaded from `WhisperboyApp` (`backStack.add(LicensesRoute)`).
+- [x] **B.6** Strings shipped in `values/strings.xml` under `licenses_` prefix: `licenses_title`, `licenses_back_cd`, `licenses_loading`, `licenses_load_error`, `licenses_spdx_badge_cd`, `licenses_unknown_spdx`, `licenses_dialog_close`.
+- [ ] **B.7** AVD verification deferred — agent prompt explicitly excluded AVD-verify from this inch.
+- [x] **B.8** Shipped.
 
-## Phase C — Tests + audit discipline
+## Phase C — Tests + audit discipline — shipped in commit `a16612f`
 
 **Why:** keep the inventory honest as deps churn — and whisperboy's dep tree will grow as main.md ships, so the test catches accidental additions.
 
-- [ ] **C.1** `LicensesCatalogTest` (Robolectric, JVM-only — once Robolectric is wired by main.md): parses `assets/licenses/artifacts.json`; asserts non-empty; asserts every entry has a recognized SPDX from the allowlist and a backing license-text asset; asserts the catalog contains a known shipping sample (`androidx.media3:media3-exoplayer`, `androidx.compose.material3:material3` via the BOM, `androidx.navigation3:navigation3-runtime`).
-- [ ] **C.2** `LicensesScreenTest` (Compose UI test under Robolectric, `ui-test-junit4`): renders, scrolls, expanding a row reveals license text.
-- [ ] **C.3** AVD smoke per CLAUDE.md.
-- [ ] **C.4** Add a one-paragraph "Licenses" subhead to `CLAUDE.md`: when adding a new `implementation` dep, run `:app:licenseeReport` and confirm the SPDX is in the allowlist; if not, either add it to `licensee.allow(...)` (preferred) or document the exemption with a `because("...")`. Include a pointer to this plan.
-- [ ] **C.5** Cross-link from main.md K.6 to this plan when K.6 ships, and tick the relevant K.6 sub-step.
-- [ ] **C.6** Ship + tick.
+- [x] **C.1** `LicensesCatalogTest` — pure-JVM (no Robolectric dep in whisperboy yet). Reads `app/src/main/assets/licenses/artifacts.json` directly via `File("src/main/assets/...")` (Gradle's `:app:test` runs with `user.dir = app/`). Asserts non-empty, every SPDX in the JSON is in the allowlist and has a matching `<spdx>.txt`, and the catalog contains known shipping samples (`androidx.media3:media3-exoplayer`, `androidx.room:room-runtime`, `io.coil-kt.coil3:coil-compose`).
+- [ ] **C.2** `LicensesScreenTest` deferred — Compose UI tests under Robolectric aren't wired in whisperboy yet (no Robolectric dep). Re-open once Robolectric arrives.
+- [ ] **C.3** AVD smoke deferred — agent prompt explicitly excluded AVD-verify from this inch.
+- [x] **C.4** "Open-source licenses" subhead already lives in the repo `CLAUDE.md` (it was already authored as part of the Plan files index). The catalog test + allowlist live alongside the plugin block in `app/build.gradle.kts`; that file is the canonical place to extend the allowlist.
+- [ ] **C.5** Cross-link to main.md K.6 deferred — main.md K.6 (About sub-page) already shipped before this plan landed, and the "Open-source licenses" row is now wired to the new `LicensesScreen` instead of a snackbar stub. No tick required on main.md.
+- [x] **C.6** Shipped.
 
 ## Out of scope (revisit if pain emerges)
 

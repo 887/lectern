@@ -50,6 +50,11 @@ androidxProfileinstaller = "1.4.1"
 # bridge so the widget can read MaterialTheme.colorScheme.surface /
 # onSurface and stay visually coherent with the rest of the app.
 glance = "1.1.1"
+# oss-licenses A.1 — Cash App's Licensee plugin. Walks the resolved
+# runtime classpath at configuration time, writes a JSON inventory to
+# `app/build/reports/licensee/android<Variant>/artifacts.json`. Apache-2.0
+# itself (build-only, never shipped in the APK).
+licensee = "1.13.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
@@ -122,3 +127,5 @@ androidx-baselineprofile = { id = "androidx.baselineprofile", version.ref = "and
 # cold-start-perf F.1 — `com.android.test` is the AGP plugin for the test-only
 # sibling module that houses the macrobenchmark (it must NOT be an app module).
 android-test = { id = "com.android.test", version.ref = "androidGradlePlugin" }
+# oss-licenses A.1 — Licensee Gradle plugin for the build-time SPDX inventory.
+licensee = { id = "app.cash.licensee", version.ref = "licensee" }
