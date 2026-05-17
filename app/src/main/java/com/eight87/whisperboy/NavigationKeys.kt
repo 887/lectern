@@ -57,6 +57,15 @@ import kotlinx.serialization.Serializable
 @Serializable data object ThemeSettingsRoute : NavKey
 
 /**
+ * Phase K.3 — Sleep timer sub-page. Pushed from Settings. Hosts the four
+ * [com.eight87.whisperboy.data.playback.SleepTimerSettings] knobs: default
+ * duration (5/10/15/30/45/60 min radio group), fade-out duration (slider),
+ * shake-to-resume (toggle), and the auto-arm window (two `LocalTime`
+ * chips + clear button).
+ */
+@Serializable data object SleepTimerSettingsRoute : NavKey
+
+/**
  * Phase L — first-run onboarding flow. Four steps, in order:
  *
  * 1. [OnboardingWelcomeRoute] — one short sentence + Get-started CTA.

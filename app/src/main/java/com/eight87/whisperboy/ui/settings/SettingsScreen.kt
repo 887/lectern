@@ -78,6 +78,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onAboutClick: () -> Unit,
     onLibraryFoldersClick: () -> Unit,
+    onSleepTimerClick: () -> Unit,
     onThemeClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -125,7 +126,7 @@ fun SettingsScreen(
                     icon = Icons.Outlined.Bedtime,
                     title = stringResource(R.string.settings_category_sleep_timer),
                     subtitle = stringResource(R.string.settings_category_sleep_timer_subtitle),
-                    onClick = pendingClick,
+                    onClick = onSleepTimerClick,
                 )
                 SettingsCategoryRow(
                     icon = Icons.Outlined.FolderOpen,
