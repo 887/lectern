@@ -152,12 +152,53 @@ internal fun deriveCustomScheme(seedRgb: Long, darkTheme: Boolean): ColorScheme 
   val tertiary = hslColor(((h + 60f) % 360f), (s * 0.6f).coerceIn(0f, 1f), if (darkTheme) 0.7f else 0.5f)
   val primaryDark = hslColor(h, s, if (darkTheme) 0.7f else 0.4f)
   val onPrimary = if (luminance(primaryDark) > 0.5f) Color.Black else Color.White
+
+  // Surface-tier custom-color fix — previously this factory only overrode primary /
+  // secondary / tertiary / onPrimary, leaving `surface`, `surfaceContainer*`, `background`,
+  // `surfaceVariant` at their neutral [darkColorScheme] / [lightColorScheme] defaults.
+  // Result: picking "Custom" tinted buttons + small accents but the dominant surfaces
+  // (cards, sheets, top app bar, background) stayed neutral dark/light, which the user
+  // perceived as "custom color doesn't work". M3's `dynamicDarkColorScheme` / Material You
+  // tints the whole tier from the seed; we do a poor-man's blend here against the neutral
+  // anchor so the seed actually carries through visually.
+  //
+  // Blend intensities mirror Material You's tonal ladder (subtle on `surface`, increasing
+  // on the container tiers, strongest on `surfaceTint` which drives M3 elevation overlays
+  // and ripples). Numbers chosen empirically against a vivid red seed on AMOLED dark:
+  // tier reads "tinted dark grey" without ever drifting toward "primary-colored card".
+  val neutralSurface = if (darkTheme) Color(0xFF121212) else Color(0xFFFDFCFF)
+  val neutralBackground = if (darkTheme) Color(0xFF0E0E0E) else Color(0xFFFDFCFF)
+  val neutralSurfaceVariant = if (darkTheme) Color(0xFF49454F) else Color(0xFFE7E0EC)
+
+  val surface = blendSurface(neutralSurface, primaryDark, if (darkTheme) 0.06f else 0.04f)
+  val background = blendSurface(neutralBackground, primaryDark, if (darkTheme) 0.05f else 0.03f)
+  val surfaceContainerLow = blendSurface(neutralSurface, primaryDark, if (darkTheme) 0.08f else 0.05f)
+  val surfaceContainer = blendSurface(neutralSurface, primaryDark, if (darkTheme) 0.10f else 0.07f)
+  val surfaceContainerHigh = blendSurface(neutralSurface, primaryDark, if (darkTheme) 0.13f else 0.09f)
+  val surfaceContainerHighest = blendSurface(neutralSurface, primaryDark, if (darkTheme) 0.16f else 0.12f)
+  val surfaceVariant = blendSurface(neutralSurfaceVariant, secondary, if (darkTheme) 0.12f else 0.10f)
+  val onSurface = if (darkTheme) Color(0xFFE6E1E5) else Color(0xFF1C1B1F)
+  val onBackground = onSurface
+  val onSurfaceVariant = if (darkTheme) Color(0xFFCAC4D0) else Color(0xFF49454F)
+
   return if (darkTheme) {
     darkColorScheme(
       primary = primaryDark,
       secondary = secondary,
       tertiary = tertiary,
       onPrimary = onPrimary,
+      surface = surface,
+      background = background,
+      surfaceVariant = surfaceVariant,
+      surfaceContainerLowest = blendSurface(neutralSurface, primaryDark, 0.04f),
+      surfaceContainerLow = surfaceContainerLow,
+      surfaceContainer = surfaceContainer,
+      surfaceContainerHigh = surfaceContainerHigh,
+      surfaceContainerHighest = surfaceContainerHighest,
+      surfaceTint = primaryDark,
+      onSurface = onSurface,
+      onBackground = onBackground,
+      onSurfaceVariant = onSurfaceVariant,
     )
   } else {
     lightColorScheme(
@@ -165,8 +206,35 @@ internal fun deriveCustomScheme(seedRgb: Long, darkTheme: Boolean): ColorScheme 
       secondary = secondary,
       tertiary = tertiary,
       onPrimary = onPrimary,
+      surface = surface,
+      background = background,
+      surfaceVariant = surfaceVariant,
+      surfaceContainerLowest = blendSurface(neutralSurface, primaryDark, 0.02f),
+      surfaceContainerLow = surfaceContainerLow,
+      surfaceContainer = surfaceContainer,
+      surfaceContainerHigh = surfaceContainerHigh,
+      surfaceContainerHighest = surfaceContainerHighest,
+      surfaceTint = primaryDark,
+      onSurface = onSurface,
+      onBackground = onBackground,
+      onSurfaceVariant = onSurfaceVariant,
     )
   }
+}
+
+/**
+ * Linear-RGB blend of two colors. `alpha = 0` → all `base`; `alpha = 1` → all `tint`.
+ * Used by [deriveCustomScheme] to mix neutral surface anchors with the user's seed so the
+ * Material 3 surface-tier ladder picks up the picked color without overwhelming it.
+ */
+internal fun blendSurface(base: Color, tint: Color, alpha: Float): Color {
+  val a = alpha.coerceIn(0f, 1f)
+  return Color(
+    red = (base.red * (1f - a) + tint.red * a).coerceIn(0f, 1f),
+    green = (base.green * (1f - a) + tint.green * a).coerceIn(0f, 1f),
+    blue = (base.blue * (1f - a) + tint.blue * a).coerceIn(0f, 1f),
+    alpha = 1f,
+  )
 }
 
 internal fun colorFromRgbLong(rgb: Long): Color {

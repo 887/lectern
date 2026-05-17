@@ -306,7 +306,7 @@
     <string name="settings_theme_mode_section">Design</string>
     <string name="settings_theme_mode_light">Hell</string>
     <string name="settings_theme_mode_dark">Dunkel</string>
-    <string name="settings_theme_mode_system">System folgen</string>
+    <string name="settings_theme_mode_system">Wie System</string>
     <string name="settings_theme_dynamic_color_title">Dynamische Farben</string>
     <string name="settings_theme_dynamic_color_body">Farben aus Ihrem Hintergrundbild verwenden (Material You).</string>
     <string name="settings_theme_dynamic_color_unavailable">Benötigt Android 12 oder neuer.</string>

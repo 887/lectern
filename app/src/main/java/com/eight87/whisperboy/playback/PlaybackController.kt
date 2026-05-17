@@ -322,7 +322,15 @@ internal class PlaybackController(
         applicationScope.launch {
             positionMs.sample(POSITION_SAVE_INTERVAL_MS).collect {
                 if (playerSnapshot.value.isPlaying) {
-                    saveCurrentPosition()
+                    // Crash fix — this collector runs on the application scope's default
+                    // dispatcher, NOT Main. Calling [saveCurrentPosition] directly here would
+                    // read [MediaController.currentMediaItemIndex] / `currentPosition` off the
+                    // wrong thread, which Media3 enforces with `IllegalStateException`
+                    // ("MediaController method is called from a wrong thread"). Route the
+                    // controller read through [onMain] — the same path every transport command
+                    // already uses — so the controller fields are read on Main and only the
+                    // Room write fans back out onto the application scope.
+                    onMain { c -> saveCurrentPositionFromMain(c) }
                 }
             }
         }
@@ -748,6 +756,26 @@ internal class PlaybackController(
     fun saveCurrentPosition() {
         val bookId = targetedBookId.value ?: return
         val c = controller ?: return
+        // PRECONDITION: caller is on Main. The Media3 [MediaController] enforces this for
+        // `currentMediaItemIndex` / `currentPosition` with a runtime check that throws
+        // `IllegalStateException("MediaController method is called from a wrong thread")`.
+        // All listener callbacks ([Player.Listener.onIsPlayingChanged],
+        // [Player.Listener.onMediaItemTransition]) and lifecycle callbacks
+        // ([DefaultLifecycleObserver.onStop], [release]) fire on Main, so direct callers
+        // here are fine. Coroutine collectors on the application scope are NOT — those must
+        // route through [saveCurrentPositionFromMain] via [onMain] instead.
+        saveCurrentPositionFromMain(c)
+    }
+
+    /**
+     * Crash-fix helper — the body of [saveCurrentPosition] when the caller has already hopped
+     * to Main and produced the live [MediaController]. Used by the 1Hz `sample` collector in
+     * [init], which runs on the application scope's default dispatcher and would otherwise
+     * crash on `currentMediaItemIndex` / `currentPosition`. The Room write is fanned back out
+     * onto the application scope so the Main thread doesn't block on the IO dispatcher.
+     */
+    private fun saveCurrentPositionFromMain(c: MediaController) {
+        val bookId = targetedBookId.value ?: return
         val chapterIndex = c.currentMediaItemIndex
         val positionMs = c.currentPosition.coerceAtLeast(0L)
         val now = System.currentTimeMillis()
