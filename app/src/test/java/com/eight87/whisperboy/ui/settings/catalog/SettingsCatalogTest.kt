@@ -4,6 +4,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.eight87.whisperboy.theme.LibraryAccent
+import com.eight87.whisperboy.theme.SleepTimerAccent
+import com.eight87.whisperboy.theme.ThemeAccent
 
 /**
  * JVM-only catalog shape + search index tests. No Robolectric needed —
@@ -33,8 +36,8 @@ class SettingsCatalogTest {
         // without updating this test trips a missing-id failure.
         val ids = listOf(
             SettingsCatalog.ID_THEME_MODE,
-            SettingsCatalog.ID_DYNAMIC_COLOR,
-            SettingsCatalog.ID_CUSTOM_BASE_SEED,
+            SettingsCatalog.ID_BASE_THEME,
+            SettingsCatalog.ID_TINT_BY_ALBUM_ART,
             SettingsCatalog.ID_CUSTOM_CHROME_TINT,
             SettingsCatalog.ID_DEFAULT_SPEED,
             SettingsCatalog.ID_DEFAULT_SKIP_SILENCE,
@@ -84,11 +87,42 @@ class SettingsCatalogTest {
 
     @Test
     fun `search matches keyword`() {
-        val results = SettingsCatalog.search("wallpaper")
+        val results = SettingsCatalog.search("material")
         assertTrue(
-            "expected dynamic-color row via 'wallpaper' keyword; got ${results.map { it.id }}",
-            results.any { it.id == SettingsCatalog.ID_DYNAMIC_COLOR },
+            "expected base-theme row via 'material' keyword; got ${results.map { it.id }}",
+            results.any { it.id == SettingsCatalog.ID_BASE_THEME },
         )
+    }
+
+    @Test
+    fun `Appearance section order matches tonearmboy parity`() {
+        val ids = SettingsCatalog.bySection(Section.Appearance).map { it.id }
+        assertEquals(
+            listOf(
+                SettingsCatalog.ID_THEME_MODE,
+                SettingsCatalog.ID_BASE_THEME,
+                SettingsCatalog.ID_TINT_BY_ALBUM_ART,
+                SettingsCatalog.ID_CUSTOM_CHROME_TINT,
+            ),
+            ids,
+        )
+    }
+
+    @Test
+    fun `Appearance entries do not all share one accent`() {
+        val accents = SettingsCatalog.bySection(Section.Appearance).map { it.accent }
+        assertTrue(
+            "expected at least 2 distinct accents in Appearance; got $accents",
+            accents.toSet().size >= 2,
+        )
+    }
+
+    @Test
+    fun `per-entry accents land on the expected category pairs`() {
+        assertEquals(ThemeAccent, SettingsCatalog.byId(SettingsCatalog.ID_THEME_MODE).accent)
+        assertEquals(ThemeAccent, SettingsCatalog.byId(SettingsCatalog.ID_BASE_THEME).accent)
+        assertEquals(LibraryAccent, SettingsCatalog.byId(SettingsCatalog.ID_TINT_BY_ALBUM_ART).accent)
+        assertEquals(SleepTimerAccent, SettingsCatalog.byId(SettingsCatalog.ID_CUSTOM_CHROME_TINT).accent)
     }
 
     @Test

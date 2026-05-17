@@ -43,11 +43,18 @@ interface ThemeSettings {
     val dynamicColor: Flow<Boolean>
     val customBaseSeed: Flow<Long>
     val customChromeTint: Flow<Long>
+    /**
+     * Whether `PlaybackScreen`'s Palette-derived cover-art tint is
+     * applied to surfaces. Default `true` — the pre-existing behaviour.
+     * `customChromeTint` (when non-zero) wins over this flag.
+     */
+    val tintChromeByAlbumArt: Flow<Boolean>
 
     suspend fun setMode(mode: ThemeMode)
     suspend fun setDynamicColor(enabled: Boolean)
     suspend fun setCustomBaseSeed(rgb: Long)
     suspend fun setCustomChromeTint(rgb: Long)
+    suspend fun setTintChromeByAlbumArt(enabled: Boolean)
 }
 
 /**
@@ -69,14 +76,19 @@ class AndroidThemeSettings(
         dataStore.setting(longPreferencesKey("custom_base_seed"), default = 0L)
     private val customChromeTintSetting: Setting<Long> =
         dataStore.setting(longPreferencesKey("custom_chrome_tint"), default = 0L)
+    private val tintChromeByAlbumArtSetting: Setting<Boolean> =
+        dataStore.setting(booleanPreferencesKey("tint_chrome_by_album_art"), default = true)
 
     override val mode: Flow<ThemeMode> = modeSetting.flow
     override val dynamicColor: Flow<Boolean> = dynamicColorSetting.flow
     override val customBaseSeed: Flow<Long> = customBaseSeedSetting.flow
     override val customChromeTint: Flow<Long> = customChromeTintSetting.flow
+    override val tintChromeByAlbumArt: Flow<Boolean> = tintChromeByAlbumArtSetting.flow
 
     override suspend fun setMode(mode: ThemeMode) = modeSetting.set(mode)
     override suspend fun setDynamicColor(enabled: Boolean) = dynamicColorSetting.set(enabled)
     override suspend fun setCustomBaseSeed(rgb: Long) = customBaseSeedSetting.set(rgb)
     override suspend fun setCustomChromeTint(rgb: Long) = customChromeTintSetting.set(rgb)
+    override suspend fun setTintChromeByAlbumArt(enabled: Boolean) =
+        tintChromeByAlbumArtSetting.set(enabled)
 }

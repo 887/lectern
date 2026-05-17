@@ -2,14 +2,13 @@ package com.eight87.whisperboy.ui.settings.catalog
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.ColorLens
+import androidx.compose.material.icons.filled.Colorize
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.FormatColorFill
 import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.GridView
@@ -29,6 +28,7 @@ import com.eight87.whisperboy.R
 import com.eight87.whisperboy.theme.AboutAccent
 import com.eight87.whisperboy.theme.CategoryAccent
 import com.eight87.whisperboy.theme.LibraryAccent
+import com.eight87.whisperboy.theme.LicensesAccent
 import com.eight87.whisperboy.theme.PlaybackAccent
 import com.eight87.whisperboy.theme.SleepTimerAccent
 import com.eight87.whisperboy.theme.ThemeAccent
@@ -57,7 +57,11 @@ fun sectionLabelRes(section: Section): Int = when (section) {
     Section.About -> R.string.settings_section_about
 }
 
-/** Hand-picked per-section accent for the row avatar tile. */
+/**
+ * Hand-picked default per-section accent for the row avatar tile.
+ * Individual entries override via [SettingsCatalogEntry.accent] — tonearmboy
+ * does per-entry accents to break the monochrome-per-section look.
+ */
 fun sectionAccent(section: Section): CategoryAccent = when (section) {
     Section.Appearance -> ThemeAccent
     Section.Behaviour -> PlaybackAccent
@@ -90,6 +94,11 @@ data class SettingsCatalogEntry(
      *  doesn't carry a dynamic current-value subtitle). */
     @StringRes val subtitleRes: Int? = null,
     val keywords: List<String> = emptyList(),
+    /**
+     * Per-entry accent overriding the section default. Set per row to
+     * break the monochrome-per-section look (tonearmboy parity).
+     */
+    val accent: CategoryAccent? = null,
 )
 
 /**
@@ -107,8 +116,11 @@ object SettingsCatalog {
     // in `SettingsPagesRender.kt` + the tests is a compile-time-silent
     // bug, so they live as constants.
     const val ID_THEME_MODE = "appearance.theme_mode"
-    const val ID_DYNAMIC_COLOR = "appearance.dynamic_color"
-    const val ID_CUSTOM_BASE_SEED = "appearance.custom_base_seed"
+    /** Three-way picker: Dynamic / Static / Custom-seed. Subsumes the
+     *  legacy `ID_DYNAMIC_COLOR` toggle + `ID_CUSTOM_BASE_SEED` row. */
+    const val ID_BASE_THEME = "appearance.base_theme"
+    /** Toggle for `PlaybackScreen`'s Palette-from-cover tint. */
+    const val ID_TINT_BY_ALBUM_ART = "appearance.tint_by_album_art"
     const val ID_CUSTOM_CHROME_TINT = "appearance.custom_chrome_tint"
 
     const val ID_DEFAULT_SPEED = "behaviour.default_speed"
@@ -147,34 +159,39 @@ object SettingsCatalog {
             subtitleEn = "Light, dark, or follow system",
             labelRes = R.string.settings_catalog_theme_mode_label,
             keywords = listOf("dark", "light", "system", "appearance"),
+            accent = ThemeAccent,
         ),
         SettingsCatalogEntry(
-            id = ID_DYNAMIC_COLOR,
-            section = Section.Appearance,
-            icon = Icons.Filled.AutoAwesome,
-            label = "Dynamic color",
-            subtitleEn = "Use Material You wallpaper colours",
-            labelRes = R.string.settings_catalog_dynamic_color_label,
-            subtitleRes = R.string.settings_catalog_dynamic_color_subtitle,
-            keywords = listOf("material", "you", "wallpaper"),
-        ),
-        SettingsCatalogEntry(
-            id = ID_CUSTOM_BASE_SEED,
+            id = ID_BASE_THEME,
             section = Section.Appearance,
             icon = Icons.Filled.ColorLens,
-            label = "Custom base color",
-            subtitleEn = "Custom seed colour for the theme palette",
-            labelRes = R.string.settings_catalog_custom_base_seed_label,
-            keywords = listOf("color", "seed", "palette"),
+            label = "Base theme",
+            subtitleEn = "Foundation colors. Album art tint sits on top.",
+            labelRes = R.string.settings_catalog_base_theme_label,
+            subtitleRes = R.string.settings_catalog_base_theme_subtitle,
+            keywords = listOf("dynamic", "material", "you", "static", "seed", "palette", "custom", "color"),
+            accent = ThemeAccent,
+        ),
+        SettingsCatalogEntry(
+            id = ID_TINT_BY_ALBUM_ART,
+            section = Section.Appearance,
+            icon = Icons.Filled.Palette,
+            label = "Tint chrome by album art",
+            subtitleEn = "Bias surfaces toward the playing book's dominant color.",
+            labelRes = R.string.settings_catalog_tint_by_album_art_label,
+            subtitleRes = R.string.settings_catalog_tint_by_album_art_subtitle,
+            keywords = listOf("palette", "tint", "album", "cover", "art", "color"),
+            accent = LibraryAccent,
         ),
         SettingsCatalogEntry(
             id = ID_CUSTOM_CHROME_TINT,
             section = Section.Appearance,
-            icon = Icons.Filled.FormatColorFill,
+            icon = Icons.Filled.Colorize,
             label = "Custom player tint",
-            subtitleEn = "Custom tint for the now-playing chrome",
+            subtitleEn = "Override the album-art tint with a fixed colour.",
             labelRes = R.string.settings_catalog_custom_chrome_tint_label,
-            keywords = listOf("tint", "player", "chrome"),
+            keywords = listOf("tint", "player", "chrome", "custom"),
+            accent = SleepTimerAccent,
         ),
         SettingsCatalogEntry(
             id = ID_DEFAULT_SPEED,
@@ -184,6 +201,7 @@ object SettingsCatalog {
             subtitleEn = "Playback speed for new books",
             labelRes = R.string.settings_catalog_default_speed_label,
             keywords = listOf("speed", "playback"),
+            accent = PlaybackAccent,
         ),
         SettingsCatalogEntry(
             id = ID_DEFAULT_SKIP_SILENCE,
@@ -193,6 +211,7 @@ object SettingsCatalog {
             subtitleEn = "Skip quiet pauses during playback",
             labelRes = R.string.settings_catalog_default_skip_silence_label,
             subtitleRes = R.string.settings_catalog_default_skip_silence_subtitle,
+            accent = PlaybackAccent,
         ),
         SettingsCatalogEntry(
             id = ID_DEFAULT_GAIN_DB,
@@ -202,6 +221,7 @@ object SettingsCatalog {
             subtitleEn = "Volume boost for new books in decibels",
             labelRes = R.string.settings_catalog_default_gain_label,
             keywords = listOf("gain", "boost", "decibel", "loud"),
+            accent = PlaybackAccent,
         ),
         SettingsCatalogEntry(
             id = ID_REWIND_SECONDS,
@@ -210,6 +230,7 @@ object SettingsCatalog {
             label = "Rewind seconds",
             subtitleEn = "How far back the rewind button skips",
             labelRes = R.string.settings_catalog_rewind_seconds_label,
+            accent = PlaybackAccent,
         ),
         SettingsCatalogEntry(
             id = ID_FORWARD_SECONDS,
@@ -218,6 +239,7 @@ object SettingsCatalog {
             label = "Forward seconds",
             subtitleEn = "How far forward the forward button skips",
             labelRes = R.string.settings_catalog_forward_seconds_label,
+            accent = PlaybackAccent,
         ),
         SettingsCatalogEntry(
             id = ID_AUTO_REWIND_SECONDS,
@@ -227,6 +249,7 @@ object SettingsCatalog {
             subtitleEn = "Rewind when resuming after a long pause",
             labelRes = R.string.settings_catalog_auto_rewind_seconds_label,
             keywords = listOf("resume", "auto", "rewind"),
+            accent = PlaybackAccent,
         ),
         SettingsCatalogEntry(
             id = ID_SYSTEM_EQUALIZER,
@@ -237,6 +260,7 @@ object SettingsCatalog {
             labelRes = R.string.settings_catalog_system_equalizer_label,
             subtitleRes = R.string.settings_catalog_system_equalizer_subtitle,
             keywords = listOf("eq", "audio"),
+            accent = PlaybackAccent,
         ),
         SettingsCatalogEntry(
             id = ID_SLEEP_DEFAULT_DURATION,
@@ -245,6 +269,7 @@ object SettingsCatalog {
             label = "Default duration",
             subtitleEn = "Default sleep-timer duration",
             labelRes = R.string.settings_catalog_sleep_default_duration_label,
+            accent = SleepTimerAccent,
         ),
         SettingsCatalogEntry(
             id = ID_SLEEP_FADE_OUT,
@@ -253,6 +278,7 @@ object SettingsCatalog {
             label = "Fade-out",
             subtitleEn = "How long volume fades to silent before stop",
             labelRes = R.string.settings_catalog_sleep_fade_out_label,
+            accent = SleepTimerAccent,
         ),
         SettingsCatalogEntry(
             id = ID_SLEEP_SHAKE_TO_RESUME,
@@ -262,6 +288,7 @@ object SettingsCatalog {
             subtitleEn = "Pick up the phone to resume after sleep",
             labelRes = R.string.settings_catalog_sleep_shake_to_resume_label,
             subtitleRes = R.string.settings_catalog_sleep_shake_to_resume_subtitle,
+            accent = SleepTimerAccent,
         ),
         SettingsCatalogEntry(
             id = ID_SLEEP_AUTO_ARM_WINDOW,
@@ -270,6 +297,7 @@ object SettingsCatalog {
             label = "Auto-arm window",
             subtitleEn = "Arm the timer automatically in a time window",
             labelRes = R.string.settings_catalog_sleep_auto_arm_window_label,
+            accent = SleepTimerAccent,
         ),
         SettingsCatalogEntry(
             id = ID_LIBRARY_FOLDERS,
@@ -279,6 +307,7 @@ object SettingsCatalog {
             subtitleEn = "Audiobook folders the library scans",
             labelRes = R.string.settings_catalog_library_folders_label,
             subtitleRes = R.string.settings_catalog_library_folders_subtitle,
+            accent = LibraryAccent,
         ),
         SettingsCatalogEntry(
             id = ID_LIBRARY_SORT,
@@ -287,6 +316,7 @@ object SettingsCatalog {
             label = "Default sort",
             subtitleEn = "How books are ordered in the library",
             labelRes = R.string.settings_catalog_library_sort_label,
+            accent = LibraryAccent,
         ),
         SettingsCatalogEntry(
             id = ID_LIBRARY_GRID_MODE,
@@ -295,6 +325,7 @@ object SettingsCatalog {
             label = "Default grid mode",
             subtitleEn = "Grid or list layout for the library",
             labelRes = R.string.settings_catalog_library_grid_mode_label,
+            accent = LibraryAccent,
         ),
         SettingsCatalogEntry(
             id = ID_LIBRARY_SCAN_FILTERS,
@@ -303,6 +334,7 @@ object SettingsCatalog {
             label = "Scan filters",
             subtitleEn = "Which audio file extensions to include in scans",
             labelRes = R.string.settings_catalog_library_scan_filters_label,
+            accent = LibraryAccent,
         ),
         SettingsCatalogEntry(
             id = ID_LIBRARY_RESCAN,
@@ -312,6 +344,7 @@ object SettingsCatalog {
             subtitleEn = "Force a full library rescan",
             labelRes = R.string.settings_catalog_library_rescan_label,
             subtitleRes = R.string.settings_catalog_library_rescan_subtitle,
+            accent = LibraryAccent,
         ),
         SettingsCatalogEntry(
             id = ID_ABOUT,
@@ -321,6 +354,7 @@ object SettingsCatalog {
             subtitleEn = "Version, license, credits",
             labelRes = R.string.settings_catalog_about_label,
             subtitleRes = R.string.settings_catalog_about_subtitle,
+            accent = AboutAccent,
         ),
         SettingsCatalogEntry(
             id = ID_LICENSES,
@@ -330,6 +364,7 @@ object SettingsCatalog {
             subtitleEn = "Third-party libraries and their licenses",
             labelRes = R.string.settings_catalog_licenses_label,
             subtitleRes = R.string.settings_catalog_licenses_subtitle,
+            accent = LicensesAccent,
         ),
     )
 

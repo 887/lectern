@@ -5,6 +5,7 @@ import android.content.Intent
 import android.media.audiofx.AudioEffect
 import android.os.Build
 import androidx.compose.foundation.background
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -113,8 +114,8 @@ fun RenderSection(section: Section, bindings: SettingsBindings) {
 private fun RenderEntry(entry: SettingsCatalogEntry, bindings: SettingsBindings) {
     when (entry.id) {
         SettingsCatalog.ID_THEME_MODE -> ThemeModeRow(entry, bindings.themeSettings)
-        SettingsCatalog.ID_DYNAMIC_COLOR -> DynamicColorRow(entry, bindings.themeSettings)
-        SettingsCatalog.ID_CUSTOM_BASE_SEED -> CustomBaseSeedRow(entry, bindings.themeSettings)
+        SettingsCatalog.ID_BASE_THEME -> BaseThemeRow(entry, bindings.themeSettings)
+        SettingsCatalog.ID_TINT_BY_ALBUM_ART -> TintByAlbumArtRow(entry, bindings.themeSettings)
         SettingsCatalog.ID_CUSTOM_CHROME_TINT -> CustomChromeTintRow(entry, bindings.themeSettings)
 
         SettingsCatalog.ID_DEFAULT_SPEED -> DefaultSpeedRow(entry, bindings.playbackSettings)
@@ -156,6 +157,7 @@ private fun ThemeModeRow(entry: SettingsCatalogEntry, themeSettings: ThemeSettin
     val label = stringResource(themeModeLabelRes(mode))
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = label,
@@ -177,57 +179,159 @@ private fun themeModeLabelRes(mode: ThemeMode): Int = when (mode) {
     ThemeMode.FollowSystem -> R.string.settings_theme_mode_system
 }
 
+/**
+ * "Base theme" three-option picker: Dynamic / Static / Custom color.
+ * Combines the legacy "Dynamic color" toggle + "Custom base color"
+ * row into one entry (tonearmboy parity).
+ *
+ * Mapping to the underlying [ThemeSettings] knobs:
+ *  - Dynamic → `dynamicColor = true`, `customBaseSeed = 0L`.
+ *  - Static  → `dynamicColor = false`, `customBaseSeed = 0L`.
+ *  - Custom  → opens [ColorPickerDialog]; on confirm sets
+ *    `customBaseSeed = picked` (the existing render path in `Theme.kt`
+ *    treats `customBaseSeed != 0` as the strongest override).
+ */
 @Composable
-private fun DynamicColorRow(entry: SettingsCatalogEntry, themeSettings: ThemeSettings) {
+private fun BaseThemeRow(entry: SettingsCatalogEntry, themeSettings: ThemeSettings) {
     val scope = rememberCoroutineScope()
     val dynamicColor by themeSettings.dynamicColor.collectAsStateWithLifecycle(initialValue = true)
-    val supported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    val subtitle = stringResource(
-        if (supported) R.string.settings_catalog_dynamic_color_subtitle
-        else R.string.settings_theme_dynamic_color_unavailable,
-    )
-    SettingsToggleRow(
-        id = entry.id,
-        icon = entry.icon,
-        label = stringResource(entry.labelRes),
-        subtitle = subtitle,
-        checked = dynamicColor && supported,
-        enabled = supported,
-        onCheckedChange = { scope.launch { themeSettings.setDynamicColor(it) } },
-    )
-}
-
-@Composable
-private fun CustomBaseSeedRow(entry: SettingsCatalogEntry, themeSettings: ThemeSettings) {
-    val scope = rememberCoroutineScope()
     val seed by themeSettings.customBaseSeed.collectAsStateWithLifecycle(initialValue = 0L)
+    val supported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     var pickerOpen by remember { mutableStateOf(false) }
-    val subtitle = if (seed == 0L)
-        stringResource(R.string.settings_theme_custom_base_subtitle_unset)
-    else stringResource(R.string.settings_theme_custom_base_subtitle_set, seed)
+    var colorPickerOpen by remember { mutableStateOf(false) }
+
+    val dynamicLabel = stringResource(R.string.settings_catalog_base_theme_dynamic_option)
+    val staticLabel = stringResource(R.string.settings_catalog_base_theme_static_option)
+    val customLabel = stringResource(R.string.settings_catalog_base_theme_custom_option)
+    val customFormat = stringResource(R.string.settings_catalog_base_theme_custom_format, seed)
+
+    val subtitle = when {
+        seed != 0L -> customFormat
+        dynamicColor && supported -> dynamicLabel
+        else -> staticLabel
+    }
+
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = subtitle,
         onClick = { pickerOpen = true },
         trailing = { ColorSwatch(seed) },
     )
+
     if (pickerOpen) {
+        // Three-option picker dialog. Tapping Dynamic / Static commits
+        // immediately and dismisses; tapping Custom dismisses this
+        // dialog and opens the color picker.
+        AlertDialog(
+            onDismissRequest = { pickerOpen = false },
+            title = { Text(stringResource(entry.labelRes)) },
+            text = {
+                androidx.compose.foundation.layout.Column {
+                    BaseThemeOption(
+                        label = dynamicLabel,
+                        selected = seed == 0L && dynamicColor && supported,
+                        enabled = supported,
+                        onPick = {
+                            scope.launch {
+                                themeSettings.setDynamicColor(true)
+                                themeSettings.setCustomBaseSeed(0L)
+                            }
+                            pickerOpen = false
+                        },
+                    )
+                    BaseThemeOption(
+                        label = staticLabel,
+                        selected = seed == 0L && (!dynamicColor || !supported),
+                        enabled = true,
+                        onPick = {
+                            scope.launch {
+                                themeSettings.setDynamicColor(false)
+                                themeSettings.setCustomBaseSeed(0L)
+                            }
+                            pickerOpen = false
+                        },
+                    )
+                    BaseThemeOption(
+                        label = customLabel,
+                        selected = seed != 0L,
+                        enabled = true,
+                        onPick = {
+                            pickerOpen = false
+                            colorPickerOpen = true
+                        },
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { pickerOpen = false }) {
+                    Text(stringResource(R.string.settings_dialog_close))
+                }
+            },
+        )
+    }
+
+    if (colorPickerOpen) {
         val initial = if (seed == 0L) 0x6750A4L else seed
         ColorPickerDialog(
             initialRgb = initial,
             onConfirm = {
                 scope.launch { themeSettings.setCustomBaseSeed(it) }
-                pickerOpen = false
+                colorPickerOpen = false
             },
-            onDismiss = { pickerOpen = false },
+            onDismiss = { colorPickerOpen = false },
             onReset = {
                 scope.launch { themeSettings.setCustomBaseSeed(0L) }
-                pickerOpen = false
+                colorPickerOpen = false
             },
         )
     }
+}
+
+@Composable
+private fun BaseThemeOption(
+    label: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onPick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(
+                selected = selected,
+                enabled = enabled,
+                role = androidx.compose.ui.semantics.Role.RadioButton,
+                onClick = onPick,
+            )
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        androidx.compose.material3.RadioButton(
+            selected = selected,
+            onClick = null,
+            enabled = enabled,
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
+private fun TintByAlbumArtRow(entry: SettingsCatalogEntry, themeSettings: ThemeSettings) {
+    val scope = rememberCoroutineScope()
+    val checked by themeSettings.tintChromeByAlbumArt.collectAsStateWithLifecycle(initialValue = true)
+    SettingsToggleRow(
+        id = entry.id,
+        accent = entry.accent,
+        icon = entry.icon,
+        label = stringResource(entry.labelRes),
+        subtitle = entry.subtitleRes?.let { stringResource(it) },
+        checked = checked,
+        onCheckedChange = { scope.launch { themeSettings.setTintChromeByAlbumArt(it) } },
+    )
 }
 
 @Composable
@@ -240,6 +344,7 @@ private fun CustomChromeTintRow(entry: SettingsCatalogEntry, themeSettings: Them
     else stringResource(R.string.settings_theme_custom_tint_subtitle_set, tint)
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = subtitle,
@@ -285,6 +390,7 @@ private fun DefaultSpeedRow(entry: SettingsCatalogEntry, playbackSettings: Playb
     val picker = rememberSettingPickerState()
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = stringResource(R.string.settings_playback_default_speed_format, speed),
@@ -310,6 +416,7 @@ private fun DefaultSkipSilenceRow(entry: SettingsCatalogEntry, playbackSettings:
     val checked by playbackSettings.defaultSkipSilence.collectAsStateWithLifecycle(initialValue = false)
     SettingsToggleRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = stringResource(R.string.settings_catalog_default_skip_silence_subtitle),
@@ -325,6 +432,7 @@ private fun DefaultGainRow(entry: SettingsCatalogEntry, playbackSettings: Playba
     val picker = rememberSettingPickerState()
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = stringResource(R.string.settings_playback_default_gain_format, gain),
@@ -347,6 +455,7 @@ private fun RewindSecondsRow(entry: SettingsCatalogEntry, playbackSettings: Play
     val picker = rememberSettingPickerState()
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = stringResource(R.string.settings_playback_seconds_format, seconds),
@@ -369,6 +478,7 @@ private fun ForwardSecondsRow(entry: SettingsCatalogEntry, playbackSettings: Pla
     val picker = rememberSettingPickerState()
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = stringResource(R.string.settings_playback_seconds_format, seconds),
@@ -394,6 +504,7 @@ private fun AutoRewindSecondsRow(entry: SettingsCatalogEntry, playbackSettings: 
     else stringResource(R.string.settings_playback_seconds_format, seconds)
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = subtitle,
@@ -420,6 +531,7 @@ private fun SystemEqualizerRow(entry: SettingsCatalogEntry, snackbarHostState: S
     val unavailable = stringResource(R.string.settings_playback_equalizer_unavailable)
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = entry.subtitleRes?.let { stringResource(it) },
@@ -453,6 +565,7 @@ private fun SleepDefaultDurationRow(entry: SettingsCatalogEntry, sleepTimerSetti
     )
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = subtitle,
@@ -478,6 +591,7 @@ private fun SleepFadeOutRow(entry: SettingsCatalogEntry, sleepTimerSettings: Sle
     val seconds = fade.inWholeSeconds.toInt().coerceIn(0, 60)
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = stringResource(R.string.settings_sleep_fade_out_format, seconds),
@@ -502,6 +616,7 @@ private fun SleepShakeToResumeRow(entry: SettingsCatalogEntry, sleepTimerSetting
     val checked by sleepTimerSettings.shakeToResume.collectAsStateWithLifecycle(initialValue = true)
     SettingsToggleRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = stringResource(R.string.settings_catalog_sleep_shake_to_resume_subtitle),
@@ -525,6 +640,7 @@ private fun SleepAutoArmWindowRow(entry: SettingsCatalogEntry, sleepTimerSetting
 
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = subtitle,
@@ -671,6 +787,7 @@ private fun TimePickerDialogInline(
 private fun LibraryFoldersRow(entry: SettingsCatalogEntry, onClick: () -> Unit) {
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = entry.subtitleRes?.let { stringResource(it) },
@@ -685,6 +802,7 @@ private fun LibrarySortRow(entry: SettingsCatalogEntry, libraryUiSettings: Libra
     val picker = rememberSettingPickerState()
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = stringResource(sortKeyLabelRes(current)),
@@ -713,6 +831,7 @@ private fun LibraryGridModeRow(entry: SettingsCatalogEntry, libraryUiSettings: L
     val picker = rememberSettingPickerState()
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = stringResource(gridModeLabelRes(current)),
@@ -751,6 +870,7 @@ private fun LibraryScanFiltersRow(
 
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = subtitle,
@@ -781,6 +901,7 @@ private fun LibraryRescanRow(entry: SettingsCatalogEntry, libraryRescanCoordinat
     val isRunning = state is com.eight87.whisperboy.data.library.RescanState.Running
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = entry.subtitleRes?.let { stringResource(it) },
@@ -798,6 +919,7 @@ private fun LibraryRescanRow(entry: SettingsCatalogEntry, libraryRescanCoordinat
 private fun AboutRow(entry: SettingsCatalogEntry, onClick: () -> Unit) {
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = entry.subtitleRes?.let { stringResource(it) },
@@ -809,6 +931,7 @@ private fun AboutRow(entry: SettingsCatalogEntry, onClick: () -> Unit) {
 private fun LicensesRow(entry: SettingsCatalogEntry, onClick: () -> Unit) {
     SettingsRow(
         id = entry.id,
+        accent = entry.accent,
         icon = entry.icon,
         label = stringResource(entry.labelRes),
         subtitle = entry.subtitleRes?.let { stringResource(it) },

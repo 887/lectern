@@ -130,18 +130,20 @@ fun PlaybackScreen(
     // Off-main (Dispatchers.IO inside extractTint). Re-keys on the cover path so a
     // book switch retriggers extraction; nulls out cleanly when there's no cover.
     val coverPath = (uiState as? PlaybackUiState.Loaded)?.book?.coverPath
-    var tint by remember { mutableStateOf<Color?>(null) }
-    LaunchedEffect(coverPath) {
-        tint = extractTint(coverPath)
-    }
-    val surface = MaterialTheme.colorScheme.surface
     // K.5 follow-up — user-picked chrome tint override (ported from
     // tonearmboy `82d6248`). When the user has set a custom tint in
     // Settings → Theme, the override wins regardless of cover-art
-    // extraction. When unset (`LocalCustomChromeTint.current == null`),
-    // the F.6 Palette-derived tint stays in effect — that's the
-    // "default" UX the user picked when they shipped F.6.
+    // extraction or the album-art-tint toggle.
     val customTint = com.eight87.whisperboy.theme.LocalCustomChromeTint.current
+    // Tint-chrome-by-album-art toggle (tonearmboy parity). When `false`
+    // we skip the Palette extraction entirely — cheaper, and the
+    // gradient falls back to the static surface colour.
+    val tintByAlbumArt = com.eight87.whisperboy.theme.LocalTintByAlbumArt.current
+    var tint by remember { mutableStateOf<Color?>(null) }
+    LaunchedEffect(coverPath, tintByAlbumArt, customTint) {
+        tint = if (tintByAlbumArt && customTint == null) extractTint(coverPath) else null
+    }
+    val surface = MaterialTheme.colorScheme.surface
     val effectiveTint = customTint ?: tint
     // Animate the top-of-gradient color so book changes cross-fade instead of snap.
     // Single per-screen animation (not a 9-call theme crossfade — see cold-start-perf B.2);

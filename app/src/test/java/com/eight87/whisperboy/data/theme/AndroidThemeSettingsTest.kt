@@ -183,6 +183,19 @@ class AndroidThemeSettingsTest {
     }
 
     @Test
+    fun `tintChromeByAlbumArt defaults to true on a fresh store`() = scope.runTest {
+        assertEquals(true, settings.tintChromeByAlbumArt.first())
+    }
+
+    @Test
+    fun `setTintChromeByAlbumArt round-trips true and false`() = scope.runTest {
+        settings.setTintChromeByAlbumArt(false)
+        assertEquals(false, settings.tintChromeByAlbumArt.first())
+        settings.setTintChromeByAlbumArt(true)
+        assertEquals(true, settings.tintChromeByAlbumArt.first())
+    }
+
+    @Test
     fun `custom colour setters persist across a recreated settings instance`() = scope.runTest {
         settings.setCustomBaseSeed(0xC0FFEEL)
         settings.setCustomChromeTint(0xABCDEFL)

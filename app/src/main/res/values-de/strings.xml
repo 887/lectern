@@ -226,6 +226,14 @@
     <string name="settings_catalog_dynamic_color_subtitle">Hintergrundfarben aus Material You verwenden.</string>
     <string name="settings_catalog_custom_base_seed_label">Eigene Basisfarbe</string>
     <string name="settings_catalog_custom_chrome_tint_label">Eigene Spielerfarbe</string>
+    <string name="settings_catalog_base_theme_label">Basis-Theme</string>
+    <string name="settings_catalog_base_theme_subtitle">Grundfarben. Die Cover-Färbung sitzt darüber.</string>
+    <string name="settings_catalog_base_theme_dynamic_option">Dynamisch (Material You)</string>
+    <string name="settings_catalog_base_theme_static_option">Statisch</string>
+    <string name="settings_catalog_base_theme_custom_option">Eigene Farbe…</string>
+    <string name="settings_catalog_base_theme_custom_format">Eigene Farbe · #%1$06X</string>
+    <string name="settings_catalog_tint_by_album_art_label">Cover-Färbung der Oberfläche</string>
+    <string name="settings_catalog_tint_by_album_art_subtitle">Oberflächen werden zur dominanten Farbe des laufenden Buches verschoben.</string>
     <string name="settings_catalog_default_speed_label">Standard-Geschwindigkeit</string>
     <string name="settings_catalog_default_skip_silence_label">Stille überspringen</string>
     <string name="settings_catalog_default_skip_silence_subtitle">Stille Passagen während der Wiedergabe überspringen.</string>

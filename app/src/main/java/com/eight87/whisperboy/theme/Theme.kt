@@ -51,6 +51,16 @@ internal val LightColorScheme = expressiveLightColorScheme()
 val LocalCustomChromeTint = staticCompositionLocalOf<Color?> { null }
 
 /**
+ * CompositionLocal flagging whether `PlaybackScreen`'s Palette-from-
+ * cover-art tint should be applied. Default `true` — pre-existing
+ * behaviour. Wired at the theme root from `ThemeSettings.tintChromeByAlbumArt`.
+ * Surface-level consumers (today: `PlaybackScreen`) skip Palette
+ * extraction / fall back to the static surface gradient when this is
+ * `false`. `LocalCustomChromeTint` (when set) still overrides everything.
+ */
+val LocalTintByAlbumArt = staticCompositionLocalOf { true }
+
+/**
  * Phase K.5 — reads the user's theme mode + dynamic-color preference
  * from [ThemeSettings] and applies them. The mode/flag flow into
  * `colorScheme` selection here; everything below stays unchanged from
@@ -81,6 +91,7 @@ fun WhisperboyTheme(
   val dynamicColor by themeSettings.dynamicColor.collectAsStateWithLifecycle(initialValue = true)
   val customBaseSeed by themeSettings.customBaseSeed.collectAsStateWithLifecycle(initialValue = 0L)
   val customChromeTint by themeSettings.customChromeTint.collectAsStateWithLifecycle(initialValue = 0L)
+  val tintByAlbumArt by themeSettings.tintChromeByAlbumArt.collectAsStateWithLifecycle(initialValue = true)
 
   val darkTheme = when (mode) {
     ThemeMode.Light -> false
@@ -103,7 +114,10 @@ fun WhisperboyTheme(
 
   val chromeTint: Color? = if (customChromeTint == 0L) null else colorFromRgbLong(customChromeTint)
 
-  CompositionLocalProvider(LocalCustomChromeTint provides chromeTint) {
+  CompositionLocalProvider(
+    LocalCustomChromeTint provides chromeTint,
+    LocalTintByAlbumArt provides tintByAlbumArt,
+  ) {
     // m3-expressive A.3 — `MaterialExpressiveTheme` pulls in the new
     // motion / typography / shape defaults (rounded extra-large group
     // shapes, faster spring-based motion). It still resolves
