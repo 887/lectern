@@ -8,6 +8,10 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.eight87.whisperboy.R
 import com.eight87.whisperboy.WhisperboyApplication
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 
 /**
  * Foreground service that hosts the audio session.
@@ -28,6 +32,14 @@ class PlaybackService : MediaLibraryService() {
 
     private var session: MediaLibrarySession? = null
 
+    /**
+     * Phase N — service-scoped coroutine scope handed to the [WhisperboyLibrarySessionCallback]
+     * so its `onGetChildren` / `onAddMediaItems` / `onCustomCommand` futures can suspend
+     * (Room reads via `.first()` on the [BookSource] flow). Cancelled in [onDestroy] so
+     * any in-flight browse computation tears down with the session.
+     */
+    private val callbackScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
     override fun onCreate() {
         super.onCreate()
         createPlaybackNotificationChannel()
@@ -37,9 +49,17 @@ class PlaybackService : MediaLibraryService() {
                 .setNotificationId(PLAYBACK_NOTIFICATION_ID)
                 .build()
         )
-        val player = (application as WhisperboyApplication).graph.playerHolder.player
-        session = MediaLibrarySession.Builder(this, player, WhisperboyLibrarySessionCallback())
-            .build()
+        val graph = (application as WhisperboyApplication).graph
+        val player = graph.playerHolder.player
+        val callback = WhisperboyLibrarySessionCallback(
+            context = this,
+            bookSource = graph.bookSource,
+            transportCommands = graph.transportCommands,
+            bookCommands = graph.bookCommands,
+            sleepTimerCommands = graph.sleepTimerCommands,
+            scope = callbackScope,
+        )
+        session = MediaLibrarySession.Builder(this, player, callback).build()
     }
 
     private fun createPlaybackNotificationChannel() {
@@ -71,6 +91,7 @@ class PlaybackService : MediaLibraryService() {
             release()
         }
         session = null
+        callbackScope.cancel()
         super.onDestroy()
     }
 

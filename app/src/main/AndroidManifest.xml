@@ -18,6 +18,15 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!--
+      Phase N — Android Auto / Automotive OS. `required="false"` so phones without
+      automotive hardware still install the app; the Gearhead phone-side projection
+      app handles the actual car connection.
+    -->
+    <uses-feature
+        android:name="android.hardware.type.automotive"
+        android:required="false" />
+
     <application
         android:name=".WhisperboyApplication"
         android:allowBackup="true"
@@ -27,6 +36,17 @@
         android:supportsRtl="true"
         android:windowSoftInputMode="adjustResize"
         android:theme="@style/Theme.Whisperboy">
+
+        <!--
+          Phase N — Android Auto descriptor. The Gearhead car launcher reads this
+          meta-data to discover that whisperboy ships a `<media>` browseable tree
+          (Currently listening / Not started / All books / Authors). The actual
+          tree is built by `WhisperboyLibrarySessionCallback.onGetChildren`.
+        -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
         <activity
             android:name=".WhisperboyActivity"
             android:exported="true">

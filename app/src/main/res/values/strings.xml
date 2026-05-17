@@ -28,6 +28,15 @@
     <string name="notification_channel_playback_name">Playback</string>
     <string name="notification_channel_playback_description">Playback controls and ongoing audio session.</string>
 
+    <!-- auto_ — Android Auto browse-tree folder titles (Phase N). Surfaced by Gearhead
+         in the car launcher; short labels read better on the in-car list. -->
+    <string name="auto_browse_root_title">whisperboy</string>
+    <string name="auto_browse_currently_listening">Currently listening</string>
+    <string name="auto_browse_not_started">Not started</string>
+    <string name="auto_browse_all_books">All books</string>
+    <string name="auto_browse_authors">Authors</string>
+    <string name="auto_browse_unknown_author">Unknown author</string>
+
     <!-- folder_ — SAF picker bridge + the four FolderType labels (Phase C) -->
     <string name="folder_picker_empty_title">No audiobook folders yet</string>
     <string name="folder_picker_empty_subtitle">Tap below to pick the folder where your audiobooks live. whisperboy will only see what you point it at.</string>
