@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  whisperboy — deutsche Übersetzung. Reihenfolge folgt values/strings.xml.
+  Siehe docs/plans/translations.md für den Workflow.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="de">
+    <!-- Produktname — bleibt als Eigenname unübersetzt. -->
+    <string name="app_name">whisperboy</string>
+
+    <!-- notification_ — Kanal-Bezeichnung in den Systemeinstellungen → Benachrichtigungen -->
+    <string name="notification_channel_playback_name">Wiedergabe</string>
+    <string name="notification_channel_playback_description">Wiedergabesteuerung und laufende Audio-Sitzung.</string>
+
+    <!-- auto_ — Android-Auto-Browser-Titel -->
+    <string name="auto_browse_root_title">whisperboy</string>
+    <string name="auto_browse_currently_listening">Aktuell gehört</string>
+    <string name="auto_browse_not_started">Nicht begonnen</string>
+    <string name="auto_browse_all_books">Alle Bücher</string>
+    <string name="auto_browse_authors">Autoren</string>
+    <string name="auto_browse_unknown_author">Unbekannter Autor</string>
+
+    <!-- folder_ — SAF-Picker-Brücke und die vier FolderType-Labels -->
+    <string name="folder_picker_empty_title">Noch keine Hörbuch-Ordner</string>
+    <string name="folder_picker_empty_subtitle">Tippen Sie unten, um den Ordner mit Ihren Hörbüchern auszuwählen. whisperboy sieht nur das, worauf Sie es verweisen.</string>
+    <string name="folder_picker_cta">Hörbuch-Ordner auswählen</string>
+    <string name="folder_picker_add_another">Weiteren Ordner hinzufügen</string>
+
+    <string name="folder_type_dialog_title">Wie ist dieser Ordner aufgebaut?</string>
+    <string name="folder_type_singlefile_title">Einzelne Datei</string>
+    <string name="folder_type_singlefile_subtitle">Eine Audiodatei ist ein Buch.</string>
+    <string name="folder_type_singlefolder_title">Einzelner Ordner</string>
+    <string name="folder_type_singlefolder_subtitle">Ein Ordner mit Audiodateien ist ein Buch; Kapitel sind die Dateien in alphabetischer Reihenfolge.</string>
+    <string name="folder_type_root_title">Wurzel</string>
+    <string name="folder_type_root_subtitle">Jeder Unterordner ist ein eigenes Buch.</string>
+    <string name="folder_type_author_title">Autor</string>
+    <string name="folder_type_author_subtitle">Erste Ebene ist der Autor, zweite Ebene ist das Buch.</string>
+
+    <string name="folder_remove_action">Entfernen</string>
+    <string name="folder_section_title">Hörbuch-Ordner</string>
+    <string name="folder_rescan_action">Jetzt neu einlesen</string>
+    <string name="folder_rescan_state_running">Bibliothek wird eingelesen…</string>
+    <string name="folder_rescan_state_failed">Einlesen fehlgeschlagen — zum Wiederholen tippen</string>
+
+    <!-- dialog_ — generische Dialog-Schaltflächen -->
+    <string name="dialog_cancel">Abbrechen</string>
+    <string name="dialog_ok">OK</string>
+
+    <!-- sleep_ — Schlaftimer, Ausblenden und Schütteln zum Fortsetzen -->
+    <string name="sleep_timer_title">Schlaftimer</string>
+    <string name="sleep_timer_cd_inactive">Schlaftimer</string>
+    <string name="sleep_timer_cd_running">Noch %1$d Min.</string>
+    <string name="sleep_quick_5_min">5 Min.</string>
+    <string name="sleep_quick_10_min">10 Min.</string>
+    <string name="sleep_quick_15_min">15 Min.</string>
+    <string name="sleep_quick_30_min">30 Min.</string>
+    <string name="sleep_quick_60_min">60 Min.</string>
+    <string name="sleep_end_of_chapter">Kapitelende</string>
+    <string name="sleep_custom">Benutzerdefiniert…</string>
+    <string name="sleep_custom_minutes_label">Minuten</string>
+    <string name="sleep_cancel_timer">Timer abbrechen</string>
+    <string name="sleep_active_remaining">Noch %1$s</string>
+    <string name="sleep_shake_to_resume_window">Schütteln zum Fortsetzen</string>
+    <string name="sleep_fade_out_label">Ausblenden</string>
+
+    <!-- library_ — Coverraster, Top-App-Bar, Raster/Liste-Umschalter, Leerzustand -->
+    <string name="library_title">Bibliothek</string>
+    <string name="library_empty_title">Noch keine Bücher</string>
+    <string name="library_empty_subtitle">whisperboy liest Ihre Ordner ein. Bücher erscheinen hier, sobald sie gefunden werden.</string>
+    <string name="library_grid_mode_toggle_to_list_cd">Zur Listenansicht wechseln</string>
+    <string name="library_grid_mode_toggle_to_grid_cd">Zur Rasteransicht wechseln</string>
+    <string name="library_settings_cd">Einstellungen</string>
+    <string name="library_fab_add_folder_cd">Ordner hinzufügen</string>
+    <string name="library_cover_placeholder_cd">Platzhalter für Cover</string>
+    <string name="library_book_unknown_author">Unbekannter Autor</string>
+    <string name="library_sort_cd">Bücher sortieren</string>
+    <string name="library_sort_recent">Zuletzt</string>
+    <string name="library_sort_title">Titel</string>
+    <string name="library_sort_author">Autor</string>
+    <string name="library_filter_all">Alle</string>
+    <string name="library_filter_current">Aktuell</string>
+    <string name="library_filter_not_started">Nicht begonnen</string>
+    <string name="library_search_cd">Bibliothek durchsuchen</string>
+    <string name="library_search_close_cd">Suche schließen</string>
+    <string name="library_search_hint">Titel oder Autor suchen</string>
+    <string name="library_search_no_results">Keine Bücher passen zu \"%1$s\"</string>
+    <string name="library_filter_completed">Abgeschlossen</string>
+    <string name="library_rail_cd">Bibliotheksfilter</string>
+    <string name="library_book_action_sheet_title">%1$s</string>
+    <string name="library_book_action_mark_completed">Als abgeschlossen markieren</string>
+    <string name="library_book_action_mark_not_started">Als nicht begonnen markieren</string>
+    <string name="library_book_action_custom_cover">Eigenes Cover vom Gerät verwenden</string>
+    <string name="library_book_action_refresh_cover">Cover aktualisieren</string>
+    <string name="library_book_action_forget">Buch entfernen</string>
+    <string name="library_book_action_forget_confirm_title">Dieses Buch entfernen?</string>
+    <string name="library_book_action_forget_confirm_body">whisperboy entfernt das Buch samt Lesezeichen und Fortschritt aus Ihrer Bibliothek. Die Audiodateien auf dem Gerät bleiben unverändert. Liegt die Datei noch in Ihren Ordnern, erscheint das Buch beim nächsten Einlesen erneut.</string>
+    <string name="library_book_action_forget_confirm_yes">Entfernen</string>
+    <string name="library_book_action_view_by_author">Alle von %1$s anzeigen</string>
+
+    <!-- author_detail_ — Autoren-Detailseite -->
+    <string name="author_detail_title_format">%1$s</string>
+    <string name="author_detail_back_cd">Zurück</string>
+    <string name="author_detail_empty">Keine Bücher von diesem Autor.</string>
+
+    <!-- library_health_ — Banner für nicht lesbare Wurzel-Ordner -->
+    <string name="library_health_unreadable_cd">Warnung zu Bibliotheksordner</string>
+    <plurals name="library_health_unreadable_banner">
+        <item quantity="one">%1$d Ordner nicht lesbar. Zum erneuten Auswählen tippen.</item>
+        <item quantity="other">%1$d Ordner nicht lesbar. Zum erneuten Auswählen tippen.</item>
+    </plurals>
+
+    <!-- player_ — Vollbild-Wiedergabeansicht -->
+    <string name="player_back_cd">Zurück</string>
+    <string name="player_play_cd">Wiedergabe</string>
+    <string name="player_pause_cd">Pause</string>
+    <string name="player_skip_prev_cd">Vorheriges Kapitel</string>
+    <string name="player_skip_next_cd">Nächstes Kapitel</string>
+    <string name="player_rewind_cd">%1$d Sekunden zurück</string>
+    <string name="player_forward_cd">%1$d Sekunden vor</string>
+    <string name="player_rewind_picker_title">Zurückspulen um</string>
+    <string name="player_forward_picker_title">Vorspulen um</string>
+    <string name="player_seconds_label">%1$d Sekunden</string>
+    <string name="player_sleep_timer_cd">Schlaftimer</string>
+    <string name="player_bookmark_cd">Lesezeichen hinzufügen</string>
+    <string name="player_cover_cd">Cover</string>
+    <string name="player_position_format">%1$s / %2$s</string>
+    <string name="player_unknown_chapter">Kapitel %1$d</string>
+    <string name="player_loading">Verbindung zum Player…</string>
+    <string name="player_book_not_found_title">Buch nicht gefunden</string>
+    <string name="player_book_not_found_subtitle">whisperboy findet dieses Buch nicht mehr. Möglicherweise wurde es verschoben oder aus Ihrer Bibliothek entfernt.</string>
+    <string name="player_chapter_duration_format">%1$s</string>
+    <string name="player_overflow_cd">Wiedergabeoptionen</string>
+    <string name="player_speed_title">Wiedergabetempo</string>
+    <string name="player_speed_value_format">%1$.2fx</string>
+    <string name="player_speed_reset">Zurücksetzen</string>
+    <string name="player_silence_title">Stille Passagen überspringen</string>
+    <string name="player_silence_subtitle">Stille Abschnitte werden gekürzt, damit Sie nicht warten müssen.</string>
+    <string name="player_gain_title">Lautstärkeverstärkung</string>
+    <string name="player_gain_value_format">%1$+.1f dB</string>
+
+    <!-- bookmark_ — Lesezeichen-Liste, hinzufügen/umbenennen/löschen -->
+    <string name="bookmark_screen_title">Lesezeichen</string>
+    <string name="bookmark_screen_back_cd">Zurück</string>
+    <string name="bookmark_screen_view_cd">Lesezeichen anzeigen</string>
+    <string name="bookmark_add_dialog_title">Lesezeichen hinzufügen</string>
+    <string name="bookmark_add_dialog_hint">Lesezeichen-Titel</string>
+    <string name="bookmark_add_dialog_save">Speichern</string>
+    <string name="bookmark_add_default_title_format">%1$s — %2$s</string>
+    <string name="bookmark_rename_dialog_title">Lesezeichen umbenennen</string>
+    <string name="bookmark_rename_action">Umbenennen</string>
+    <string name="bookmark_delete_action">Löschen</string>
+    <string name="bookmark_delete_confirm_title">Lesezeichen löschen?</string>
+    <string name="bookmark_sleep_timer_badge_cd">Vom Schlaftimer gesetzt</string>
+    <string name="bookmark_sleep_timer_default_title">Schlaftimer</string>
+    <string name="bookmark_default_title">Lesezeichen</string>
+    <string name="bookmark_chapter_untagged">Sonstige</string>
+    <string name="bookmark_empty_state">Noch keine Lesezeichen. Tippen Sie im Player auf die Lesezeichen-Schaltfläche, um eines hinzuzufügen.</string>
+    <string name="bookmark_added_just_now">Gerade eben</string>
+    <string name="bookmark_added_minutes_ago">vor %1$d Min.</string>
+    <string name="bookmark_added_hours_ago">vor %1$d Std.</string>
+    <string name="bookmark_added_days_ago">vor %1$d Tg.</string>
+    <string name="bookmark_added_long_ago">Vor langer Zeit</string>
+
+    <!-- coverart_ — benutzerinitiierte Bildersuche für Cover -->
+    <string name="coverart_search_title">Cover-Suche</string>
+    <string name="coverart_search_hint">Im Web suchen</string>
+    <string name="coverart_search_close_cd">Cover-Suche schließen</string>
+    <string name="coverart_search_error">Ergebnisse konnten nicht geladen werden</string>
+    <string name="coverart_search_retry">Wiederholen</string>
+    <string name="coverart_search_loading_cd">Cover-Suchergebnisse werden geladen</string>
+    <string name="coverart_cover_thumb_cd">Cover-Vorschlag</string>
+    <string name="coverart_crop_title">Cover zuschneiden</string>
+    <string name="coverart_crop_cancel">Abbrechen</string>
+    <string name="coverart_crop_confirm">Cover speichern</string>
+    <string name="coverart_crop_loading">Bild wird geladen…</string>
+
+    <!-- settings_ — Einstellungen, Stamm und Kategorien -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_back_cd">Zurück</string>
+    <string name="settings_category_playback">Wiedergabe</string>
+    <string name="settings_category_playback_subtitle">Tempo, Stille überspringen, Zurück-/Vorspulen, Verstärkung</string>
+    <string name="settings_category_sleep_timer">Schlaftimer</string>
+    <string name="settings_category_sleep_timer_subtitle">Standarddauer, Ausblenden, Schütteln zum Fortsetzen</string>
+    <string name="settings_category_library">Bibliothek</string>
+    <string name="settings_category_library_subtitle">Ordner, Einlesen, Sortierung, Rastermodus</string>
+    <string name="settings_category_theme">Design</string>
+    <string name="settings_category_theme_subtitle">Hell / dunkel / System, dynamische Farben</string>
+    <string name="settings_category_about">Über</string>
+    <string name="settings_category_about_subtitle">Version, Lizenz, Mitwirkende</string>
+    <string name="settings_category_pending_snackbar">Demnächst verfügbar</string>
+    <string name="settings_library_folders_title">Bibliotheks-Ordner</string>
+    <string name="settings_rescan_now">Jetzt neu einlesen</string>
+    <string name="library_folders_remove_action">Entfernen</string>
+    <string name="library_folders_empty">Noch keine Ordner</string>
+    <string name="library_folders_back_cd">Zurück</string>
+    <string name="library_folders_fab_add_cd">Ordner hinzufügen</string>
+
+    <!-- settings_library_ — Bibliotheks-Einstellungen und Unterseiten -->
+    <string name="settings_library_hub_title">Bibliothek</string>
+    <string name="settings_library_folders_section">Ordner</string>
+    <string name="settings_library_defaults_section">Standardwerte</string>
+    <string name="settings_library_sort_default_title">Standard-Sortierung</string>
+    <string name="settings_library_sort_default_subtitle">Reihenfolge der Bücher in der Bibliothek.</string>
+    <string name="settings_library_sort_recent">Zuletzt</string>
+    <string name="settings_library_sort_title">Titel</string>
+    <string name="settings_library_sort_author">Autor</string>
+    <string name="settings_library_grid_default_title">Standard-Rastermodus</string>
+    <string name="settings_library_grid_default_subtitle">Raster- oder Listenlayout für die Bibliothek.</string>
+    <string name="settings_library_grid_mode_grid">Raster</string>
+    <string name="settings_library_grid_mode_list">Liste</string>
+    <string name="settings_library_scan_filters_title">Einlese-Filter</string>
+    <string name="settings_library_scan_filters_subtitle">Wählen Sie, welche Audiodateiformate beim Einlesen berücksichtigt werden.</string>
+    <string name="settings_library_scan_filters_rescan_snackbar">Bibliothek wird neu eingelesen…</string>
+
+    <!-- settings_playback_ — Wiedergabe-Unterseite -->
+    <string name="settings_playback_title">Wiedergabe</string>
+    <string name="settings_playback_back_cd">Zurück</string>
+    <string name="settings_playback_defaults_section">Standardwerte</string>
+    <string name="settings_playback_default_speed_title">Standard-Tempo</string>
+    <string name="settings_playback_default_speed_format">%1$.2fx</string>
+    <string name="settings_playback_default_speed_reset">Auf 1,00x zurücksetzen</string>
+    <string name="settings_playback_default_silence_title">Standard: Stille überspringen</string>
+    <string name="settings_playback_default_silence_subtitle">Neue Bücher übernehmen diese Einstellung beim ersten Einlesen.</string>
+    <string name="settings_playback_default_gain_title">Standard-Lautstärkeverstärkung</string>
+    <string name="settings_playback_default_gain_format">%1$+.1f dB</string>
+    <string name="settings_playback_seek_section">Spulen</string>
+    <string name="settings_playback_rewind_title">Sekunden zurück</string>
+    <string name="settings_playback_forward_title">Sekunden vor</string>
+    <string name="settings_playback_auto_rewind_title">Automatisch nach Pause zurückspulen</string>
+    <string name="settings_playback_auto_rewind_subtitle">Wird die Wiedergabe nach mehr als 5 Minuten Pause fortgesetzt, um so viele Sekunden zurückspulen.</string>
+    <string name="settings_playback_seconds_format">%1$d Sekunden</string>
+    <string name="settings_playback_equalizer_title">System-Equalizer öffnen</string>
+    <string name="settings_playback_equalizer_subtitle">Audioeffekt-Panel Ihres Geräts öffnen.</string>
+    <string name="settings_playback_equalizer_unavailable">Kein Equalizer auf diesem Gerät gefunden.</string>
+
+    <!-- settings_theme_ — Design-Unterseite -->
+    <string name="settings_theme_title">Design</string>
+    <string name="settings_theme_back_cd">Zurück</string>
+    <string name="settings_theme_mode_section">Design</string>
+    <string name="settings_theme_mode_light">Hell</string>
+    <string name="settings_theme_mode_dark">Dunkel</string>
+    <string name="settings_theme_mode_system">System folgen</string>
+    <string name="settings_theme_dynamic_color_title">Dynamische Farben</string>
+    <string name="settings_theme_dynamic_color_body">Farben aus Ihrem Hintergrundbild verwenden (Material You).</string>
+    <string name="settings_theme_dynamic_color_unavailable">Benötigt Android 12 oder neuer.</string>
+
+    <!-- settings_sleep_ — Schlaftimer-Unterseite -->
+    <string name="settings_sleep_title">Schlaftimer</string>
+    <string name="settings_sleep_back_cd">Zurück</string>
+    <string name="settings_sleep_default_duration_title">Standarddauer</string>
+    <string name="settings_sleep_duration_format">%1$d Minuten</string>
+    <string name="settings_sleep_fade_out_title">Ausblenden</string>
+    <string name="settings_sleep_fade_out_format">%1$d Sekunden</string>
+    <string name="settings_sleep_fade_out_subtitle">Die Lautstärke wird über diesen Zeitraum auf null abgesenkt, bevor pausiert wird.</string>
+    <string name="settings_sleep_shake_title">Schütteln zum Fortsetzen</string>
+    <string name="settings_sleep_shake_subtitle">Telefon nach dem Pausieren des Timers anheben, um weiter zu hören.</string>
+    <string name="settings_sleep_window_title">Automatisches Zeitfenster</string>
+    <string name="settings_sleep_window_subtitle">Timer automatisch starten, wenn die Wiedergabe in diesem Zeitraum beginnt.</string>
+    <string name="settings_sleep_window_start_label">Beginn</string>
+    <string name="settings_sleep_window_end_label">Ende</string>
+    <string name="settings_sleep_window_clear">Zeitfenster deaktivieren</string>
+    <string name="settings_sleep_window_disabled">Aus</string>
+
+    <!-- about_ — Über-Unterseite -->
+    <string name="about_title">Über</string>
+    <string name="about_version_format">Version %1$s (%2$s)</string>
+    <string name="about_license">Lizenz</string>
+    <string name="about_license_subtitle">Lizenziert unter MIT</string>
+    <string name="about_sibling_title">Geistiges Geschwister</string>
+    <string name="about_sibling_body">Whisperboy ist kein Fork. Voice (GPLv3, von Paul Woitaschek) ist das nächste funktionale Pendant — gleiche SAF-basierte Bibliotheksstruktur, vier Ordnermodi, Schlaftimer mit Ausblenden, MediaLibraryService für Android Auto. Whisperboy ist von Grund auf in Kotlin und Compose unter MIT geschrieben; wir kopieren keinen Code.</string>
+    <string name="about_github_label">GitHub</string>
+    <string name="about_oss_licenses_label">Open-Source-Lizenzen</string>
+    <string name="about_oss_licenses_subtitle">In diesem Build enthaltene Komponenten</string>
+
+    <!-- licenses_ — Open-Source-Lizenzen-Unterseite -->
+    <string name="licenses_title">Open-Source-Lizenzen</string>
+    <string name="licenses_back_cd">Zurück</string>
+    <string name="licenses_loading">Lizenzen werden geladen…</string>
+    <string name="licenses_load_error">Lizenzinformationen konnten nicht geladen werden</string>
+    <string name="licenses_spdx_badge_cd">Lizenz %1$s</string>
+    <string name="licenses_unknown_spdx">Unbekannte Lizenz — siehe Projekt-URL.</string>
+    <string name="licenses_dialog_close">Schließen</string>
+
+    <!-- onboarding_ — Erststart: Willkommen → Berechtigungen → Ordnerauswahl → Erstes Einlesen -->
+    <string name="onboarding_welcome_title">Willkommen bei whisperboy</string>
+    <string name="onboarding_welcome_body">Whisperboy spielt Hörbücher aus Ordnern, die Sie auswählen.</string>
+    <string name="onboarding_welcome_cta">Loslegen</string>
+
+    <string name="onboarding_permissions_title">Benachrichtigungen erlauben</string>
+    <string name="onboarding_permissions_body">Whisperboy nutzt eine Benachrichtigung, um die laufende Wiedergabe anzuzeigen und im Hintergrund weiterzuspielen. Sie können dies jederzeit in den Systemeinstellungen ändern.</string>
+    <string name="onboarding_permissions_grant">Benachrichtigungen erlauben</string>
+    <string name="onboarding_permissions_skip">Nicht jetzt</string>
+
+    <string name="onboarding_folder_picker_title">Hörbuch-Ordner auswählen</string>
+    <string name="onboarding_folder_picker_intro">Whisperboy liest Ordner mit verschiedenen Strukturen. Wählen Sie nach der Ordnerauswahl das passende Layout.</string>
+    <string name="onboarding_folder_picker_cta">Ordner auswählen</string>
+
+    <string name="onboarding_first_scan_title">Bibliothek wird eingelesen</string>
+    <string name="onboarding_first_scan_running">Bibliothek wird eingelesen…</string>
+    <string name="onboarding_first_scan_done">%1$d Bücher gefunden, %2$d Kapitel.</string>
+    <string name="onboarding_first_scan_continue">Weiter</string>
+
+    <!-- widget_ — Startbildschirm-Widget -->
+    <string name="widget_play_cd">Wiedergabe</string>
+    <string name="widget_pause_cd">Pause</string>
+    <string name="widget_prev_cd">Vorheriges Kapitel</string>
+    <string name="widget_next_cd">Nächstes Kapitel</string>
+    <string name="widget_cover_cd">Cover</string>
+    <string name="widget_empty_title">Keine Wiedergabe</string>
+
+    <plurals name="folder_count">
+        <item quantity="one">%1$d Hörbuch-Ordner konfiguriert</item>
+        <item quantity="other">%1$d Hörbuch-Ordner konfiguriert</item>
+    </plurals>
+</resources>

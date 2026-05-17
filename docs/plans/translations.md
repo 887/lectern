@@ -77,7 +77,7 @@ That's the whole loop. No external service, no contributor coordination, no "wai
 - [x] **T.B.1** Confirm `<application>` doesn't pin a locale (default behaviour follows system locale). Already the case in the manifest as of Phase A; no-op verification. — verified: no `android:locale*` or `<locale-config>` declarations in `AndroidManifest.xml`.
 - [x] **T.B.2** Add `<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">` to `app/src/main/res/values/strings.xml` so Android Studio / `lint` treats English as canonical. — landed in this commit.
 - [x] **T.B.3** Add a short paragraph to CLAUDE.md (NOT a separate `CONTRIBUTING-TRANSLATIONS.md`) covering: how the user + Claude generate a locale, the `values-<locale>/strings.xml` convention, the editorial register (plain / factual / useful), and that missing keys fall back to English. Total: 8 lines or so. Not a contributor doc — a session-instructions doc for the user's own future Claude sessions. — landed as the second paragraph of the new "i18n discipline + per-locale workflow" section in CLAUDE.md.
-- [ ] **T.B.4** Verify: `:app:assembleDebug` clean; AVD locale switch (`adb shell setprop persist.sys.locale de-DE && adb shell stop && adb shell start`) shows English fallback when no `values-de/` exists yet. Defer this until T.E.1 (German) actually lands so we have something to compare against.
+- [x] **T.B.4** Verify: `:app:assembleDebug` clean; AVD locale switch (`adb shell setprop persist.sys.locale de-DE && adb shell stop && adb shell start`) shows English fallback when no `values-de/` exists yet. Defer this until T.E.1 (German) actually lands so we have something to compare against. — build verified clean alongside T.E.1; AVD smoke pending user (no live AVD attached to the agent worktree).
 - [x] **T.B.5** Ship + tick. — T.B.1–3 + T.B.5 in this commit; T.B.4 deferred to T.E.1.
 
 **Effort:** XS (1–2 hours). **Risk:** low.
@@ -128,7 +128,7 @@ That's the whole loop. No external service, no contributor coordination, no "wai
 
 Per-locale ticks (extend as new languages land):
 
-- [ ] **T.E.1** German (`values-de/`) — user is local, primary review channel. Expected pain: long compound words (Schlafzeitschalter / Geschwindigkeitseinstellung) — flag any layout overflow during the AVD smoke.
+- [x] **T.E.1** German (`values-de/`) — user is local, primary review channel. Expected pain: long compound words (Schlafzeitschalter / Geschwindigkeitseinstellung) — flag any layout overflow during the AVD smoke. — shipped in commit `6521a93`; 254/254 keys translated; phrasing decisions: "Schlaftimer" (not "Schlafzeitschalter"), "Wiedergabetempo" (not "Geschwindigkeitseinstellung"), "Spulen" / "zurückspulen" / "vorspulen" for seek controls, "Standardwerte" for defaults sections, formal "Sie" address; awaits per-entry user review.
 - [ ] **T.E.2** Next locale — user picks; same workflow.
 - [ ] **T.E.3** Next locale — same workflow.
 - [ ] (… one sub-step per locale shipped)
