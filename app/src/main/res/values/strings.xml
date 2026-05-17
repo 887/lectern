@@ -112,6 +112,12 @@
     <string name="library_book_action_forget_confirm_title">Forget this book?</string>
     <string name="library_book_action_forget_confirm_body">whisperboy will remove the book from your library, including bookmarks and progress. The audio files on your device are untouched. If the file is still in your folders, the book will reappear on the next scan.</string>
     <string name="library_book_action_forget_confirm_yes">Forget</string>
+    <string name="library_book_action_view_by_author">View all by %1$s</string>
+
+    <!-- author_detail_ — R.F.9 per-author detail screen -->
+    <string name="author_detail_title_format">%1$s</string>
+    <string name="author_detail_back_cd">Back</string>
+    <string name="author_detail_empty">No books by this author.</string>
 
     <!-- library_health_ — Phase P.4 unreadable-roots banner -->
     <string name="library_health_unreadable_cd">Library folder warning</string>

@@ -33,6 +33,7 @@ fun HomeScreen(
     onBookTap: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onLibraryFoldersClick: () -> Unit,
+    onAuthorClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LibraryScreen(
@@ -43,6 +44,7 @@ fun HomeScreen(
         onBookTap = onBookTap,
         onSettingsClick = onSettingsClick,
         onLibraryFoldersClick = onLibraryFoldersClick,
+        onAuthorClick = onAuthorClick,
         modifier = modifier,
     )
 }

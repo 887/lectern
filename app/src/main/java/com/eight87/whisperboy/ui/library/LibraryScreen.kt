@@ -117,6 +117,7 @@ fun LibraryScreen(
     onBookTap: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onLibraryFoldersClick: () -> Unit,
+    onAuthorClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val books by bookSource.observeBooks()
@@ -372,6 +373,13 @@ fun LibraryScreen(
                     forgetConfirmBookId = actionBook.bookId
                     actionSheetBookId = null
                 },
+                onViewByAuthor = {
+                    val author = actionBook.author
+                    if (!author.isNullOrBlank()) {
+                        onAuthorClick(author)
+                    }
+                    actionSheetBookId = null
+                },
             )
         } else {
             // Book vanished from the catalog while the sheet was open (e.g. rescan dropped it).
@@ -401,6 +409,7 @@ private fun BookActionSheet(
     onMarkNotStarted: () -> Unit,
     onPickCustomCover: () -> Unit,
     onForget: () -> Unit,
+    onViewByAuthor: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val isCompleted = book.completedAt != null
@@ -458,6 +467,18 @@ private fun BookActionSheet(
                 TextButton(onClick = onMarkCompleted, modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = stringResource(R.string.library_book_action_mark_completed),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+            // R.F.9 — per-author detail entry point. Hidden when the row has no author
+            // (rare — Voice's "Unknown author" fallback is a UI display string, not a stored
+            // value, so a missing/blank `book.author` here means the scanner had nothing).
+            val author = book.author
+            if (!author.isNullOrBlank()) {
+                TextButton(onClick = onViewByAuthor, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(R.string.library_book_action_view_by_author, author),
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

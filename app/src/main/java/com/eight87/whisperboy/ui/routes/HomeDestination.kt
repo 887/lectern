@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import com.eight87.whisperboy.AuthorDetailRoute
 import com.eight87.whisperboy.HomeRoute
 import com.eight87.whisperboy.LibraryFoldersRoute
 import com.eight87.whisperboy.SettingsRoute
@@ -32,6 +33,7 @@ import kotlinx.coroutines.launch
             },
             onSettingsClick = { backStack.add(SettingsRoute) },
             onLibraryFoldersClick = { backStack.add(LibraryFoldersRoute) },
+            onAuthorClick = { author -> backStack.add(AuthorDetailRoute(author)) },
             modifier = Modifier.safeDrawingPadding(),
         )
     }
