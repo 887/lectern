@@ -33,6 +33,52 @@ class Mp3CoverExtractorTest {
         assertNull(Mp3CoverExtractor(ByteArraySeekableSource(raw)).extract())
     }
 
+    @Test
+    fun `returns null when tag has no APIC frame`() {
+        // A v2.3 tag containing only a TIT2 (title) text frame — no picture frame at all.
+        val titleBody = byteArrayOf(0) + "Some Title".toByteArray(Charsets.US_ASCII)
+        val titleFrame = ByteArrayOutputStream().apply {
+            write("TIT2".toByteArray(Charsets.US_ASCII))
+            write(u32BE(titleBody.size.toLong()))
+            write(byteArrayOf(0, 0))
+            write(titleBody)
+        }.toByteArray()
+        val bytes = id3Header(major = 3, body = titleFrame) + titleFrame
+        assertNull(Mp3CoverExtractor(ByteArraySeekableSource(bytes)).extract())
+    }
+
+    @Test
+    fun `extracts APIC bytes when tag-level unsynchronisation flag is set but image has no FF bytes`() {
+        // Some encoders set the v2.3 tag-header unsynchronisation flag (0x80) defensively even
+        // when no 0xFF bytes in the body would have required reversible escaping. Our parser
+        // tolerates the flag by not crashing on it; we pin that behaviour with image bytes that
+        // contain no 0xFF sequences so the un-reversed read still matches the original.
+        val image = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+        val frameBody = ByteArrayOutputStream().apply {
+            write(0)
+            write("image/png".toByteArray(Charsets.US_ASCII))
+            write(0)
+            write(0x03)
+            write(0) // empty description terminator
+            write(image)
+        }.toByteArray()
+        val frame = ByteArrayOutputStream().apply {
+            write("APIC".toByteArray(Charsets.US_ASCII))
+            write(u32BE(frameBody.size.toLong()))
+            write(byteArrayOf(0, 0))
+            write(frameBody)
+        }.toByteArray()
+        // ID3v2.3 header with unsynchronisation flag (0x80) set.
+        val header = ByteArrayOutputStream().apply {
+            write("ID3".toByteArray(Charsets.US_ASCII))
+            write(3); write(0)
+            write(0x80) // unsync flag
+            write(syncsafe32(frame.size.toLong()))
+        }.toByteArray()
+        val extracted = Mp3CoverExtractor(ByteArraySeekableSource(header + frame)).extract()
+        assertArrayEquals(image, extracted)
+    }
+
     private fun buildId3v23WithApic(mime: String, description: String, image: ByteArray): ByteArray {
         val frameBody = ByteArrayOutputStream().apply {
             write(0) // text encoding: ISO-8859-1

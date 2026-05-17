@@ -26,6 +26,46 @@ class Mp4CoverExtractorTest {
         assertNull(Mp4CoverExtractor(ByteArraySeekableSource(bytes)).extract())
     }
 
+    @Test
+    fun `multiple data entries inside covr take the first one`() {
+        // Some encoders stack a JPEG `data` entry followed by a PNG `data` entry for the same
+        // cover. Voice + iTunes both treat the first as canonical; we pin that behaviour.
+        val first = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xAA.toByte(), 0xFF.toByte(), 0xD9.toByte())
+        val second = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+        val firstData = box("data", u32BE(0x0DL) + u32BE(0L) + first)   // JPEG
+        val secondData = box("data", u32BE(0x0EL) + u32BE(0L) + second) // PNG
+        val covr = box("covr", firstData + secondData)
+        val ilst = box("ilst", covr)
+        val meta = box("meta", byteArrayOf(0, 0, 0, 0) + ilst)
+        val udta = box("udta", meta)
+        val moov = box("moov", udta)
+        val ftyp = box("ftyp", "M4A     isommp42".toByteArray(Charsets.ISO_8859_1))
+        val extracted = Mp4CoverExtractor(ByteArraySeekableSource(ftyp + moov)).extract()
+        assertArrayEquals(first, extracted)
+    }
+
+    @Test
+    fun `truncated covr payload returns null gracefully`() {
+        // covr says its `data` atom claims more bytes than actually present (size lies). The
+        // extractor must bail with null, not throw EOF.
+        val image = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xD9.toByte())
+        val truncatedData = ByteArrayOutputStream().apply {
+            // Lie: claim 64 bytes total, only provide 8 + 8 + 4 = 20.
+            write(u32BE(64L))
+            write("data".toByteArray(Charsets.ISO_8859_1))
+            write(u32BE(0x0DL))
+            write(u32BE(0L))
+            write(image)
+        }.toByteArray()
+        val covr = box("covr", truncatedData)
+        val ilst = box("ilst", covr)
+        val meta = box("meta", byteArrayOf(0, 0, 0, 0) + ilst)
+        val udta = box("udta", meta)
+        val moov = box("moov", udta)
+        val ftyp = box("ftyp", "M4A     isommp42".toByteArray(Charsets.ISO_8859_1))
+        assertNull(Mp4CoverExtractor(ByteArraySeekableSource(ftyp + moov)).extract())
+    }
+
     private fun buildMp4WithCover(image: ByteArray, typeFlag: Int): ByteArray {
         // data atom body: [4 type-flags][4 reserved][image]
         val dataBody = ByteArrayOutputStream().apply {

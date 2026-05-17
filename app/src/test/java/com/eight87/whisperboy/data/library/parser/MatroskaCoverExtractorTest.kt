@@ -21,6 +21,26 @@ class MatroskaCoverExtractorTest {
     }
 
     @Test
+    fun `two attachments first non-image second image - second wins`() {
+        // A common shape: subtitle/font/cue attached before the cover image. The extractor
+        // must skip the non-image attachment and return the second one's FileData.
+        val image = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A)
+
+        val mime1 = ebmlElement(idBytes(0x4660, 2), "application/x-cue".toByteArray(Charsets.US_ASCII))
+        val data1 = ebmlElement(idBytes(0x465C, 2), byteArrayOf(1, 2, 3, 4))
+        val attached1 = ebmlElement(idBytes(0x61A7, 2), mime1 + data1)
+
+        val mime2 = ebmlElement(idBytes(0x4660, 2), "image/png".toByteArray(Charsets.US_ASCII))
+        val data2 = ebmlElement(idBytes(0x465C, 2), image)
+        val attached2 = ebmlElement(idBytes(0x61A7, 2), mime2 + data2)
+
+        val attachments = ebmlElement(idBytes(0x1941A469L, 4), attached1 + attached2)
+        val segment = ebmlElement(idBytes(0x18538067L, 4), attachments)
+        val extracted = MatroskaCoverExtractor(ByteArraySeekableSource(segment)).extract()
+        assertArrayEquals(image, extracted)
+    }
+
+    @Test
     fun `returns null when Attachments element absent`() {
         val segment = ebmlElement(idBytes(0x18538067, 4), ByteArray(0))
         assertNull(MatroskaCoverExtractor(ByteArraySeekableSource(segment)).extract())
