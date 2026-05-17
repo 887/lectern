@@ -778,7 +778,7 @@ private fun PlayerScrubber(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PlayerTransport(
+internal fun PlayerTransport(
     isPlaying: Boolean,
     rewindSeconds: Int,
     forwardSeconds: Int,
