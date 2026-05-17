@@ -94,6 +94,58 @@ class ChapterParserDispatcherTest {
     }
 
     @Test
+    fun `extension wins when mime is application octet-stream (generic provider)`() {
+        // Some SAF providers (notably Google Drive / some samba shares) return
+        // `application/octet-stream` regardless of file type. The dispatcher must
+        // fall through to the extension and route correctly.
+        val uri = writeMp4WithChpl("book.m4b", listOf(0L to "Intro", 1000L to "Two"))
+        val marks = runBlocking {
+            parser.parse(uri, mimeType = "application/octet-stream", fileName = "book.m4b")
+        }
+        assertEquals(2, marks.size)
+        assertEquals("Intro", marks[0].title)
+    }
+
+    @Test
+    fun `mime takes precedence over filename without extension`() {
+        // Filename has no extension at all (some content-resolver paths look like that
+        // — the SAF document id is opaque). The audio/mp4 mime should route to MP4.
+        val uri = writeMp4WithChpl("noextension", listOf(0L to "Only"))
+        val marks = runBlocking {
+            parser.parse(uri, mimeType = "audio/mp4", fileName = "noextension")
+        }
+        assertEquals(1, marks.size)
+        assertEquals("Only", marks[0].title)
+    }
+
+    @Test
+    fun `extension matching is case-insensitive (uppercase M4B routes to Mp4)`() {
+        // The dispatcher lowercases the extension before matching. Provider-supplied
+        // filenames sometimes preserve uppercase from a Windows-origin library.
+        val uri = writeMp4WithChpl("LOUD.M4B", listOf(0L to "C"))
+        val marks = runBlocking { parser.parse(uri, mimeType = null, fileName = "LOUD.M4B") }
+        assertEquals(1, marks.size)
+        assertEquals("C", marks[0].title)
+    }
+
+    @Test
+    fun `mp4 file with no chpl box yields empty list (no throw)`() {
+        // A well-formed MP4 with `ftyp + moov` (no `chpl` inside `udta`) — opens
+        // cleanly, container detects as Mp4, but the parser finds no chapter
+        // headers. Must return empty rather than propagate an exception.
+        val f = tempFolder.newFile("nochpl.m4b")
+        val ftyp = mp4Box("ftyp", "M4A     isommp42".toByteArray(Charsets.ISO_8859_1))
+        // Empty moov (no udta/chpl inside).
+        val moov = mp4Box("moov", ByteArray(0))
+        f.writeBytes(ftyp + moov)
+        val uri = Uri.fromFile(f)
+        val marks = runBlocking {
+            parser.parse(uri, mimeType = "audio/mp4", fileName = "nochpl.m4b")
+        }
+        assertEquals(0, marks.size)
+    }
+
+    @Test
     fun `dispatcher swallows IO errors and returns empty`() {
         // URI that points at no real file — open should fail; parse must not propagate.
         val uri = Uri.parse("file:///tmp/whisperboy-does-not-exist-${System.nanoTime()}.m4b")
