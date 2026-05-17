@@ -33,6 +33,28 @@ class MatroskaChapterParserTest {
         assertEquals(0, marks.size)
     }
 
+    @Test
+    fun `returns empty when no Segment element present`() {
+        // Random non-EBML bytes shorter than even one element header — must not crash.
+        val marks = MatroskaChapterParser(ByteArraySeekableSource(ByteArray(0))).parse()
+        assertEquals(0, marks.size)
+    }
+
+    @Test
+    fun `chapter atom with no ChapterDisplay yields empty title`() {
+        val timeNs = 7_500L * 1_000_000L
+        val timeElem = ebmlElement(idBytes(0x91, 1), encodeUint(timeNs))
+        val atomBody = timeElem
+        val atom = ebmlElement(idBytes(0xB6, 1), atomBody)
+        val edition = ebmlElement(idBytes(0x45B9, 2), atom)
+        val chaptersElem = ebmlElement(idBytes(0x1043A770, 4), edition)
+        val segment = ebmlElement(idBytes(0x18538067, 4), chaptersElem)
+        val marks = MatroskaChapterParser(ByteArraySeekableSource(segment)).parse()
+        assertEquals(1, marks.size)
+        assertEquals(7_500L, marks[0].positionMs)
+        assertEquals("", marks[0].title)
+    }
+
     private fun buildMatroskaFixture(chapters: List<Pair<Long, String>>): ByteArray {
         val atoms = ByteArrayOutputStream()
         for ((ns_input, title) in chapters) {
