@@ -99,13 +99,13 @@ That's the whole loop. No external service, no contributor coordination, no "wai
 
 ---
 
-## Phase T.D — README "Translations" section content — shipped in commit cfcd8db
+## Phase T.D — README "Translations" section content — shipped in commit 21a5528
 
 **Why:** The auto-table is the data; this is the surrounding prose.
 
-- [x] **T.D.1** Above the auto-generated table: a 2-sentence paragraph explaining the model (translations are user + Claude per-language, English is canonical, missing keys fall back to English). NOT a "we welcome contributions" pitch. — shipped with T.C; verified in place. cfcd8db
-- [x] **T.D.2** Linkify each language row to its `values-<locale>/strings.xml` on github so the user can jump straight to "edit this file". — script + golden fixtures updated to link to `app/src/main/res/values-<locale>/strings.xml`. cfcd8db
-- [x] **T.D.3** Ship + tick. cfcd8db
+- [x] **T.D.1** Above the auto-generated table: a 2-sentence paragraph explaining the model (translations are user + Claude per-language, English is canonical, missing keys fall back to English). NOT a "we welcome contributions" pitch. — shipped with T.C; verified in place. 21a5528
+- [x] **T.D.2** Linkify each language row to its `values-<locale>/strings.xml` on github so the user can jump straight to "edit this file". — script + golden fixtures updated to link to `app/src/main/res/values-<locale>/strings.xml`. 21a5528
+- [x] **T.D.3** Ship + tick. 21a5528
 
 **Effort:** XS (15 min). **Risk:** none.
 
