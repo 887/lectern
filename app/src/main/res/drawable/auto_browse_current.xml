@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  m3-expressive Phase D.4 — accent-coloured glyph for the
+  `MediaLibraryService` "Currently listening" browse-tree root in
+  Android Auto. Wired through `MediaMetadata.Builder.setArtworkUri(...)`
+  in WhisperboyLibrarySessionCallback. Material `play_circle_filled`
+  vector path; fill tone matches `PlaybackAccent.onContainer`
+  (0xFFFFB877) — the orange "in motion" accent reused from the
+  per-category palette in `theme/CategoryAccent.kt`. Auto's system
+  theme generally re-tints media-browse artwork monochrome on most
+  head units; the colour is a best-effort signal for renderers that
+  honour it.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFB877"
+        android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM10,16.5v-9l6,4.5 -6,4.5z" />
+</vector>

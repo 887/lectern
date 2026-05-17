@@ -1,6 +1,6 @@
 # whisperboy — Material 3 Expressive (M3E) starter plan
 
-## Status: PLANNED — but read the tonearmboy findings before starting
+## Status: ✅ DONE — Phases A–D all shipped (A/B `e9ab4cd`, C `b433511`, D.1–D.3 `5a14e69`, D.4 `91e057d`)
 
 ## Findings shipped in tonearmboy (apply here too)
 
@@ -213,7 +213,7 @@ Two supporting niceties:
   container differs from its onContainer + every `accentFor` arm
   returns the canonical top-level `val`.
 
-## Phase D — the rest of the chrome — D.1/D.2/D.3 shipped in commit `5a14e69`
+## Phase D — the rest of the chrome — D.1/D.2/D.3 shipped in commit `5a14e69`, D.4 shipped in commit `91e057d`
 
 - [x] **D.1** Library grid chrome — section headers pulled onto the
   M3E card tier (`surfaceContainerHigh`, 12-dp rounded clip) so they
@@ -240,20 +240,25 @@ Two supporting niceties:
   sheet uses `PlaybackAccent`, bookmark long-press sheet uses
   `PlaybackAccent` (bookmarks live in the playback flow; no
   dedicated bookmark accent in the six-pair palette).
-- [ ] **D.4** — deferred: per-category accent artwork on the
-  `MediaLibraryService` browse-tree folders (Currently listening /
-  Not started / All books / Authors) would require authoring
-  accent-coloured raster or vector drawables and exposing them via
-  `MediaMetadata.Builder.setArtworkUri(...)`. No such drawables
-  exist in `app/src/main/res/drawable/` yet — only
-  `widget_book_glyph.xml` and the launcher mipmaps. The six
-  accent-coloured folder icons + the
-  `WhisperboyLibrarySessionCallback.browseableFolder(...)` wiring
-  live more naturally with the Phase N (AAOS) branch where the
-  rest of the car-UI polish happens. Leaving the browse tree on
-  bare text for now keeps Auto's system theme in charge (the
-  locked decision from the original D.4 note), and the browse
-  tree still works — it just isn't branded.
+- [x] **D.4** — shipped in commit `91e057d`. Four accent-coloured
+  vector drawables (`auto_browse_current.xml`,
+  `auto_browse_not_started.xml`, `auto_browse_all_books.xml`,
+  `auto_browse_authors.xml`) under `app/src/main/res/drawable/`,
+  each a single-fill Material glyph tinted from
+  `CategoryAccent.onContainer` (PlaybackAccent orange for
+  Currently listening, SleepTimerAccent indigo for Not started,
+  LibraryAccent green for All books, ThemeAccent purple for
+  Authors — distinct per tile so the Auto browse grid reads
+  varied). Wired into
+  `WhisperboyLibrarySessionCallback.browseableFolder(...)` via a
+  new optional `@DrawableRes` parameter resolved to an
+  `android.resource://${packageName}/${resId}` URI on the
+  `MediaMetadata.Builder.setArtworkUri(...)` call. Per the
+  original D.4 note, Auto's system theme typically monochromes
+  media-browse artwork on real head units — the colour is a
+  best-effort signal for renderers that honour it, but the
+  artwork is now wired so the system always has something to
+  render.
 
 ## References
 
