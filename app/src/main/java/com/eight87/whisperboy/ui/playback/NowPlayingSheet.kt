@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.eight87.whisperboy.data.library.BookmarkSource
 import com.eight87.whisperboy.data.library.ChapterSource
 import com.eight87.whisperboy.data.playback.PlaybackSettings
 import com.eight87.whisperboy.playback.NowPlayingState
@@ -65,10 +66,12 @@ fun NowPlayingSheet(
     nowPlayingState: NowPlayingState,
     transportCommands: TransportCommands,
     chapterSource: ChapterSource,
+    bookmarkSource: BookmarkSource,
     playbackSettings: PlaybackSettings,
     sleepTimerCommands: SleepTimerCommands,
     sheetProgress: Animatable<Float, AnimationVector1D>,
     onCollapse: () -> Unit,
+    onViewBookmarksClick: (bookId: String) -> Unit,
     peekDp: androidx.compose.ui.unit.Dp = DEFAULT_PEEK_DP,
     modifier: Modifier = Modifier,
 ) {
@@ -159,9 +162,11 @@ fun NowPlayingSheet(
                             state = nowPlayingState,
                             transport = transportCommands,
                             chapterSource = chapterSource,
+                            bookmarkSource = bookmarkSource,
                             playbackSettings = playbackSettings,
                             sleepTimerCommands = sleepTimerCommands,
                             onBack = onCollapse,
+                            onViewBookmarksClick = onViewBookmarksClick,
                         )
                     }
                 }

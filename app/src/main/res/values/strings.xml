@@ -125,6 +125,29 @@
     <string name="player_book_not_found_subtitle">whisperboy can\'t find this book anymore. It may have been moved or removed from your library.</string>
     <string name="player_chapter_duration_format">%1$s</string>
 
+    <!-- bookmark_ — bookmark list, add/rename/delete, "set by sleep timer" badge (Phase H) -->
+    <string name="bookmark_screen_title">Bookmarks</string>
+    <string name="bookmark_screen_back_cd">Back</string>
+    <string name="bookmark_screen_view_cd">View bookmarks</string>
+    <string name="bookmark_add_dialog_title">Add bookmark</string>
+    <string name="bookmark_add_dialog_hint">Bookmark title</string>
+    <string name="bookmark_add_dialog_save">Save</string>
+    <string name="bookmark_add_default_title_format">%1$s — %2$s</string>
+    <string name="bookmark_rename_dialog_title">Rename bookmark</string>
+    <string name="bookmark_rename_action">Rename</string>
+    <string name="bookmark_delete_action">Delete</string>
+    <string name="bookmark_delete_confirm_title">Delete bookmark?</string>
+    <string name="bookmark_sleep_timer_badge_cd">Set by sleep timer</string>
+    <string name="bookmark_sleep_timer_default_title">Sleep timer</string>
+    <string name="bookmark_default_title">Bookmark</string>
+    <string name="bookmark_chapter_untagged">Other</string>
+    <string name="bookmark_empty_state">No bookmarks yet. Tap the bookmark button in the player to add one.</string>
+    <string name="bookmark_added_just_now">Just now</string>
+    <string name="bookmark_added_minutes_ago">%1$d min ago</string>
+    <string name="bookmark_added_hours_ago">%1$d h ago</string>
+    <string name="bookmark_added_days_ago">%1$d d ago</string>
+    <string name="bookmark_added_long_ago">A long time ago</string>
+
     <!-- coverart_ — user-initiated DuckDuckGo image search for per-book cover art (Phase B) -->
     <string name="coverart_search_title">Cover art search</string>
     <string name="coverart_search_hint">Search the web</string>
