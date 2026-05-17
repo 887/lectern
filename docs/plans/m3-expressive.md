@@ -185,7 +185,7 @@ Two supporting niceties:
   Cheap regression guard for the M3 alpha churn re-collapsing the
   ladder.
 
-## Phase C — `CategoryAccent` + per-row avatars — shipped in commit `0db5aea`
+## Phase C — `CategoryAccent` + per-row avatars — shipped in commit `b433511`
 
 - [x] **C.1** Added `data class CategoryAccent(val container: Color,
   val onContainer: Color)` at `theme/CategoryAccent.kt` next to the
