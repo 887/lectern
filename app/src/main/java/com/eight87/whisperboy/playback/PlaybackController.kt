@@ -30,10 +30,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * Read-only projection of the playback session for UI.
@@ -154,6 +156,20 @@ internal class PlaybackController(
     /** Connection state — true once [MediaController.Builder.buildAsync] resolves. */
     private val connected = MutableStateFlow(false)
 
+    /**
+     * Phase R — pending transport actions queued while the controller is disconnected. Flushed
+     * from [bindController] once the new controller resolves. Bounded by [MAX_PENDING_ACTIONS]
+     * so a permanently-dead service doesn't grow this unboundedly. Thread-safe by construction
+     * (touched from arbitrary coroutine threads via [onMain] and from the Main thread on flush).
+     */
+    private val pendingActions = ConcurrentLinkedQueue<(MediaController) -> Unit>()
+
+    /** Reconnect retry count; reset to 0 on a successful bind. Caps at [MAX_RECONNECT_ATTEMPTS]. */
+    @Volatile private var reconnectAttempts: Int = 0
+
+    /** Set once [release] runs so any in-flight reconnect attempt no-ops cleanly. */
+    @Volatile private var released: Boolean = false
+
     /** Currently-targeted book id. `null` means "no playback session yet". */
     private val targetedBookId = MutableStateFlow<String?>(null)
 
@@ -192,6 +208,25 @@ internal class PlaybackController(
      * user resumes, [play] silently rewinds by [autoRewindMs] before issuing `c.play()`.
      */
     @Volatile private var pausedAtEpochMs: Long? = null
+
+    /**
+     * Phase R — [MediaController.Listener] that flips [connected] back to false and triggers
+     * a rebind when the underlying binder dies (service killed for OOM / force-stop / low-mem).
+     * Without this, [controller] would stay non-null pointing at a dead binder, every
+     * transport command would silently no-op, and the mini-player would freeze with `connected
+     * = true`. The flush of pending actions on rebind keeps the next user tap from being lost.
+     *
+     * Declared before [init] so it's initialised by the time [bindController] runs (Kotlin
+     * field-init order: declarations before `init` resolve before init-block bodies execute).
+     */
+    private val controllerListener = object : MediaController.Listener {
+        override fun onDisconnected(c: MediaController) {
+            controller = null
+            connected.value = false
+            tickerJob?.cancel()
+            if (!released) bindController()
+        }
+    }
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -274,13 +309,48 @@ internal class PlaybackController(
             }
         }
 
-        val builderFuture = MediaController.Builder(appContext, sessionToken).buildAsync()
+        bindController()
+
+        // Phase P.7 (1Hz throttled save) — Voice-pattern continuous save while playing. Event-
+        // driven saves (chapter transition, pause, ON_STOP, service onDestroy) still fire for
+        // guaranteed coverage, but a hard process-kill mid-chapter would otherwise lose up to
+        // the whole chapter; sampling the existing 250ms position ticker at 1Hz limits worst-
+        // case loss to ~1 second of audio at the cost of one row UPDATE per second. The
+        // `isPlaying` guard avoids Room writes while paused (the pause-event save already
+        // captured that position).
+        @OptIn(kotlinx.coroutines.FlowPreview::class)
+        applicationScope.launch {
+            positionMs.sample(POSITION_SAVE_INTERVAL_MS).collect {
+                if (playerSnapshot.value.isPlaying) {
+                    saveCurrentPosition()
+                }
+            }
+        }
+    }
+
+    /**
+     * Phase R — async bind of the [MediaController] against [sessionToken]. Idempotent: a second
+     * call while a bind is in flight is a no-op (guarded via [reconnectAttempts] semantics);
+     * a call after [release] is a no-op via [released]. Called from [init] and from
+     * [controllerListener.onDisconnected] when the service dies.
+     *
+     * On success: attaches [playerListener], snapshots state, flushes [pendingActions], flips
+     * [connected] to true, restarts the position ticker. On failure: schedules a retry with
+     * linear backoff up to [MAX_RECONNECT_ATTEMPTS]; once exhausted, [connected] stays false
+     * and the UI surfaces Loading indefinitely (caller can navigate back).
+     */
+    private fun bindController() {
+        if (released) return
+        val builderFuture = MediaController.Builder(appContext, sessionToken)
+            .setListener(controllerListener)
+            .buildAsync()
         builderFuture.addListener(
             {
                 try {
                     val c = builderFuture.get()
                     c.addListener(playerListener)
                     controller = c
+                    reconnectAttempts = 0
                     // Snapshot the initial state once the controller resolves.
                     playerSnapshot.value = PlayerSnapshot(
                         isPlaying = c.isPlaying,
@@ -291,14 +361,42 @@ internal class PlaybackController(
                     positionMs.value = c.currentPosition
                     connected.value = true
                     restartTickerIfNeeded()
+                    flushPendingActions(c)
                 } catch (_: Throwable) {
-                    // Connection failed; leave connected=false so the UI renders a loading
-                    // state indefinitely. The user can navigate back.
+                    // Connection failed. Schedule a single linear-backoff retry; Media3
+                    // typically restarts the service on the first transport command anyway,
+                    // so we don't burn through retries during a benign cold-start race.
+                    scheduleReconnect()
                 }
             },
             MoreExecutors.directExecutor(),
         )
     }
+
+    private fun scheduleReconnect() {
+        if (released) return
+        val attempt = reconnectAttempts + 1
+        if (attempt > MAX_RECONNECT_ATTEMPTS) return
+        reconnectAttempts = attempt
+        applicationScope.launch {
+            delay(RECONNECT_BACKOFF_MS * attempt)
+            if (!released && controller == null) bindController()
+        }
+    }
+
+    private fun flushPendingActions(c: MediaController) {
+        // Drain on Main — every queued action expects Main-thread invariants (the same as the
+        // [onMain] path). The queue is FIFO so commands replay in the order the user issued
+        // them. If a queued action fails (e.g. binder dies again mid-flush), we drop the
+        // remainder; the controller listener will re-trigger a rebind.
+        applicationScope.launch(Dispatchers.Main, start = CoroutineStart.UNDISPATCHED) {
+            while (true) {
+                val action = pendingActions.poll() ?: return@launch
+                try { action(c) } catch (_: Throwable) { return@launch }
+            }
+        }
+    }
+
 
     // ---------------------------------------------------------------- NowPlayingState
 
@@ -581,7 +679,18 @@ internal class PlaybackController(
     // ---------------------------------------------------------------- helpers
 
     private suspend inline fun onMain(crossinline block: (MediaController) -> Unit) {
-        val c = controller ?: return
+        val c = controller
+        if (c == null) {
+            // Phase R — service died (or never connected yet). Queue the action so it replays
+            // once [bindController] finishes, and trigger a rebind in case the listener
+            // [controllerListener.onDisconnected] hasn't fired yet (some Media3 paths drop the
+            // binder without an explicit disconnect callback on aggressive system kills).
+            if (pendingActions.size < MAX_PENDING_ACTIONS) {
+                pendingActions.add { live -> block(live) }
+            }
+            if (!released) bindController()
+            return
+        }
         withContext(Dispatchers.Main) { block(c) }
     }
 
@@ -650,6 +759,8 @@ internal class PlaybackController(
     fun release() {
         // Phase P.7 — make sure the latest position is flushed before we tear down.
         saveCurrentPosition()
+        released = true
+        pendingActions.clear()
         processLifecycle.removeObserver(processLifecycleObserver)
         tickerJob?.cancel()
         controller?.release()
@@ -669,6 +780,18 @@ internal class PlaybackController(
 
     private companion object {
         const val TICKER_INTERVAL_MS = 250L
+
+        /** Phase P.7 — 1Hz throttled position-save while playing (sampled off the ticker). */
+        const val POSITION_SAVE_INTERVAL_MS = 1_000L
+
+        /** Phase R — cap on queued transport actions while disconnected. */
+        const val MAX_PENDING_ACTIONS = 16
+
+        /** Phase R — max bind retries on initial-connect or post-disconnect failure. */
+        const val MAX_RECONNECT_ATTEMPTS = 3
+
+        /** Phase R — linear backoff base (multiplied by attempt #) between bind retries. */
+        const val RECONNECT_BACKOFF_MS = 500L
 
         /** Default rewind / forward seek length (F.3 fallback before the settings collector emits). */
         const val DEFAULT_SEEK_MS = 30_000L
