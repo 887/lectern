@@ -200,6 +200,14 @@
     <string name="onboarding_first_scan_done">Found %1$d books, %2$d chapters.</string>
     <string name="onboarding_first_scan_continue">Continue</string>
 
+    <!-- widget_ — home-screen Glance widget labels + content descriptions (Phase M) -->
+    <string name="widget_play_cd">Play</string>
+    <string name="widget_pause_cd">Pause</string>
+    <string name="widget_prev_cd">Previous chapter</string>
+    <string name="widget_next_cd">Next chapter</string>
+    <string name="widget_cover_cd">Cover art</string>
+    <string name="widget_empty_title">Nothing playing</string>
+
     <plurals name="folder_count">
         <item quantity="one">%1$d audiobook folder configured</item>
         <item quantity="other">%1$d audiobook folders configured</item>

@@ -228,13 +228,13 @@ Goal: a clean first-run flow that gets the user from install to first book playi
 
 ---
 
-## Phase M — home-screen widget
+## Phase M — home-screen widget — ✅ DONE
 
 Goal: now-playing widget. **Voice analog:** `:features:widget`.
 
-- [ ] **M.1** Glance widget (`androidx.glance.appwidget`) — book cover, book title, chapter title, transport (prev / play-pause / next).
-- [ ] **M.2** Tap on cover → open the player screen.
-- [ ] **M.3** Configurable size variants (1×1, 2×2, 4×1).
+- [x] **M.1** Glance widget (`androidx.glance.appwidget` 1.1.1) — book cover, book title, chapter title, transport (prev / play-pause / next). `ui/widget/WhisperboyWidget.kt`, action callbacks in `WidgetActions.kt`, refresh driver in `WidgetUpdater.kt` (1 s `sample(...)` debounce, `distinctUntilChangedBy` on the painted fields so the 250 ms position ticker doesn't churn RemoteViews).
+- [x] **M.2** Tap on cover → launches `WhisperboyActivity`; the now-playing sheet auto-opens on resume whenever a `Loaded` state is present, so no dedicated deep-link route was needed.
+- [x] **M.3** Configurable size variants via `SizeMode.Responsive` — small (≤140 dp square, cover + overlay play/pause), medium (default 2×2 cell, cover + title + transport), wide (~4×1, cover left + title/chapter + transport right). `appwidget-provider` declares `resizeMode="horizontal|vertical"` so the user can drag through all three.
 
 ---
 
