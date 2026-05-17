@@ -3,10 +3,11 @@ package com.eight87.whisperboy.data.theme
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
+import com.eight87.whisperboy.data.settings.EnumSetting
+import com.eight87.whisperboy.data.settings.Setting
+import com.eight87.whisperboy.data.settings.enumSetting
+import com.eight87.whisperboy.data.settings.setting
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 /**
  * Narrow facet for the user's theme preferences (Phase K.5 — mirrors the
@@ -29,31 +30,21 @@ interface ThemeSettings {
  * DataStore-backed implementation. Stores [ThemeMode] as `enum.name`;
  * unknown / null values fall back to [ThemeMode.FollowSystem]. Dynamic-color
  * defaults to `true` (matches the pre-K.5 hard-coded behaviour in `Theme.kt`).
+ *
+ * R.B.2 migration: both knobs delegate to the [Setting] / [EnumSetting] factories.
  */
 class AndroidThemeSettings(
-    private val dataStore: DataStore<Preferences>,
+    dataStore: DataStore<Preferences>,
 ) : ThemeSettings {
 
-    override val mode: Flow<ThemeMode> =
-        dataStore.data.map { prefs ->
-            prefs[KEY_MODE]
-                ?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }
-                ?: ThemeMode.FollowSystem
-        }
+    private val modeSetting: EnumSetting<ThemeMode> =
+        dataStore.enumSetting("mode", ThemeMode.FollowSystem)
+    private val dynamicColorSetting: Setting<Boolean> =
+        dataStore.setting(booleanPreferencesKey("dynamic_color"), default = true)
 
-    override val dynamicColor: Flow<Boolean> =
-        dataStore.data.map { prefs -> prefs[KEY_DYNAMIC_COLOR] ?: true }
+    override val mode: Flow<ThemeMode> = modeSetting.flow
+    override val dynamicColor: Flow<Boolean> = dynamicColorSetting.flow
 
-    override suspend fun setMode(mode: ThemeMode) {
-        dataStore.edit { it[KEY_MODE] = mode.name }
-    }
-
-    override suspend fun setDynamicColor(enabled: Boolean) {
-        dataStore.edit { it[KEY_DYNAMIC_COLOR] = enabled }
-    }
-
-    private companion object {
-        val KEY_MODE = stringPreferencesKey("mode")
-        val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
-    }
+    override suspend fun setMode(mode: ThemeMode) = modeSetting.set(mode)
+    override suspend fun setDynamicColor(enabled: Boolean) = dynamicColorSetting.set(enabled)
 }

@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -97,5 +98,47 @@ inline fun <reified E : Enum<E>> DataStore<Preferences>.enumSetting(
             prefs[key]?.let { raw -> runCatching { enumValueOf<E>(raw) }.getOrNull() } ?: default
         },
         setter = { value -> edit { it[key] = value.name } },
+    )
+}
+
+/**
+ * R.B.2 — build a [Setting] from a typed Preferences key with a custom [decode] (called on the
+ * raw stored value, may be null) and [encode] (called on the user's setter input). Use this when
+ * a knob has a non-trivial range / validation step on top of a plain Preferences type — e.g.
+ * `PlaybackSettings.defaultSpeed` clamps to `0.5..3.5`, `rewindSeconds` coerces to a fixed set.
+ *
+ * Decode is called with the raw `prefs[key]` (i.e. `T?`); return the in-domain value (commonly
+ * `if (raw != null && raw in allowed) raw else default`). Encode is called with the setter input;
+ * return the value to persist (commonly `raw.coerceIn(min, max)`).
+ */
+fun <T> DataStore<Preferences>.setting(
+    key: Preferences.Key<T>,
+    decode: (T?) -> T,
+    encode: (T) -> T,
+): Setting<T> = Setting(
+    flow = data.map { prefs -> decode(prefs[key]) },
+    setter = { value -> edit { it[key] = encode(value) } },
+)
+
+/**
+ * R.B.2 — build a [Setting] backed by a string-set preference. The decode normalises stored
+ * values via [normalise] (commonly `String::lowercase`); the setter applies the same normalisation
+ * before writing so a "DiSaBlEd.MP3" set round-trips as `{"disabled.mp3"}`. Used by
+ * `LibraryScanFilterSettings.disabledExtensions`.
+ */
+fun DataStore<Preferences>.stringSetSetting(
+    name: String,
+    default: Set<String> = emptySet(),
+    normalise: (String) -> String = { it },
+): Setting<Set<String>> {
+    val key = stringSetPreferencesKey(name)
+    return Setting(
+        flow = data.map { prefs ->
+            (prefs[key] ?: default).mapTo(mutableSetOf(), normalise)
+        },
+        setter = { value ->
+            val normalised = value.mapTo(mutableSetOf(), normalise)
+            edit { it[key] = normalised }
+        },
     )
 }

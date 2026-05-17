@@ -3,9 +3,9 @@ package com.eight87.whisperboy.data.onboarding
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.edit
+import com.eight87.whisperboy.data.settings.Setting
+import com.eight87.whisperboy.data.settings.setting
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 /**
  * Narrow facet (R.A pattern) for the persisted "onboarding completed" flag.
@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.map
  * pre-Phase-L interim shell still see onboarding once on next upgrade (cheap
  * one-time cost; alternative is migrating from the presence of any roots, which
  * couples the two stores).
+ *
+ * R.B.2 migration: backed by [Setting] via the [setting] factory.
  */
 interface OnboardingSettings {
     val completed: Flow<Boolean>
@@ -26,17 +28,13 @@ interface OnboardingSettings {
 }
 
 class AndroidOnboardingSettings(
-    private val dataStore: DataStore<Preferences>,
+    dataStore: DataStore<Preferences>,
 ) : OnboardingSettings {
 
-    override val completed: Flow<Boolean> =
-        dataStore.data.map { prefs -> prefs[KEY_COMPLETED] ?: false }
+    private val completedSetting: Setting<Boolean> =
+        dataStore.setting(booleanPreferencesKey("completed"), default = false)
 
-    override suspend fun setCompleted(value: Boolean) {
-        dataStore.edit { it[KEY_COMPLETED] = value }
-    }
+    override val completed: Flow<Boolean> = completedSetting.flow
 
-    private companion object {
-        val KEY_COMPLETED = booleanPreferencesKey("completed")
-    }
+    override suspend fun setCompleted(value: Boolean) = completedSetting.set(value)
 }
