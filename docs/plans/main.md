@@ -166,7 +166,7 @@ Goal: named bookmarks tied to position-in-book. **Voice analog:** `:features:boo
 
 ---
 
-## Phase I — chapter parsing (M4B + Matroska) — ✅ DONE
+## Phase I — chapter parsing (M4B + Matroska) — ✅ DONE (shipped in commit 73a2709)
 
 Goal: parse embedded chapter markers from M4B (Apple chap-track + Nero chpl atoms) and Matroska/MKV/WebM (EBML chapters). Read chapters via SAF stream — no temp files. **Voice analog:** `:core:scanner` (`Mp4BoxParser` + visitors `ChapVisitor`/`ChplVisitor`/`MdhdVisitor`/`StcoVisitor`/`StscVisitor`/`SttsVisitor`; `MatroskaChapter`, `MatroskaMetaDataExtractor`, `SafSeekableDataSource`).
 
