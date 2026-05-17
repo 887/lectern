@@ -213,7 +213,7 @@ Two supporting niceties:
   container differs from its onContainer + every `accentFor` arm
   returns the canonical top-level `val`.
 
-## Phase D — the rest of the chrome — D.1/D.2/D.3 shipped in commit `<pending>`
+## Phase D — the rest of the chrome — D.1/D.2/D.3 shipped in commit `5a14e69`
 
 - [x] **D.1** Library grid chrome — section headers pulled onto the
   M3E card tier (`surfaceContainerHigh`, 12-dp rounded clip) so they
