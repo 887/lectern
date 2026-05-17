@@ -2,10 +2,9 @@ package com.eight87.whisperboy.data.library
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
+import com.eight87.whisperboy.data.settings.EnumSetting
+import com.eight87.whisperboy.data.settings.enumSetting
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 /**
  * Narrow facet for the library screen's persisted UI preferences (R.A pattern — three
@@ -16,6 +15,14 @@ import kotlinx.coroutines.flow.map
  *
  * Phase E.3 follow-up: replaces three `mutableStateOf` calls in `LibraryScreen` with
  * Flow-backed state so the user's last selection survives app restart.
+ *
+ * **R.B.2 reference impl.** This facet is the first end-to-end migration to the
+ * [com.eight87.whisperboy.data.settings.Setting] value type. The public interface keeps the
+ * `Flow<X>` + `suspend setX(...)` shape (so consumers don't churn); the impl just delegates to
+ * an [EnumSetting] per knob. Future facets (`PlaybackSettings`, `ThemeSettings`,
+ * `OnboardingSettings`, `LibraryScanFilterSettings`, `SleepTimerSettings`) can follow the same
+ * pattern — or expose `val gridMode: EnumSetting<GridMode>` directly if a fresh sub-page is
+ * willing to take the dependency.
  */
 interface LibraryUiSettings {
     val gridMode: Flow<GridMode>
@@ -28,41 +35,26 @@ interface LibraryUiSettings {
 }
 
 /**
- * DataStore-backed implementation. Mirrors the shape of [AndroidPersistedUriPermissionStore]:
- * companion-object keys, `dataStore.data.map { ... }` Flows, `dataStore.edit { ... }` setters.
+ * DataStore-backed implementation. Each knob is an [EnumSetting] built via the
+ * [enumSetting] factory — handles key creation, `enum.name` round-trip, and default coercion
+ * in one expression.
  */
 class AndroidLibraryUiSettings(
-    private val dataStore: DataStore<Preferences>,
+    dataStore: DataStore<Preferences>,
 ) : LibraryUiSettings {
 
-    override val gridMode: Flow<GridMode> =
-        dataStore.data.map { prefs -> decode(prefs[KEY_GRID_MODE], GridMode.Grid) }
+    private val gridModeSetting: EnumSetting<GridMode> =
+        dataStore.enumSetting("grid_mode", GridMode.Grid)
+    private val sortKeySetting: EnumSetting<BookSortKey> =
+        dataStore.enumSetting("sort_key", BookSortKey.Title)
+    private val filterSetting: EnumSetting<BookFilter> =
+        dataStore.enumSetting("filter", BookFilter.All)
 
-    override val sortKey: Flow<BookSortKey> =
-        dataStore.data.map { prefs -> decode(prefs[KEY_SORT_KEY], BookSortKey.Title) }
+    override val gridMode: Flow<GridMode> = gridModeSetting.flow
+    override val sortKey: Flow<BookSortKey> = sortKeySetting.flow
+    override val filter: Flow<BookFilter> = filterSetting.flow
 
-    override val filter: Flow<BookFilter> =
-        dataStore.data.map { prefs -> decode(prefs[KEY_FILTER], BookFilter.All) }
-
-    override suspend fun setGridMode(mode: GridMode) {
-        dataStore.edit { it[KEY_GRID_MODE] = mode.name }
-    }
-
-    override suspend fun setSortKey(key: BookSortKey) {
-        dataStore.edit { it[KEY_SORT_KEY] = key.name }
-    }
-
-    override suspend fun setFilter(filter: BookFilter) {
-        dataStore.edit { it[KEY_FILTER] = filter.name }
-    }
-
-    private companion object {
-        val KEY_GRID_MODE = stringPreferencesKey("grid_mode")
-        val KEY_SORT_KEY = stringPreferencesKey("sort_key")
-        val KEY_FILTER = stringPreferencesKey("filter")
-    }
+    override suspend fun setGridMode(mode: GridMode) = gridModeSetting.set(mode)
+    override suspend fun setSortKey(key: BookSortKey) = sortKeySetting.set(key)
+    override suspend fun setFilter(filter: BookFilter) = filterSetting.set(filter)
 }
-
-/** Decode an `enum.name` string back to its enum, falling back to [default] on null / unknown. */
-private inline fun <reified E : Enum<E>> decode(raw: String?, default: E): E =
-    raw?.let { runCatching { enumValueOf<E>(it) }.getOrNull() } ?: default
