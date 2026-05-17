@@ -10,7 +10,9 @@ import com.eight87.whisperboy.data.coverart.CoverApi
 import com.eight87.whisperboy.data.coverart.CoverApiModule
 import com.eight87.whisperboy.data.library.AndroidLibraryFingerprintStore
 import com.eight87.whisperboy.data.library.AndroidLibraryRescanCoordinator
+import com.eight87.whisperboy.data.library.AndroidLibraryScanFilterSettings
 import com.eight87.whisperboy.data.library.AndroidLibraryUiSettings
+import com.eight87.whisperboy.data.library.LibraryScanFilterSettings
 import com.eight87.whisperboy.data.library.LibraryFingerprintStore
 import com.eight87.whisperboy.data.library.AndroidPersistedUriPermissionStore
 import com.eight87.whisperboy.data.library.LibraryUiSettings
@@ -50,6 +52,7 @@ import com.eight87.whisperboy.playback.TransportCommands
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * Composition root. The only place in the app that knows concrete types for long-lived singletons.
@@ -81,6 +84,17 @@ class AppGraph(context: Context) {
 
     val libraryUiSettings: LibraryUiSettings =
         AndroidLibraryUiSettings(libraryUiDataStore)
+
+    /**
+     * Phase K.4 sub-screen — persisted scan-filter prefs (set of DISABLED audio extensions).
+     * Own `scan_filters` DataStore-Preferences file per R.B store-split.
+     */
+    private val scanFiltersDataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
+        produceFile = { appContext.preferencesDataStoreFile("scan_filters") }
+    )
+
+    val libraryScanFilterSettings: LibraryScanFilterSettings =
+        AndroidLibraryScanFilterSettings(scanFiltersDataStore)
 
     /**
      * Phase F.3 + F.4 — persisted player tunables (rewind / forward / auto-rewind seconds). Its
@@ -149,7 +163,19 @@ class AppGraph(context: Context) {
      * call this via the [LibraryScanner] interface, never the concrete impl. Phase D.4's
      * `LibraryRepository` will own the scan→write pipeline.
      */
-    val libraryScanner: LibraryScanner = SafLibraryScanner(appContext)
+    /**
+     * Phase K.4 sub-screen — cached snapshot of the user's disabled-extensions set, kept up
+     * to date by a collector on [applicationScope]. The scanner's per-scan `() -> Set<String>`
+     * provider reads this `@Volatile` field rather than blocking on the Flow, so the scan
+     * dispatcher coroutine stays IO-bound.
+     */
+    @Volatile
+    private var disabledExtensionsSnapshot: Set<String> = emptySet()
+
+    val libraryScanner: LibraryScanner = SafLibraryScanner(
+        context = appContext,
+        disabledExtensionsProvider = { disabledExtensionsSnapshot },
+    )
 
     /**
      * Phase D.3's per-file metadata extractor. Exposed via the narrow [MediaAnalyzer] interface
@@ -303,6 +329,17 @@ class AppGraph(context: Context) {
     )
 
     val sleepTimerCommands: SleepTimerCommands = androidSleepTimer
+
+    init {
+        // Phase K.4 sub-screen — keep [disabledExtensionsSnapshot] up to date so the
+        // scanner's `() -> Set<String>` provider has a fresh value on every scan without
+        // having to block on the Flow. Single collector on [applicationScope].
+        applicationScope.launch {
+            libraryScanFilterSettings.disabledExtensions.collect { disabled ->
+                disabledExtensionsSnapshot = disabled
+            }
+        }
+    }
 
     /**
      * Phase P.7 — flush hook for [com.eight87.whisperboy.playback.PlaybackService.onDestroy].

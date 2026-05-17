@@ -51,11 +51,39 @@ import kotlinx.serialization.Serializable
 @Serializable data object LicensesRoute : NavKey
 
 /**
- * Phase K.4 (partial) — Library folders sub-page. Pushed from Settings.
- * Lists configured roots with their `FolderType` + Remove action; a FAB
- * adds a new root via the SAF tree picker.
+ * Phase K.4 — Library settings hub. Pushed from Settings. Hosts the
+ * configured folder roots (list + add FAB + remove) plus rows that
+ * navigate to the three sub-screens: [LibrarySortDefaultRoute],
+ * [LibraryGridModeDefaultRoute], [LibraryScanFiltersRoute].
+ *
+ * Route name preserved (was `LibraryFoldersRoute` in the K.4 partial)
+ * so persisted nav stacks survive the rename — see the renamed
+ * `LibrarySettingsScreen.kt` for the hub composable.
  */
 @Serializable data object LibraryFoldersRoute : NavKey
+
+/**
+ * Phase K.4 sub-screen — Default sort. Radio group over [BookSortKey].
+ * Reads/writes `LibraryUiSettings.sortKey` (same source of truth as the
+ * library toolbar selection — no separate "default vs current").
+ */
+@Serializable data object LibrarySortDefaultRoute : NavKey
+
+/**
+ * Phase K.4 sub-screen — Default grid mode. Radio group over [GridMode].
+ * Reads/writes `LibraryUiSettings.gridMode` (same source of truth as
+ * the library toolbar grid-toggle).
+ */
+@Serializable data object LibraryGridModeDefaultRoute : NavKey
+
+/**
+ * Phase K.4 sub-screen — Scan filters. Checkbox list of supported audio
+ * extensions; toggles drive `LibraryScanFilterSettings.disabledExtensions`.
+ * After a change, the screen calls
+ * `libraryRescanCoordinator.requestRescan(force = true)` so the disabled
+ * extension is excluded from the library on the next scan.
+ */
+@Serializable data object LibraryScanFiltersRoute : NavKey
 
 /**
  * Phase K.5 — Theme sub-page. Pushed from Settings. Hosts the theme-mode

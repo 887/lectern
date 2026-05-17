@@ -34,10 +34,17 @@ import kotlinx.coroutines.withContext
 class SafLibraryScanner(
     private val context: Context,
     private val folderCoverFinder: FolderCoverFinder = FolderCoverFinder(),
+    /**
+     * Phase K.4 sub-screen — `() -> Set<String>` of user-disabled extensions (lowercase),
+     * snapshotted once at the top of each scan so the filter stays consistent across
+     * the walk. Default `{ emptySet() }` keeps the existing test paths trivial.
+     */
+    private val disabledExtensionsProvider: () -> Set<String> = { emptySet() },
 ) : LibraryScanner {
 
     override suspend fun scan(roots: List<LibraryRoot>): ScanSnapshot = withContext(Dispatchers.IO) {
-        val books = roots.flatMap { scanRoot(it) }
+        val disabled = disabledExtensionsProvider()
+        val books = roots.flatMap { scanRoot(it, disabled) }
         ScanSnapshot(books)
     }
 
@@ -93,16 +100,17 @@ class SafLibraryScanner(
         }
     }
 
-    private fun scanRoot(root: LibraryRoot): List<ScannedBook> {
+    private fun scanRoot(root: LibraryRoot, disabled: Set<String> = emptySet()): List<ScannedBook> {
         val tree = DocumentFile.fromTreeUri(context, root.treeUri) ?: return emptyList()
         val cached = CachedDocumentFile(tree)
         return when (root.folderType) {
-            FolderType.SingleFile -> scanSingleFile(root, cached)
+            FolderType.SingleFile -> scanSingleFile(root, cached, disabled)
             FolderType.SingleFolder -> scanFolderAsBook(
                 root = root,
                 folder = cached,
                 relativePath = "",
                 author = null,
+                disabled = disabled,
             )
             FolderType.Root -> cached.children
                 .filter { it.isDirectory }
@@ -112,6 +120,7 @@ class SafLibraryScanner(
                         folder = sub,
                         relativePath = sub.name ?: "",
                         author = null,
+                        disabled = disabled,
                     )
                 }
             FolderType.Author -> cached.children
@@ -125,14 +134,19 @@ class SafLibraryScanner(
                                 folder = bookFolder,
                                 relativePath = "${authorFolder.name ?: ""}/${bookFolder.name ?: ""}",
                                 author = authorFolder.name,
+                                disabled = disabled,
                             )
                         }
                 }
         }
     }
 
-    private fun scanSingleFile(root: LibraryRoot, file: CachedDocumentFile): List<ScannedBook> {
-        if (!SupportedAudioFormats.isAudioFile(file)) return emptyList()
+    private fun scanSingleFile(
+        root: LibraryRoot,
+        file: CachedDocumentFile,
+        disabled: Set<String> = emptySet(),
+    ): List<ScannedBook> {
+        if (!SupportedAudioFormats.isAudioFile(file, disabled)) return emptyList()
         val name = file.name ?: return emptyList()
         val bookId = bookIdFor(root.treeUri.toString(), name)
         val chapter = ScannedChapter(
@@ -164,9 +178,10 @@ class SafLibraryScanner(
         folder: CachedDocumentFile,
         relativePath: String,
         author: String?,
+        disabled: Set<String> = emptySet(),
     ): List<ScannedBook> {
         val audioChildren = folder.children
-            .filter { SupportedAudioFormats.isAudioFile(it) }
+            .filter { SupportedAudioFormats.isAudioFile(it, disabled) }
             .sortedBy { (it.name ?: "").lowercase() }
         if (audioChildren.isEmpty()) return emptyList()
 

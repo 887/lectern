@@ -3,6 +3,7 @@ package com.eight87.whisperboy.ui.settings
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -48,18 +51,30 @@ import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
 import kotlinx.coroutines.launch
 
 /**
- * Phase K.4 (partial) — Library folders sub-page.
+ * Phase K.4 — Library settings hub.
  *
- * Replaces the retired `ManageFoldersSheet` from the library top app bar. Lists each
- * configured [LibraryRoot] with its display name + `FolderType` subtitle + Remove
- * action; a FAB at the bottom-right launches the SAF tree picker for adding a new
- * root, then surfaces the same `FolderType` picker sheet the first-run flow uses.
+ * Promotes the K.4 partial "Library folders" screen into the Library settings hub. Top
+ * section keeps the configured-roots list + add FAB (the partial's job). Below sits a
+ * card of three navigation rows pointing at the sub-screens that complete K.4:
+ *
+ *   - Default sort → [LibrarySortDefaultScreen]
+ *   - Default grid mode → [LibraryGridModeDefaultScreen]
+ *   - Scan filters → [LibraryScanFiltersScreen]
+ *
+ * The route key is still `LibraryFoldersRoute` so any persisted nav stack survives the
+ * upgrade — only the screen file + composable name changed.
+ *
+ * Surface tier ladder matches [SettingsScreen] / [PlaybackSettingsScreen]: page bg uses
+ * `surface`, cards use `surfaceContainerHigh`, no elevation.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryFoldersScreen(
+fun LibrarySettingsScreen(
     persistedUriPermissionStore: PersistedUriPermissionStore,
     onBack: () -> Unit,
+    onSortDefaultClick: () -> Unit,
+    onGridModeDefaultClick: () -> Unit,
+    onScanFiltersClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val roots by persistedUriPermissionStore.observeRoots()
@@ -75,7 +90,7 @@ fun LibraryFoldersScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.settings_library_folders_title)) },
+                title = { Text(stringResource(R.string.settings_library_hub_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -96,31 +111,79 @@ fun LibraryFoldersScreen(
         },
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            if (roots.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(24.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        text = stringResource(R.string.library_folders_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item("folders-header") {
+                    SectionLabel(stringResource(R.string.settings_library_folders_section))
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
+                if (roots.isEmpty()) {
+                    item("folders-empty") {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.library_folders_empty),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+                    }
+                } else {
                     items(items = roots, key = { it.treeUri.toString() }) { root ->
-                        LibraryRootRow(
-                            root = root,
-                            onRemove = {
-                                scope.launch { persistedUriPermissionStore.removeRoot(root.treeUri) }
-                            },
-                        )
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        ) {
+                            LibraryRootRow(
+                                root = root,
+                                onRemove = {
+                                    scope.launch { persistedUriPermissionStore.removeRoot(root.treeUri) }
+                                },
+                            )
+                        }
+                    }
+                }
+
+                item("defaults-spacer") { Spacer(Modifier.height(8.dp)) }
+                item("defaults-header") {
+                    SectionLabel(stringResource(R.string.settings_library_defaults_section))
+                }
+                item("defaults-card") {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    ) {
+                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                            HubNavRow(
+                                title = stringResource(R.string.settings_library_sort_default_title),
+                                subtitle = stringResource(R.string.settings_library_sort_default_subtitle),
+                                onClick = onSortDefaultClick,
+                            )
+                            HubNavRow(
+                                title = stringResource(R.string.settings_library_grid_default_title),
+                                subtitle = stringResource(R.string.settings_library_grid_default_subtitle),
+                                onClick = onGridModeDefaultClick,
+                            )
+                            HubNavRow(
+                                title = stringResource(R.string.settings_library_scan_filters_title),
+                                subtitle = stringResource(R.string.settings_library_scan_filters_subtitle),
+                                onClick = onScanFiltersClick,
+                            )
+                        }
                     }
                 }
             }
@@ -142,6 +205,47 @@ fun LibraryFoldersScreen(
 }
 
 @Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.Medium,
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+    )
+}
+
+@Composable
+private fun HubNavRow(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
 private fun LibraryRootRow(
     root: LibraryRoot,
     onRemove: () -> Unit,
@@ -149,7 +253,7 @@ private fun LibraryRootRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.padding(end = 8.dp).fillMaxWidth(0.7f)) {
