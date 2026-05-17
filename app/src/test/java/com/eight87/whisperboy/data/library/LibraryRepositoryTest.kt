@@ -238,6 +238,110 @@ class LibraryRepositoryTest {
     }
 
     @Test
+    fun `applyBookBatch writes structural rows with enriched=false`() = runTest {
+        val books = (1..3).map { i ->
+            ScannedBook(
+                bookId = "b$i",
+                treeUriString = "content://tree/r1",
+                relativePath = "Book$i/",
+                title = "Book $i",
+                author = "Author $i",
+                durationMs = 0L,
+                chapters = listOf(
+                    ScannedChapter(
+                        chapterId = "b$i-c0",
+                        chapterIndex = 0,
+                        title = "Chapter 0",
+                        durationMs = 0L,
+                        fileUri = "content://tree/r1/Book$i/c0.m4b",
+                        positionInBookMs = 0L,
+                    ),
+                ),
+            )
+        }
+        repo.applyBookBatch(books)
+
+        val rows = repo.observeBooks().first()
+        assertEquals(3, rows.size)
+        assertTrue("all batch-written rows must be unenriched", rows.all { !it.enriched })
+        assertTrue("durations must be zero in partial-enriched window", rows.all { it.durationMs == 0L })
+        assertTrue("covers must be null in partial-enriched window", rows.all { it.coverPath == null })
+        // Chapters round-trip structurally too.
+        val chapters = repo.observeChaptersForBook("b1").first()
+        assertEquals(1, chapters.size)
+    }
+
+    @Test
+    fun `applyBookEnrichment flips enriched true and fills duration + author + cover`() = runTest {
+        val book = ScannedBook(
+            bookId = "b1",
+            treeUriString = "content://tree/r1",
+            relativePath = "Book1/",
+            title = "Book 1",
+            author = null,
+            durationMs = 0L,
+            chapters = listOf(
+                ScannedChapter(
+                    chapterId = "b1-c0",
+                    chapterIndex = 0,
+                    fileUri = "content://tree/r1/Book1/c0.m4b",
+                ),
+            ),
+        )
+        repo.applyBookBatch(listOf(book))
+        val before = repo.observeBook("b1").first()!!
+        assertEquals(false, before.enriched)
+        assertEquals(0L, before.durationMs)
+
+        val enriched = book.copy(
+            author = "Discovered Author",
+            durationMs = 42_000L,
+            chapters = listOf(
+                book.chapters[0].copy(durationMs = 42_000L, title = "Resolved Title"),
+            ),
+        )
+        repo.applyBookEnrichment(enriched)
+
+        val after = repo.observeBook("b1").first()!!
+        assertTrue("enriched flag flips to true", after.enriched)
+        assertEquals(42_000L, after.durationMs)
+        assertEquals("Discovered Author", after.author)
+        val chapters = repo.observeChaptersForBook("b1").first()
+        assertEquals(42_000L, chapters.single().durationMs)
+        assertEquals("Resolved Title", chapters.single().title)
+    }
+
+    @Test
+    fun `applyBookBatch preserves position and per-book knobs on existing rows`() = runTest {
+        // Seed a fully-enriched book via the snapshot path + advance playback state.
+        repo.applyScan(snapshotWithOneBook("b1", "The Test"))
+        repo.updatePosition("b1", chapterIndex = 3, positionInChapterMs = 5_000L, lastPlayedAt = 1_700_000L)
+        repo.setSpeed("b1", 1.5f)
+
+        // Re-discover via streaming batch — structural-only update, position must survive,
+        // enriched must flip to false (until the worker lands its enrichment).
+        repo.applyBookBatch(listOf(
+            ScannedBook(
+                bookId = "b1",
+                treeUriString = "content://tree/r1",
+                relativePath = "b1-renamed.m4b",
+                title = "Renamed",
+                author = "A",
+                chapters = listOf(
+                    ScannedChapter(chapterId = "b1-c0", chapterIndex = 0, fileUri = "content://tree/r1/b1.m4b"),
+                ),
+            ),
+        ))
+        val after = repo.observeBook("b1").first()!!
+        assertEquals("Renamed", after.title)
+        assertEquals(3, after.currentChapterIndex)
+        assertEquals(5_000L, after.positionInChapterMs)
+        assertEquals(1_700_000L, after.lastPlayedAt)
+        assertEquals(1.5f, after.speed, 0.0001f)
+        assertEquals(false, after.enriched)
+    }
+
+    @Test
     fun `observeBook emits the inserted book and null for unknown id`() = runTest {
         repo.applyScan(snapshotWithOneBook("b1", "The Test"))
 

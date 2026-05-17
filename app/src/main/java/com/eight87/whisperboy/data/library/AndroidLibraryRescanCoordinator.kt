@@ -8,7 +8,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +18,10 @@ import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Android-side implementation of [LibraryRescanCoordinator].
@@ -160,54 +165,130 @@ internal class AndroidLibraryRescanCoordinator(
                 return
             }
 
-            // Bug 1 fix: feed the scanner a progress callback so the banner ticks during the
-            // SAF tree walk too — not just during the enrichment phase. A simple per-emission
-            // monotonic-clock throttle (PROGRESS_THROTTLE_MS) keeps the StateFlow from thrashing
-            // when the walker rips through a fast SD card.
-            var lastEmit = 0L
-            val structural = libraryScanner.scan(rootsToWalk) { books, chapters, folder ->
-                val now = clock()
-                if (now - lastEmit >= PROGRESS_THROTTLE_MS) {
-                    lastEmit = now
+            // Streaming pipeline: discovery streams books into a shared channel, N=4 parallel
+            // workers steal from the channel, each runs `enrichBook` for one book and writes
+            // the enriched row immediately so the library grid fills in as workers finish.
+            // Structural rows land in Room every BATCH_SIZE books via `applyBookBatch`, so
+            // discovered books appear in `BookSource.observeActive()` BEFORE the full scan
+            // completes.
+            val touchedRoots = mutableSetOf<String>()
+            val seenBookIds = mutableSetOf<String>()
+            val seenLock = Mutex()
+            val progressLock = Mutex()
+            var lastDiscoveryEmit = 0L
+            var discoveryBooksFound = 0
+            var discoveryChaptersFound = 0
+            var analyzedBooks = 0
+            var analyzedChapters = 0
+            var discoveryDone = false
+            // Snapshot total chapter count grows during discovery; once discovery completes the
+            // analyzer-phase banner uses the final total for its determinate progress bar.
+
+            suspend fun emitState(currentFolder: String?) {
+                progressLock.withLock {
                     _state.value = RescanState.Running(
-                        booksFound = books,
-                        chaptersFound = chapters,
-                        currentFolder = folder,
-                        phase = ScanPhase.Discovering,
+                        booksFound = discoveryBooksFound,
+                        chaptersFound = discoveryChaptersFound,
+                        currentFolder = currentFolder,
+                        phase = if (discoveryDone) ScanPhase.Analyzing else ScanPhase.Discovering,
+                        analyzedChapters = analyzedChapters,
+                        totalChapters = discoveryChaptersFound,
                     )
                 }
             }
-            // Snap to the final discovery counts (the throttle may have swallowed the last tick)
-            // and flip into the Analyzing phase. `totalChapters` is now known and feeds the
-            // banner's determinate progress bar.
-            val totalChapters = structural.books.sumOf { it.chapters.size }
-            _state.value = RescanState.Running(
-                booksFound = structural.books.size,
-                chaptersFound = totalChapters,
-                currentFolder = null,
-                phase = ScanPhase.Analyzing,
-                analyzedChapters = 0,
-                totalChapters = totalChapters,
-            )
-            val enriched = libraryScannerEnrichment.enrich(structural) { booksDone, chaptersDone, folder ->
-                _state.value = RescanState.Running(
-                    booksFound = structural.books.size,
-                    chaptersFound = totalChapters,
-                    currentFolder = folder,
-                    phase = ScanPhase.Analyzing,
-                    analyzedChapters = chaptersDone,
-                    totalChapters = totalChapters,
-                )
+
+            coroutineScope {
+                val analyzeQueue: Channel<ScannedBook> = Channel(capacity = Channel.UNLIMITED)
+                val pending = mutableListOf<ScannedBook>()
+                val pendingLock = Mutex()
+
+                suspend fun flushPending(force: Boolean) {
+                    val toWrite: List<ScannedBook> = pendingLock.withLock {
+                        if (pending.isEmpty()) return@withLock emptyList()
+                        if (!force && pending.size < BATCH_SIZE) return@withLock emptyList()
+                        val out = pending.toList()
+                        pending.clear()
+                        out
+                    }
+                    if (toWrite.isNotEmpty()) {
+                        runCatching { scanWriter.applyBookBatch(toWrite) }
+                            .onFailure { Log.w(SMOKE_TAG, "BATCH_APPLY_FAILED size=${toWrite.size}: ${it.message}", it) }
+                    }
+                }
+
+                // 1. Discovery coroutine — walks the SAF tree, accumulates books in BATCH_SIZE
+                //    chunks, writes each chunk to Room, dispatches every book onto the analyze
+                //    queue for the worker pool. Closes the queue when the walk completes.
+                val discoveryJob = launch(Dispatchers.IO) {
+                    libraryScanner.scanStreaming(
+                        roots = rootsToWalk,
+                        onProgress = { books, chapters, folder ->
+                            val now = clock()
+                            discoveryBooksFound = books
+                            discoveryChaptersFound = chapters
+                            if (now - lastDiscoveryEmit >= PROGRESS_THROTTLE_MS) {
+                                lastDiscoveryEmit = now
+                                emitState(folder)
+                            }
+                        },
+                        onBookDiscovered = { book ->
+                            touchedRoots += book.treeUriString
+                            seenLock.withLock { seenBookIds += book.bookId }
+                            val shouldFlush = pendingLock.withLock {
+                                pending += book
+                                pending.size >= BATCH_SIZE
+                            }
+                            if (shouldFlush) flushPending(force = false)
+                            // Dispatch immediately so a free worker can pick up the book before
+                            // the rest of the batch even lands in Room.
+                            analyzeQueue.send(book)
+                        },
+                    )
+                    // Final partial batch — anything below BATCH_SIZE that didn't trigger a flush.
+                    flushPending(force = true)
+                    // Snap to final discovery counts and flip phase to Analyzing.
+                    discoveryDone = true
+                    emitState(null)
+                    analyzeQueue.close()
+                }
+
+                // 2. N=4 parallel workers — each pulls one book at a time from the shared
+                //    channel, enriches it, lands the enrichment via `applyBookEnrichment`.
+                //    Whichever worker is free picks up the next book (work-stealing).
+                val workers = List(WORKER_COUNT) {
+                    launch(Dispatchers.IO) {
+                        for (book in analyzeQueue) {
+                            val enrichedBook = runCatching { libraryScannerEnrichment.enrichBook(book) }
+                                .getOrElse { t ->
+                                    Log.w(SMOKE_TAG, "ENRICH_FAILED bookId=${book.bookId}: ${t.message}", t)
+                                    book.copy(durationMs = 0L)
+                                }
+                            runCatching { scanWriter.applyBookEnrichment(enrichedBook) }
+                                .onFailure { Log.w(SMOKE_TAG, "ENRICH_APPLY_FAILED bookId=${book.bookId}: ${it.message}", it) }
+                            progressLock.withLock {
+                                analyzedBooks += 1
+                                analyzedChapters += enrichedBook.chapters.size
+                            }
+                            emitState(book.title)
+                        }
+                    }
+                }
+
+                discoveryJob.join()
+                workers.joinAll()
             }
+
+            // Sweep books that disappeared from touched roots (soft-delete).
+            scanWriter.sweepInactiveRoots(touchedRoots, seenBookIds)
+
             _state.value = RescanState.Running(
-                booksFound = enriched.books.size,
-                chaptersFound = enriched.books.sumOf { it.chapters.size },
+                booksFound = discoveryBooksFound,
+                chaptersFound = discoveryChaptersFound,
                 currentFolder = null,
                 phase = ScanPhase.Writing,
-                analyzedChapters = totalChapters,
-                totalChapters = totalChapters,
+                analyzedChapters = analyzedChapters,
+                totalChapters = discoveryChaptersFound,
             )
-            scanWriter.applyScan(enriched)
 
             // Persist new fingerprints for roots we successfully walked.
             for (root in rootsToWalk) {
@@ -219,9 +300,7 @@ internal class AndroidLibraryRescanCoordinator(
 
             // Smoke-test marker (D.6): emit book + chapter counts so a smoke script can
             // poll logcat for scan completion + assert the result. Cheap; one line per scan.
-            val books = enriched.books.size
-            val chapters = enriched.books.sumOf { it.chapters.size }
-            Log.i(SMOKE_TAG, "SCAN_COMPLETE roots=${rootsToWalk.size}/${roots.size} books=$books chapters=$chapters force=$force")
+            Log.i(SMOKE_TAG, "SCAN_COMPLETE roots=${rootsToWalk.size}/${roots.size} books=$discoveryBooksFound chapters=$discoveryChaptersFound force=$force")
 
             gcOrphanCovers()
             _state.value = RescanState.Idle
@@ -256,5 +335,12 @@ internal class AndroidLibraryRescanCoordinator(
          *  card's flurry of book-found callbacks doesn't thrash the StateFlow / banner. 200ms
          *  matches Compose's perceived-update budget — the banner still feels live. */
         private const val PROGRESS_THROTTLE_MS: Long = 200L
+        /** Streaming-scan batch size: every N discovered books trigger an `applyBookBatch` write
+         *  so the library grid fills in continuously instead of waiting for the full walk. */
+        private const val BATCH_SIZE: Int = 5
+        /** Parallel enrichment worker count. Four feels right for medium libraries on modest
+         *  phones: enough parallelism to hide per-file IO latency, not so many that the
+         *  MediaMetadataRetriever instances thrash the CPU. */
+        private const val WORKER_COUNT: Int = 4
     }
 }

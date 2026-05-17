@@ -24,4 +24,19 @@ interface LibraryScanner {
         roots: List<LibraryRoot>,
         onProgress: suspend (booksFound: Int, chaptersFound: Int, currentFolder: String?) -> Unit = { _, _, _ -> },
     ): ScanSnapshot
+
+    /**
+     * Streaming variant. [onBookDiscovered] is invoked once per [ScannedBook] as the SAF tree
+     * walk discovers it — the streaming-scan pipeline uses this to write structural rows to
+     * Room in batches AND dispatch the book onto an enrichment work queue immediately so the
+     * library grid fills in as the walk progresses.
+     *
+     * Returns the same [ScanSnapshot] [scan] returns; callers that don't care about the
+     * snapshot (the streaming coordinator) discard the return.
+     */
+    suspend fun scanStreaming(
+        roots: List<LibraryRoot>,
+        onProgress: suspend (booksFound: Int, chaptersFound: Int, currentFolder: String?) -> Unit = { _, _, _ -> },
+        onBookDiscovered: suspend (ScannedBook) -> Unit = { },
+    ): ScanSnapshot = scan(roots, onProgress)
 }

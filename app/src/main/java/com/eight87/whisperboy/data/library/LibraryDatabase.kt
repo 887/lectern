@@ -21,7 +21,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ChapterEntity::class,
         BookmarkEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(CoverSourceConverter::class)
@@ -64,5 +64,18 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
 val MIGRATION_3_4 = object : Migration(3, 4) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("CREATE INDEX IF NOT EXISTS index_books_author ON books(author)")
+    }
+}
+
+/**
+ * v4 → v5: add `enriched` column to `books` for the streaming scan pipeline. Books written
+ * by the partial-pass `applyBookBatch` land with `enriched = 0`; the per-chapter
+ * [MediaAnalyzer]-driven enrichment pass flips them to `enriched = 1` via
+ * `applyBookEnrichment`. Existing rows pre-dating v5 were written by the legacy one-shot
+ * `applyScan` and so are fully enriched — default `1` reflects that.
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE books ADD COLUMN enriched INTEGER NOT NULL DEFAULT 1")
     }
 }

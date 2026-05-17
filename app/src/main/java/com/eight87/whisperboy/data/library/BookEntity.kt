@@ -77,4 +77,18 @@ data class BookEntity(
      * preserves bookmarks and position so a re-add of the same folder restores everything.
      */
     val active: Boolean = true,
+
+    /**
+     * `false` while a book is in the partial-enriched window: the structural pass has landed
+     * (title + folder path + chapter list with file URIs) but the per-chapter
+     * [MediaAnalyzer.extract] pass has not yet run, so [durationMs] is `0`, [coverPath] is `null`,
+     * and per-chapter durations are unknown. Flipped to `true` once
+     * [LibraryRepository.applyBookEnrichment] lands. UI surfaces use this to show a placeholder
+     * cover and elide the duration line until the workers finish.
+     *
+     * The streaming-scan pipeline (`AndroidLibraryRescanCoordinator.runScan`) is the only writer
+     * of `false`; one-shot `applyScan` callers still produce `true` rows directly so the
+     * snapshot-level path stays backward-compatible.
+     */
+    val enriched: Boolean = true,
 )

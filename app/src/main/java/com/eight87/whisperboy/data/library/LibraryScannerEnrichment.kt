@@ -64,7 +64,18 @@ class LibraryScannerEnrichment(
         ScanSnapshot(enriched)
     }
 
-    private suspend fun enrichBook(book: ScannedBook): ScannedBook {
+    /**
+     * Single-book enrichment entry point — called per book by the streaming-scan worker pool
+     * in `AndroidLibraryRescanCoordinator`. Same per-chapter [MediaAnalyzer.extract] +
+     * chapter-mark expansion + cover-fallback logic the snapshot-level [enrich] uses,
+     * just one book at a time. Safe to call concurrently from N workers because the analyzer
+     * is reentrant (Media3 MediaMetadataRetriever opens its own handle per call).
+     */
+    suspend fun enrichBook(book: ScannedBook): ScannedBook = withContext(Dispatchers.IO) {
+        enrichBookInternal(book)
+    }
+
+    private suspend fun enrichBookInternal(book: ScannedBook): ScannedBook {
         // Phase I.8: SingleFile books — one structural chapter that spans the whole file —
         // get expanded with embedded chapter markers when the parser finds any. We always
         // run the standard per-chapter metadata pass; for marks-expanded books all generated

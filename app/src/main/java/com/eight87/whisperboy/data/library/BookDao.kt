@@ -85,11 +85,63 @@ interface BookDao {
         coverSource: CoverSource,
     )
 
+    /**
+     * Streaming-scan structural-only update: like [updateStructural] but does NOT touch
+     * `duration_ms` / `coverPath` / `coverSource`, and forces `enriched = 0` so the row
+     * lands in the partial-enriched window until the per-chapter analyzer pass calls
+     * [setEnrichment]. Used by `LibraryRepository.applyBookBatch` for existing rows.
+     */
+    @Query(
+        """
+        UPDATE books
+           SET treeUriString = :treeUriString,
+               relativePath = :relativePath,
+               title = :title,
+               author = :author,
+               active = 1,
+               enriched = 0
+         WHERE bookId = :bookId
+        """
+    )
+    suspend fun updateStructuralPartial(
+        bookId: String,
+        treeUriString: String,
+        relativePath: String,
+        title: String,
+        author: String?,
+    )
+
+    /**
+     * Streaming-scan enrichment landing: fills in the per-chapter analyzer-derived fields
+     * once the worker has finished a book. Does NOT touch position / playback knobs /
+     * `coverSource` (covers user-picked custom covers — those land via [setCoverPath] +
+     * [setCoverSource] earlier and stick).
+     */
+    @Query(
+        """
+        UPDATE books
+           SET duration_ms = :durationMs,
+               author = COALESCE(:author, author),
+               coverPath = COALESCE(:coverPath, coverPath),
+               enriched = 1
+         WHERE bookId = :id
+        """
+    )
+    suspend fun setEnrichment(
+        id: String,
+        durationMs: Long,
+        author: String?,
+        coverPath: String?,
+    )
+
     @Query("UPDATE books SET active = 0 WHERE treeUriString = :treeUriString")
     suspend fun markRootInactive(treeUriString: String)
 
     @Query("UPDATE books SET active = 0 WHERE bookId IN (:ids)")
     suspend fun markInactiveByIds(ids: List<String>)
+
+    @Query("UPDATE books SET active = 1 WHERE bookId IN (:ids)")
+    suspend fun markActiveByIds(ids: List<String>)
 
     @Query("UPDATE books SET completedAt = :timestamp WHERE bookId = :id")
     suspend fun setCompletedAt(id: String, timestamp: Long?)

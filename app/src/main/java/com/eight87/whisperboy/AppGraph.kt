@@ -27,6 +27,7 @@ import com.eight87.whisperboy.data.library.LibraryRepository
 import com.eight87.whisperboy.data.library.MIGRATION_1_2
 import com.eight87.whisperboy.data.library.MIGRATION_2_3
 import com.eight87.whisperboy.data.library.MIGRATION_3_4
+import com.eight87.whisperboy.data.library.MIGRATION_4_5
 import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.LibraryScanner
 import com.eight87.whisperboy.data.library.LibraryScannerEnrichment
@@ -158,7 +159,7 @@ class AppGraph(context: Context) {
         LibraryDatabase::class.java,
         "library.db",
     )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
         .build()
 
     /**

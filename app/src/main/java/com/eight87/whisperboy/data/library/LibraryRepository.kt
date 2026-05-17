@@ -221,6 +221,100 @@ internal class LibraryRepository(
         }
     }
 
+    override suspend fun applyBookBatch(books: List<ScannedBook>) {
+        if (books.isEmpty()) return
+        // Seed playback defaults once for any first-time-scan rows in this batch.
+        val defaultSpeed = playbackSettings.defaultSpeed.first()
+        val defaultSkipSilence = playbackSettings.defaultSkipSilence.first()
+        val defaultGainDb = playbackSettings.defaultGainDb.first()
+
+        database.withTransaction {
+            for (book in books) {
+                val existing = bookDao.findById(book.bookId)
+                if (existing != null) {
+                    // Existing row: structural-partial update — refresh title/author/path,
+                    // do NOT touch duration / cover (worker fills those via applyBookEnrichment).
+                    bookDao.updateStructuralPartial(
+                        bookId = book.bookId,
+                        treeUriString = book.treeUriString,
+                        relativePath = book.relativePath,
+                        title = book.title,
+                        author = book.author,
+                    )
+                } else {
+                    // New row: zero duration, null cover, `enriched = false`. Cover bytes are
+                    // landed later by the worker via `applyBookEnrichment`.
+                    bookDao.upsert(
+                        BookEntity(
+                            bookId = book.bookId,
+                            treeUriString = book.treeUriString,
+                            relativePath = book.relativePath,
+                            title = book.title,
+                            author = book.author,
+                            durationMs = 0L,
+                            coverPath = null,
+                            coverSource = CoverSource.Scanned,
+                            currentChapterIndex = 0,
+                            positionInChapterMs = 0L,
+                            speed = defaultSpeed,
+                            skipSilenceEnabled = defaultSkipSilence,
+                            gainDb = defaultGainDb,
+                            lastPlayedAt = null,
+                            active = true,
+                            enriched = false,
+                        )
+                    )
+                }
+                // Replace chapter set wholesale with structural rows (zero durations, file URIs
+                // present). Worker later replaces these again with enrichment-filled durations.
+                chapterDao.deleteForBook(book.bookId)
+                chapterDao.upsertAll(book.chapters.map { it.toEntity(book.bookId) })
+            }
+        }
+    }
+
+    override suspend fun applyBookEnrichment(enrichedBook: ScannedBook) {
+        // Persist cover bytes (scanner-owned). Respect custom user covers — don't stomp them.
+        val existing = bookDao.findById(enrichedBook.bookId)
+        val coverPath: String? = when {
+            existing == null -> null
+            existing.coverSource == CoverSource.Custom -> existing.coverPath
+            else -> enrichedBook.embeddedCoverBytes?.let { bytes ->
+                coverStore.writeCover(enrichedBook.bookId, bytes)
+            } ?: enrichedBook.coverPath ?: existing.coverPath
+        }
+
+        database.withTransaction {
+            bookDao.setEnrichment(
+                id = enrichedBook.bookId,
+                durationMs = enrichedBook.durationMs,
+                author = enrichedBook.author,
+                coverPath = coverPath,
+            )
+            // Replace chapter rows with enrichment-filled durations / titles.
+            chapterDao.deleteForBook(enrichedBook.bookId)
+            chapterDao.upsertAll(enrichedBook.chapters.map { it.toEntity(enrichedBook.bookId) })
+        }
+    }
+
+    override suspend fun sweepInactiveRoots(touchedRoots: Set<String>, seenBookIds: Set<String>) {
+        if (touchedRoots.isEmpty()) return
+        database.withTransaction {
+            for (root in touchedRoots) {
+                bookDao.markRootInactive(root)
+            }
+            // Re-activate the ones the streaming pipeline actually observed.
+            // markRootInactive set everything to 0; the per-book upserts in applyBookBatch
+            // already set active = true, but updateStructuralPartial also re-sets it. The
+            // sweep order needs to be: sweep FIRST, then individual writes — but since the
+            // streaming pipeline runs writes BEFORE this sweep, we have to flip the seen ids
+            // back to active here.
+            if (seenBookIds.isNotEmpty()) {
+                bookDao.markActiveByIds(seenBookIds.toList())
+            }
+        }
+    }
+
     private fun ScannedBook.toEntity(data: PerBookScanData): BookEntity = BookEntity(
         bookId = bookId,
         treeUriString = treeUriString,

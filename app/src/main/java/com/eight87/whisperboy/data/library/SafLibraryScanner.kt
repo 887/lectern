@@ -45,13 +45,18 @@ class SafLibraryScanner(
     override suspend fun scan(
         roots: List<LibraryRoot>,
         onProgress: suspend (booksFound: Int, chaptersFound: Int, currentFolder: String?) -> Unit,
+    ): ScanSnapshot = scanStreaming(roots, onProgress) { /* discard per-book emissions */ }
+
+    override suspend fun scanStreaming(
+        roots: List<LibraryRoot>,
+        onProgress: suspend (booksFound: Int, chaptersFound: Int, currentFolder: String?) -> Unit,
+        onBookDiscovered: suspend (ScannedBook) -> Unit,
     ): ScanSnapshot = withContext(Dispatchers.IO) {
         val disabled = disabledExtensionsProvider()
         val accumulated = mutableListOf<ScannedBook>()
         // Mutable cumulative counters threaded into the per-folder helper so callers see the
         // banner counts tick up *as* the SAF tree is walked — not only once the whole structural
-        // pass settles. This is Bug 1's fix: the old `scan` only returned at the end of the
-        // traversal, leaving the banner frozen at 0/0 for minutes on a large SD card.
+        // pass settles.
         var booksFound = 0
         var chaptersFound = 0
         suspend fun emit(currentFolder: String?) {
@@ -62,6 +67,11 @@ class SafLibraryScanner(
                 accumulated += discovered
                 booksFound += discovered.size
                 chaptersFound += discovered.sumOf { it.chapters.size }
+                // Emit each discovered book to the streaming consumer (channel-fed worker pool
+                // in `AndroidLibraryRescanCoordinator`) before reporting progress.
+                for (book in discovered) {
+                    runCatching { onBookDiscovered(book) }
+                }
                 emit(currentFolder)
             }
         }

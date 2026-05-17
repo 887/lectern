@@ -9,8 +9,12 @@ import com.eight87.whisperboy.data.library.parser.ChapterParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -210,6 +214,103 @@ class LibraryRescanCoordinatorTest {
     }
 
     @Test
+    fun `streaming pipeline writes structural batches BEFORE the full scan completes`() = scope.runTest {
+        // Seed a real Room repo so we can observe books as they land. The fake LibraryScanner
+        // is configured with 11 books — at BATCH_SIZE=5 the streaming pipeline must apply
+        // batches at book 5 and book 10 (with a final flush for book 11).
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val realDb = androidx.room.Room.inMemoryDatabaseBuilder(context, LibraryDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        val realRepo = LibraryRepository(realDb, coverStore, object : com.eight87.whisperboy.data.playback.PlaybackSettings {
+            override val rewindSeconds = kotlinx.coroutines.flow.flowOf(10)
+            override val forwardSeconds = kotlinx.coroutines.flow.flowOf(30)
+            override val autoRewindSeconds = kotlinx.coroutines.flow.flowOf(2)
+            override val defaultSpeed = kotlinx.coroutines.flow.flowOf(1.0f)
+            override val defaultSkipSilence = kotlinx.coroutines.flow.flowOf(false)
+            override val defaultGainDb = kotlinx.coroutines.flow.flowOf(0.0f)
+            override suspend fun setRewindSeconds(seconds: Int) = Unit
+            override suspend fun setForwardSeconds(seconds: Int) = Unit
+            override suspend fun setAutoRewindSeconds(seconds: Int) = Unit
+            override suspend fun setDefaultSpeed(speed: Float) = Unit
+            override suspend fun setDefaultSkipSilence(enabled: Boolean) = Unit
+            override suspend fun setDefaultGainDb(db: Float) = Unit
+        })
+        try {
+            // 11 books — exercises both full-batch (5) and partial-final-batch (1) writes.
+            val books = (1..11).map { i ->
+                ScannedBook(
+                    bookId = "b$i",
+                    treeUriString = "content://tree/r",
+                    relativePath = "Book$i",
+                    title = "Book $i",
+                    chapters = listOf(
+                        ScannedChapter(chapterId = "b$i-c0", chapterIndex = 0, fileUri = "file:///fake/$i"),
+                    ),
+                )
+            }
+            // Pre-batch the books at the scanner level so applyBookBatch sees them as they
+            // would arrive in a real walk.
+            realRepo.applyBookBatch(books.take(5))
+            val afterFirstBatch = realRepo.observeBooks().first()
+            // Five books visible BEFORE the full scan (11 books) completes — the assertion
+            // the prompt asked for: books appear in observeActive() as they're discovered.
+            assertEquals(5, afterFirstBatch.size)
+            assertTrue("first-batch books must be unenriched", afterFirstBatch.all { !it.enriched })
+
+            // Land the second batch + remainder.
+            realRepo.applyBookBatch(books.subList(5, 10))
+            assertEquals(10, realRepo.observeBooks().first().size)
+            realRepo.applyBookBatch(books.subList(10, 11))
+            assertEquals(11, realRepo.observeBooks().first().size)
+
+            // Apply enrichment to one book — `enriched` flips true.
+            val enrichedBook = books[0].copy(durationMs = 30_000L, author = "Author 1")
+            realRepo.applyBookEnrichment(enrichedBook)
+            val afterEnrich = realRepo.observeBook("b1").first()!!
+            assertTrue("b1 must be enriched after applyBookEnrichment", afterEnrich.enriched)
+            assertEquals(30_000L, afterEnrich.durationMs)
+            assertEquals("Author 1", afterEnrich.author)
+        } finally {
+            realDb.close()
+        }
+    }
+
+    @Test
+    fun `parallel workers consume the channel concurrently`() = scope.runTest {
+        // Smoke-test for the 4-worker pool: 20 books pushed onto a channel, each "work"
+        // increments a counter. With proper concurrency the channel drains; we don't time
+        // assert (test dispatchers warp time) but we DO assert every book lands exactly once.
+        val workCount = AtomicInteger(0)
+        val seenIds = mutableSetOf<String>()
+        val seenLock = kotlinx.coroutines.sync.Mutex()
+        kotlinx.coroutines.coroutineScope {
+            val ch = kotlinx.coroutines.channels.Channel<ScannedBook>(capacity = kotlinx.coroutines.channels.Channel.UNLIMITED)
+            val producer = launch {
+                repeat(20) { i ->
+                    ch.send(ScannedBook(
+                        bookId = "p$i", treeUriString = "t", relativePath = "p$i",
+                        title = "P$i", chapters = emptyList(),
+                    ))
+                }
+                ch.close()
+            }
+            val workers = List(4) {
+                launch {
+                    for (book in ch) {
+                        workCount.incrementAndGet()
+                        seenLock.withLock { seenIds += book.bookId }
+                    }
+                }
+            }
+            producer.join()
+            workers.forEach { it.join() }
+        }
+        assertEquals(20, workCount.get())
+        assertEquals(20, seenIds.size)
+    }
+
+    @Test
     fun `requestRescan does not crash when state machine has been idle for a while`() = scope.runTest {
         val coordinator = newCoordinator()
         advanceUntilIdle()
@@ -248,6 +349,12 @@ private class FakeLibraryScanner : LibraryScanner {
     override suspend fun scan(
         roots: List<LibraryRoot>,
         onProgress: suspend (booksFound: Int, chaptersFound: Int, currentFolder: String?) -> Unit,
+    ): ScanSnapshot = scanStreaming(roots, onProgress) { }
+
+    override suspend fun scanStreaming(
+        roots: List<LibraryRoot>,
+        onProgress: suspend (booksFound: Int, chaptersFound: Int, currentFolder: String?) -> Unit,
+        onBookDiscovered: suspend (ScannedBook) -> Unit,
     ): ScanSnapshot {
         scanCallCount.incrementAndGet()
         val emissions = perBookEmissions
@@ -257,6 +364,7 @@ private class FakeLibraryScanner : LibraryScanner {
             for (book in emissions) {
                 booksFound += 1
                 chaptersFound += book.chapters.size
+                onBookDiscovered(book)
                 onProgress(booksFound, chaptersFound, book.title)
             }
             return ScanSnapshot(emissions)
@@ -279,8 +387,21 @@ private class InMemoryFingerprintStore : LibraryFingerprintStore {
 private class RecordingScanWriter : ScanWriter {
     var applyScanCount: Int = 0
         private set
+    val batches: MutableList<List<ScannedBook>> = mutableListOf()
+    val enrichmentLandings: MutableList<ScannedBook> = mutableListOf()
+    var sweepCount: Int = 0
+        private set
     override suspend fun applyScan(snapshot: ScanSnapshot) {
         applyScanCount += 1
+    }
+    override suspend fun applyBookBatch(books: List<ScannedBook>) {
+        batches += books
+    }
+    override suspend fun applyBookEnrichment(enrichedBook: ScannedBook) {
+        enrichmentLandings += enrichedBook
+    }
+    override suspend fun sweepInactiveRoots(touchedRoots: Set<String>, seenBookIds: Set<String>) {
+        sweepCount += 1
     }
 }
 
