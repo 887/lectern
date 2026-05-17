@@ -238,7 +238,7 @@ Goal: now-playing widget. **Voice analog:** `:features:widget`.
 
 ---
 
-## Phase N — Android Auto
+## Phase N — Android Auto (partial ✅ — N.1–N.5 shipped, N.6 deferred to DHU manual QA)
 
 Goal: the browse tree shows up in Android Auto, voice search resolves to a book and starts playback. **Voice analog:** `:core:playback` (`LibrarySessionCallback`, `BookSearchHandler`, `BookSearchParser`, `VoiceSearch`, `CustomCommand`).
 
@@ -246,12 +246,12 @@ This is the payoff for picking `MediaLibraryService` in Phase B.2 instead of the
 
 > **M3E note for Phase N (per [`m3-expressive.md`](m3-expressive.md) D.4):** the AAOS car system theme dominates the browse-tree rendering, so the M3E surface ladder doesn't reach inside Auto's chrome. But any custom in-car activity reachable from the car launcher (a settings activity, a confirmation screen) MUST go through the same `MaterialExpressiveTheme` entry — otherwise the car-side surfaces will read flat against the M3E phone-side ones.
 
-- [ ] **N.1** Manifest declarations — `automotiveApp`, allowed-package metadata for `com.google.android.projection.gearhead`.
-- [ ] **N.2** `LibrarySessionCallback.onGetLibraryRoot` returns the root browseable node.
-- [ ] **N.3** `onGetChildren` walks: Root → "Currently listening" / "Not started" / "All books" / "Authors". Each leaf is a `MediaItem` with a `BookId` that `onPlaybackResumption` can re-hydrate.
-- [ ] **N.4** Voice search: parse `query` for artist/album/title — `BookSearchParser` resolves to a `BookId` + position (resume where you left off, not from the beginning).
-- [ ] **N.5** Custom commands: set sleep timer, change speed, skip silence — surfaced as Auto custom action buttons.
-- [ ] **N.6** Verify via Desktop Head Unit (DHU) on the dev machine (`~/Android/Sdk/extras/google/auto/desktop-head-unit`).
+- [x] **N.1** Manifest declarations — `automotiveApp` descriptor at `res/xml/automotive_app_desc.xml` + `com.google.android.gms.car.application` meta-data + `<uses-feature android:name="android.hardware.type.automotive" android:required="false">`. Gearhead allowlisting is granted implicitly by registering a `MediaLibraryService` action filter (already in B.2) + the descriptor metadata.
+- [x] **N.2** `WhisperboyLibrarySessionCallback.onGetLibraryRoot` returns the root browseable node (`mediaId = "root"`).
+- [x] **N.3** `onGetChildren` walks: Root → `current` / `not_started` / `all` / `authors`; `authors` expands to `author:<name>` nodes; leaves are `MediaItem`s with `mediaId = "book:<bookId>"`, `MEDIA_TYPE_AUDIO_BOOK`, artwork URI from `CoverStore.pathFor`.
+- [x] **N.4** Voice search via `onAddMediaItems`: `requestMetadata.searchQuery` → `BookSource.search` (Room `LIKE` over title + author); exact-title-match preferred, fall back to fuzzy `author.contains`. Resume position lives on `BookEntity.currentChapterIndex` + `positionInChapterMs`; `BookCommands.playBook` consumes both.
+- [x] **N.5** Custom commands registered in `onConnect` (`SET_SLEEP_TIMER` / `SET_SPEED` / `SET_SKIP_SILENCE`) and dispatched in `onCustomCommand`. Sleep timer + speed are wired today (Phase G + Phase F); skip-silence projects through `TransportCommands.setSkipSilence` which is a logged no-op until Phase J ships the AudioProcessor — the car UI sees `RESULT_SUCCESS` either way.
+- [ ] **N.6** Verify via Desktop Head Unit (DHU) on the dev machine (`~/Android/Sdk/extras/google/auto/desktop-head-unit`). **DEFERRED — requires DHU; deferred to manual QA pass.** Headless agent loops cannot drive DHU; the in-app browse + search + custom-command surfaces are implemented and unit-buildable, but visual + voice verification against a real Auto head-unit (or DHU) is left as a manual step.
 
 ---
 

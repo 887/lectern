@@ -101,10 +101,14 @@ dependencies {
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
 
-  // Media3 — ExoPlayer + MediaSession + (eventually) MediaLibraryService for Android Auto.
+  // Media3 — ExoPlayer + MediaSession + MediaLibraryService for Android Auto (Phase N).
   implementation(libs.androidx.media3.exoplayer)
   implementation(libs.androidx.media3.session)
   implementation(libs.androidx.media3.ui)
+  // Phase N — `kotlinx.coroutines.guava.future { ... }` so the MediaLibrarySession callback
+  // can express its async lookups as suspend functions and return them as the
+  // `ListenableFuture<LibraryResult<...>>` Media3 expects.
+  implementation(libs.kotlinx.coroutines.guava)
 
   // SAF — DocumentFile wrapper for the picked-tree URIs (Phase C wraps this in CachedDocumentFile).
   implementation(libs.androidx.documentfile)

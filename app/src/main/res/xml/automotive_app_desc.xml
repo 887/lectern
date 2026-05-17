@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Phase N — Android Auto descriptor. Tells the Gearhead car launcher this app
+  participates as a media app. The `media` use is what surfaces the browseable
+  tree (Currently listening / Not started / All books / Authors) inside the car
+  UI; no other `<uses>` apply (we don't ship messaging or notifications-on-Auto
+  surfaces, both of which are separate tags).
+-->
+<automotiveApp>
+    <uses name="media" />
+</automotiveApp>
