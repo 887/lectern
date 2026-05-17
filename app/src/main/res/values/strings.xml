@@ -141,6 +141,17 @@
     <string name="library_folders_back_cd">Back</string>
     <string name="library_folders_fab_add_cd">Add folder</string>
 
+    <!-- settings_theme_ — Theme sub-page (Phase K.5) -->
+    <string name="settings_theme_title">Theme</string>
+    <string name="settings_theme_back_cd">Back</string>
+    <string name="settings_theme_mode_section">Theme</string>
+    <string name="settings_theme_mode_light">Light</string>
+    <string name="settings_theme_mode_dark">Dark</string>
+    <string name="settings_theme_mode_system">Follow system</string>
+    <string name="settings_theme_dynamic_color_title">Dynamic color</string>
+    <string name="settings_theme_dynamic_color_body">Use colors from your wallpaper (Material You).</string>
+    <string name="settings_theme_dynamic_color_unavailable">Requires Android 12 or later.</string>
+
     <!-- about_ — About sub-page (Phase K.6) -->
     <string name="about_title">About</string>
     <string name="about_version_format">Version %1$s (%2$s)</string>

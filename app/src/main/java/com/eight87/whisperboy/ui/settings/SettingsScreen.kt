@@ -78,6 +78,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onAboutClick: () -> Unit,
     onLibraryFoldersClick: () -> Unit,
+    onThemeClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -152,7 +153,7 @@ fun SettingsScreen(
                     icon = Icons.Outlined.Palette,
                     title = stringResource(R.string.settings_category_theme),
                     subtitle = stringResource(R.string.settings_category_theme_subtitle),
-                    onClick = pendingClick,
+                    onClick = onThemeClick,
                 )
             }
 

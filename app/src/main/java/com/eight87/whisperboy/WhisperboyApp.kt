@@ -24,6 +24,7 @@ import com.eight87.whisperboy.ui.playback.NowPlayingSheet
 import com.eight87.whisperboy.ui.settings.AboutScreen
 import com.eight87.whisperboy.ui.settings.LibraryFoldersScreen
 import com.eight87.whisperboy.ui.settings.SettingsScreen
+import com.eight87.whisperboy.ui.settings.ThemeSettingsScreen
 import kotlinx.coroutines.launch
 
 /**
@@ -96,6 +97,15 @@ fun WhisperboyApp() {
                         onBack = { backStack.removeLastOrNull() },
                         onAboutClick = { backStack.add(AboutRoute) },
                         onLibraryFoldersClick = { backStack.add(LibraryFoldersRoute) },
+                        onThemeClick = { backStack.add(ThemeSettingsRoute) },
+                        modifier = Modifier.safeDrawingPadding(),
+                    )
+                }
+                entry<ThemeSettingsRoute> {
+                    // Phase K.5 — theme mode + dynamic-color toggle.
+                    ThemeSettingsScreen(
+                        themeSettings = graph.themeSettings,
+                        onBack = { backStack.removeLastOrNull() },
                         modifier = Modifier.safeDrawingPadding(),
                     )
                 }
