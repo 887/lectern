@@ -23,6 +23,7 @@ import com.eight87.whisperboy.data.library.MediaAnalyzer
 import com.eight87.whisperboy.data.library.PersistedUriPermissionStore
 import com.eight87.whisperboy.data.library.SafLibraryScanner
 import com.eight87.whisperboy.data.library.ScanWriter
+import com.eight87.whisperboy.data.library.parser.ChapterParser
 import com.eight87.whisperboy.playback.PlayerHolder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -76,9 +77,17 @@ class AppGraph(context: Context) {
      * to per-file metadata (durations / titles / authors / cumulative positions). Phase D.4's
      * `applyScan` will consume the enriched output.
      */
+    /**
+     * Phase I.7 — embedded-chapter parser. Routes M4B / Matroska / Vorbis URIs to the right
+     * parser. Returned from the singleton graph so [LibraryScannerEnrichment] can call into
+     * it during the per-book enrichment pass without re-allocating.
+     */
+    val chapterParser: ChapterParser = ChapterParser(appContext)
+
     val libraryScannerEnrichment: LibraryScannerEnrichment = LibraryScannerEnrichment(
         mediaAnalyzer = mediaAnalyzer,
         folderCoverFinder = FolderCoverFinder(),
+        chapterParser = chapterParser,
     )
 
     /** Phase D.4 — atomic cover-bytes-to-disk store at `<filesDir>/covers/<bookId>`. */
