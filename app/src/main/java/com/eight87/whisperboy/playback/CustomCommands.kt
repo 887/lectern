@@ -23,11 +23,15 @@ internal object CustomCommands {
     /** Action id (wired today via [androidx.media3.common.Player.setPlaybackSpeed]). */
     const val SET_SPEED = "com.eight87.whisperboy.SET_SPEED"
 
-    /** Action id (Phase J — currently a logged no-op until the AudioProcessor lands). */
+    /** Action id (Phase J — wired to `ExoPlayer.skipSilenceEnabled` on the session side). */
     const val SET_SKIP_SILENCE = "com.eight87.whisperboy.SET_SKIP_SILENCE"
+
+    /** Action id (Phase J — wired to [VolumeGainAudioProcessor.setGainDb] on the session side). */
+    const val SET_GAIN_DB = "com.eight87.whisperboy.SET_GAIN_DB"
 
     /** Bundle keys. */
     const val EXTRA_DURATION_MS = "durationMs"
     const val EXTRA_SPEED = "speed"
     const val EXTRA_ENABLED = "enabled"
+    const val EXTRA_GAIN_DB = "gainDb"
 }

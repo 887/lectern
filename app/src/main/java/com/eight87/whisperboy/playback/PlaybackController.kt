@@ -415,20 +415,60 @@ internal class PlaybackController(
         if (c.hasPreviousMediaItem()) c.seekToPreviousMediaItem() else c.seekTo(0L)
     }
 
-    override suspend fun setSpeed(speed: Float) = onMain { c ->
-        c.setPlaybackSpeed(speed.coerceIn(0.5f, 3.5f))
+    override suspend fun setSpeed(speed: Float) {
+        val coerced = speed.coerceIn(0.5f, 3.5f)
+        onMain { c -> c.setPlaybackSpeed(coerced) }
+        // Persist per-book so the value sticks across app restarts AND is reapplied on the next
+        // [playBook] (Voice's per-book settings pattern; see Phase J.4).
+        targetedBookId.value?.let { id ->
+            applicationScope.launch { bookSource.setSpeed(id, coerced) }
+        }
     }
 
     override suspend fun setSkipSilence(enabled: Boolean) {
-        // Skip-silence is an ExoPlayer-only knob (not exposed on the cross-process MediaController
-        // surface). Phase J wires this through a custom session command; for Phase F we just
-        // mirror the request into [PlayerSnapshot] so the UI reflects the intent.
+        // Skip-silence is an ExoPlayer-only knob — [MediaController] doesn't expose it across the
+        // IPC boundary. Send a custom session command (Phase J) that the session callback
+        // translates into `ExoPlayer.skipSilenceEnabled` on the service side.
+        sendCustomCommand(
+            CustomCommands.SET_SKIP_SILENCE,
+            android.os.Bundle().apply {
+                putBoolean(CustomCommands.EXTRA_ENABLED, enabled)
+            },
+        )
         playerSnapshot.update { it.copy(skipSilenceRequested = enabled) }
+        targetedBookId.value?.let { id ->
+            applicationScope.launch { bookSource.setSkipSilence(id, enabled) }
+        }
     }
 
     override suspend fun setGain(gainDb: Float) {
-        // Same shape as skip-silence — Phase J ships the AudioProcessor; this is a no-op stub.
-        playerSnapshot.update { it.copy(gainDbRequested = gainDb) }
+        val coerced = gainDb.coerceIn(-3f, 12f)
+        sendCustomCommand(
+            CustomCommands.SET_GAIN_DB,
+            android.os.Bundle().apply {
+                putFloat(CustomCommands.EXTRA_GAIN_DB, coerced)
+            },
+        )
+        playerSnapshot.update { it.copy(gainDbRequested = coerced) }
+        targetedBookId.value?.let { id ->
+            applicationScope.launch { bookSource.setGain(id, coerced) }
+        }
+    }
+
+    /**
+     * Phase J helper — send a custom [androidx.media3.session.SessionCommand] on the Main thread.
+     * No-ops cleanly when the controller hasn't connected yet (UI may invoke before
+     * `buildAsync` resolves). The returned `ListenableFuture` is intentionally ignored —
+     * callers don't care about per-command ack, just that the latest write wins.
+     */
+    private suspend fun sendCustomCommand(action: String, args: android.os.Bundle) {
+        val c = controller ?: return
+        withContext(Dispatchers.Main) {
+            c.sendCustomCommand(
+                androidx.media3.session.SessionCommand(action, android.os.Bundle.EMPTY),
+                args,
+            )
+        }
     }
 
     // ---------------------------------------------------------------- BookCommands
@@ -486,6 +526,23 @@ internal class PlaybackController(
             c.setMediaItems(items, startIndex.coerceIn(0, items.lastIndex), startMs.coerceAtLeast(0L))
         }
         c.prepare()
+        // Phase J — apply persisted per-book knobs as playback starts so the user's last
+        // speed / skip-silence / gain settings stick across sessions. Speed goes straight to
+        // the controller; skip-silence + gain travel via custom session commands because
+        // [MediaController] doesn't surface them.
+        c.setPlaybackSpeed(book.speed.coerceIn(0.5f, 3.5f))
+        c.sendCustomCommand(
+            androidx.media3.session.SessionCommand(CustomCommands.SET_SKIP_SILENCE, android.os.Bundle.EMPTY),
+            android.os.Bundle().apply {
+                putBoolean(CustomCommands.EXTRA_ENABLED, book.skipSilenceEnabled)
+            },
+        )
+        c.sendCustomCommand(
+            androidx.media3.session.SessionCommand(CustomCommands.SET_GAIN_DB, android.os.Bundle.EMPTY),
+            android.os.Bundle().apply {
+                putFloat(CustomCommands.EXTRA_GAIN_DB, book.gainDb.coerceIn(-3f, 12f))
+            },
+        )
         c.playWhenReady = true
     }
 

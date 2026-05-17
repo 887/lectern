@@ -41,4 +41,18 @@ interface BookSource {
      * the user's pick alone. Bytes are typically loaded from a SAF `OpenDocument` result.
      */
     suspend fun setCustomCover(bookId: String, bytes: ByteArray)
+
+    /**
+     * Phase J — per-book playback knobs. The UI calls these via `PlaybackController.setSpeed`
+     * / `setSkipSilence` / `setGain`; the controller persists through this surface so the value
+     * sticks across app restarts AND is applied back on the next [BookCommands.playBook] call.
+     *
+     * Coercion to legal ranges happens at the controller layer (or the UI Slider's `valueRange`);
+     * the data layer trusts callers.
+     */
+    suspend fun setSpeed(bookId: String, speed: Float)
+
+    suspend fun setSkipSilence(bookId: String, enabled: Boolean)
+
+    suspend fun setGain(bookId: String, gainDb: Float)
 }

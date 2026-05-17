@@ -18,10 +18,18 @@ import androidx.media3.exoplayer.ExoPlayer
  * - `setHandleAudioBecomingNoisy(true)` — auto-pause on headphone unplug.
  * - `setWakeMode(WAKE_MODE_LOCAL)` — keep CPU alive during local playback (no network wake).
  * - Audio-only renderers via [OnlyAudioRenderersFactory] — no video pipeline.
+ *
+ * Phase J — exposes [volumeGain] and [exoPlayer]. The session-callback layer needs the concrete
+ * [ExoPlayer] (not just the [androidx.media3.common.Player] facet) to call
+ * `setSkipSilenceEnabled`. [volumeGain] is the same instance handed to
+ * [OnlyAudioRenderersFactory] so the session callback's `setGainDb` flow can just call
+ * `volumeGain.setGainDb(...)` and the next audio frame picks up the new multiplier.
  */
 class PlayerHolder(context: Context) {
 
-    val player: Player = ExoPlayer.Builder(context, OnlyAudioRenderersFactory(context))
+    val volumeGain: VolumeGainAudioProcessor = VolumeGainAudioProcessor()
+
+    val exoPlayer: ExoPlayer = ExoPlayer.Builder(context, OnlyAudioRenderersFactory(context, volumeGain))
         .setAudioAttributes(
             AudioAttributes.Builder()
                 .setUsage(C.USAGE_MEDIA)
@@ -33,7 +41,10 @@ class PlayerHolder(context: Context) {
         .setWakeMode(C.WAKE_MODE_LOCAL)
         .build()
 
+    /** Back-compat alias — most existing callers want the [androidx.media3.common.Player] facet. */
+    val player: Player get() = exoPlayer
+
     fun release() {
-        player.release()
+        exoPlayer.release()
     }
 }

@@ -52,6 +52,15 @@ interface BookDao {
     @Query("UPDATE books SET lastPlayedAt = :timestamp WHERE bookId = :id")
     suspend fun setLastPlayedAt(id: String, timestamp: Long?)
 
+    @Query("UPDATE books SET speed = :speed WHERE bookId = :id")
+    suspend fun setSpeed(id: String, speed: Float)
+
+    @Query("UPDATE books SET skipSilenceEnabled = :enabled WHERE bookId = :id")
+    suspend fun setSkipSilence(id: String, enabled: Boolean)
+
+    @Query("UPDATE books SET gain_db = :gainDb WHERE bookId = :id")
+    suspend fun setGainDb(id: String, gainDb: Float)
+
     @Query("DELETE FROM books WHERE bookId = :id")
     suspend fun deleteById(id: String)
 }

@@ -50,7 +50,7 @@ class PlaybackService : MediaLibraryService() {
                 .build()
         )
         val graph = (application as WhisperboyApplication).graph
-        val player = graph.playerHolder.player
+        val playerHolder = graph.playerHolder
         val callback = WhisperboyLibrarySessionCallback(
             context = this,
             bookSource = graph.bookSource,
@@ -58,8 +58,10 @@ class PlaybackService : MediaLibraryService() {
             bookCommands = graph.bookCommands,
             sleepTimerCommands = graph.sleepTimerCommands,
             scope = callbackScope,
+            exoPlayer = playerHolder.exoPlayer,
+            volumeGain = playerHolder.volumeGain,
         )
-        session = MediaLibrarySession.Builder(this, player, callback).build()
+        session = MediaLibrarySession.Builder(this, playerHolder.player, callback).build()
     }
 
     private fun createPlaybackNotificationChannel() {
