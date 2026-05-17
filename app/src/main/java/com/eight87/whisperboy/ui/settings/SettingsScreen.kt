@@ -27,14 +27,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.RescanState
@@ -78,16 +74,11 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onAboutClick: () -> Unit,
     onLibraryFoldersClick: () -> Unit,
+    onPlaybackClick: () -> Unit,
     onSleepTimerClick: () -> Unit,
     onThemeClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    val comingSoon = stringResource(R.string.settings_category_pending_snackbar)
-    val pendingClick: () -> Unit = {
-        scope.launch { snackbarHostState.showSnackbar(comingSoon) }
-    }
     val rescanState by libraryRescanCoordinator.state.collectAsStateWithLifecycle()
 
     Scaffold(
@@ -105,7 +96,6 @@ fun SettingsScreen(
                 },
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -121,7 +111,7 @@ fun SettingsScreen(
                     icon = Icons.Filled.PlayCircle,
                     title = stringResource(R.string.settings_category_playback),
                     subtitle = stringResource(R.string.settings_category_playback_subtitle),
-                    onClick = pendingClick,
+                    onClick = onPlaybackClick,
                 )
                 SettingsCategoryRow(
                     id = "sleep",

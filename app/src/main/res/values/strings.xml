@@ -199,6 +199,27 @@
     <string name="library_folders_back_cd">Back</string>
     <string name="library_folders_fab_add_cd">Add folder</string>
 
+    <!-- settings_playback_ — Playback sub-page (Phase K.2) -->
+    <string name="settings_playback_title">Playback</string>
+    <string name="settings_playback_back_cd">Back</string>
+    <string name="settings_playback_defaults_section">Defaults</string>
+    <string name="settings_playback_default_speed_title">Default speed</string>
+    <string name="settings_playback_default_speed_format">%1$.2fx</string>
+    <string name="settings_playback_default_speed_reset">Reset to 1.00x</string>
+    <string name="settings_playback_default_silence_title">Default skip silence</string>
+    <string name="settings_playback_default_silence_subtitle">New books inherit this setting on first scan.</string>
+    <string name="settings_playback_default_gain_title">Default volume gain</string>
+    <string name="settings_playback_default_gain_format">%1$+.1f dB</string>
+    <string name="settings_playback_seek_section">Seek controls</string>
+    <string name="settings_playback_rewind_title">Rewind seconds</string>
+    <string name="settings_playback_forward_title">Forward seconds</string>
+    <string name="settings_playback_auto_rewind_title">Auto-rewind after pause</string>
+    <string name="settings_playback_auto_rewind_subtitle">When resuming after &gt;5 minutes paused, rewind by this many seconds.</string>
+    <string name="settings_playback_seconds_format">%1$d seconds</string>
+    <string name="settings_playback_equalizer_title">Open system equalizer</string>
+    <string name="settings_playback_equalizer_subtitle">Launch your device\'s audio effect panel.</string>
+    <string name="settings_playback_equalizer_unavailable">No equalizer found on this device.</string>
+
     <!-- settings_theme_ — Theme sub-page (Phase K.5) -->
     <string name="settings_theme_title">Theme</string>
     <string name="settings_theme_back_cd">Back</string>

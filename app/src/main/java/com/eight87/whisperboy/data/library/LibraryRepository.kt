@@ -1,8 +1,10 @@
 package com.eight87.whisperboy.data.library
 
 import androidx.room.withTransaction
+import com.eight87.whisperboy.data.playback.PlaybackSettings
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 
 /**
  * Concrete implementation of every narrow data interface in `data/library/`. Lives behind
@@ -16,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 internal class LibraryRepository(
     private val database: LibraryDatabase,
     private val coverStore: CoverStore,
+    private val playbackSettings: PlaybackSettings,
 ) : BookSource, ChapterSource, BookmarkSource, ScanWriter {
 
     private val bookDao = database.bookDao()
@@ -115,6 +118,14 @@ internal class LibraryRepository(
     // ---- ScanWriter ----
 
     override suspend fun applyScan(snapshot: ScanSnapshot) {
+        // 0. Snapshot the global per-book defaults ONCE for this scan. New rows inherit
+        //    these on first sight (J.4 / K.2); existing rows preserve their per-book
+        //    overrides. Read outside the Room transaction so we don't hold the DB lock
+        //    waiting on DataStore.
+        val defaultSpeed = playbackSettings.defaultSpeed.first()
+        val defaultSkipSilence = playbackSettings.defaultSkipSilence.first()
+        val defaultGainDb = playbackSettings.defaultGainDb.first()
+
         // 1. Land cover bytes on disk OUTSIDE the Room transaction. Long file IO inside the
         //    txn would hold the database lock; a rollback would also leave the on-disk file
         //    orphaned. Write first, then commit rows that reference the path.
@@ -124,17 +135,49 @@ internal class LibraryRepository(
         //    and tag the new row as `Custom` too, so the scanner-derived bytes (sidecar
         //    folder image / embedded tag) don't overwrite the user's pick. Acceptable to
         //    fan out per-book here: scans run infrequently and the typical library is small.
-        val booksWithCoverPaths: List<Triple<ScannedBook, String?, CoverSource>> =
+        //
+        //    J.4 / K.2 default propagation: this same per-book existing-row fetch carries
+        //    a [PerBookState] alongside the cover decision. If `existing` is null this is a
+        //    first-time scan for that book — copy the global defaults into the new entity.
+        //    Otherwise preserve the per-book row's `speed` / `skipSilenceEnabled` / `gainDb`
+        //    + the user's resume position + `lastPlayedAt`. Editing the globals later does
+        //    NOT retro-write — globals are first-scan-only seeds.
+        val booksWithScanData: List<Pair<ScannedBook, PerBookScanData>> =
             snapshot.books.map { book ->
                 val existing = bookDao.findById(book.bookId)
-                if (existing?.coverSource == CoverSource.Custom) {
-                    Triple(book, existing.coverPath, CoverSource.Custom)
+                val (coverPath, coverSource) = if (existing?.coverSource == CoverSource.Custom) {
+                    existing.coverPath to CoverSource.Custom
                 } else {
-                    val coverPath = book.embeddedCoverBytes?.let { bytes ->
+                    val derived = book.embeddedCoverBytes?.let { bytes ->
                         coverStore.writeCover(book.bookId, bytes)
                     } ?: book.coverPath
-                    Triple(book, coverPath, CoverSource.Scanned)
+                    derived to CoverSource.Scanned
                 }
+                val data = if (existing != null) {
+                    PerBookScanData(
+                        coverPath = coverPath,
+                        coverSource = coverSource,
+                        speed = existing.speed,
+                        skipSilenceEnabled = existing.skipSilenceEnabled,
+                        gainDb = existing.gainDb,
+                        currentChapterIndex = existing.currentChapterIndex,
+                        positionInChapterMs = existing.positionInChapterMs,
+                        lastPlayedAt = existing.lastPlayedAt,
+                    )
+                } else {
+                    // First-time scan: seed per-book settings from the global defaults (J.4 / K.2).
+                    PerBookScanData(
+                        coverPath = coverPath,
+                        coverSource = coverSource,
+                        speed = defaultSpeed,
+                        skipSilenceEnabled = defaultSkipSilence,
+                        gainDb = defaultGainDb,
+                        currentChapterIndex = 0,
+                        positionInChapterMs = 0L,
+                        lastPlayedAt = null,
+                    )
+                }
+                book to data
             }
 
         // 2. Group incoming book ids by treeUri so soft-delete sweeps per touched root.
@@ -150,8 +193,8 @@ internal class LibraryRepository(
             for (root in touchedRoots) {
                 bookDao.markRootInactive(root)
             }
-            for ((book, coverPath, coverSource) in booksWithCoverPaths) {
-                bookDao.upsert(book.toEntity(coverPath = coverPath, coverSource = coverSource))
+            for ((book, data) in booksWithScanData) {
+                bookDao.upsert(book.toEntity(data))
                 // Replace the chapter set wholesale. CASCADE on chapter delete is fine here:
                 // bookmarks have `onDelete = SET_NULL` on chapterId, so they survive a
                 // chapter-row disappearing (the bookmark just unpins from the chapter and
@@ -162,31 +205,37 @@ internal class LibraryRepository(
         }
     }
 
-    private fun ScannedBook.toEntity(coverPath: String?, coverSource: CoverSource): BookEntity = BookEntity(
+    private fun ScannedBook.toEntity(data: PerBookScanData): BookEntity = BookEntity(
         bookId = bookId,
         treeUriString = treeUriString,
         relativePath = relativePath,
         title = title,
         author = author,
         durationMs = durationMs,
-        coverPath = coverPath,
-        coverSource = coverSource,
-        // Resume / per-book settings are NOT touched on rescan — preserve the user's state
-        // by not overwriting these fields. Room's @Upsert with the existing PK will write
-        // ALL columns, so we have to read the existing row and merge. For D.4 simplicity:
-        // an incoming scan resets currentChapterIndex / positionInChapterMs / per-book
-        // settings to defaults. Phase D's roadmap notes this as a follow-up — proper
-        // merge-preserve-resume lands when Phase F's playback wires in.
-        // TODO(D-followup): preserve currentChapterIndex / positionInChapterMs / speed /
-        //   skipSilenceEnabled / gainDb / lastPlayedAt across rescan by reading the
-        //   existing row first. Not on the critical path for D.4.
-        currentChapterIndex = 0,
-        positionInChapterMs = 0L,
-        speed = 1.0f,
-        skipSilenceEnabled = false,
-        gainDb = 0.0f,
-        lastPlayedAt = null,
+        coverPath = data.coverPath,
+        coverSource = data.coverSource,
+        currentChapterIndex = data.currentChapterIndex,
+        positionInChapterMs = data.positionInChapterMs,
+        speed = data.speed,
+        skipSilenceEnabled = data.skipSilenceEnabled,
+        gainDb = data.gainDb,
+        lastPlayedAt = data.lastPlayedAt,
         active = true,
+    )
+
+    /**
+     * Per-book scan state assembled in [applyScan] and consumed by [toEntity]. New rows get the
+     * global defaults; existing rows preserve their per-book overrides + resume state.
+     */
+    private data class PerBookScanData(
+        val coverPath: String?,
+        val coverSource: CoverSource,
+        val speed: Float,
+        val skipSilenceEnabled: Boolean,
+        val gainDb: Float,
+        val currentChapterIndex: Int,
+        val positionInChapterMs: Long,
+        val lastPlayedAt: Long?,
     )
 
     private fun ScannedChapter.toEntity(bookId: String): ChapterEntity = ChapterEntity(

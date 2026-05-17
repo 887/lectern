@@ -203,6 +203,7 @@ class AppGraph(context: Context) {
     private val libraryRepository: LibraryRepository = LibraryRepository(
         database = libraryDatabase,
         coverStore = coverStore,
+        playbackSettings = playbackSettings,
     )
 
     /** Read-only book catalog (active books only). Composables consume this, not the repo. */
