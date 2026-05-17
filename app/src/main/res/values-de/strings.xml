@@ -246,6 +246,17 @@
     <string name="settings_theme_dynamic_color_title">Dynamische Farben</string>
     <string name="settings_theme_dynamic_color_body">Farben aus Ihrem Hintergrundbild verwenden (Material You).</string>
     <string name="settings_theme_dynamic_color_unavailable">Benötigt Android 12 oder neuer.</string>
+    <!-- K.5-Nachschuss — Eigene Basisfarbe + Eigene Playerfarbe (aus tonearmboy portiert). -->
+    <string name="settings_theme_custom_base_label">Eigene Basisfarbe</string>
+    <string name="settings_theme_custom_base_subtitle_set">Farbe: #%1$06X</string>
+    <string name="settings_theme_custom_base_subtitle_unset">Nicht festgelegt</string>
+    <string name="settings_theme_custom_tint_label">Eigene Playerfarbe</string>
+    <string name="settings_theme_custom_tint_subtitle_set">Farbe: #%1$06X</string>
+    <string name="settings_theme_custom_tint_subtitle_unset">Vom Cover ableiten</string>
+    <string name="settings_theme_color_picker_title">Farbe wählen</string>
+    <string name="settings_theme_color_picker_reset">Zurücksetzen</string>
+    <string name="settings_theme_color_picker_confirm">OK</string>
+    <string name="settings_theme_color_picker_cancel">Abbrechen</string>
 
     <!-- settings_sleep_ — Schlaftimer-Unterseite -->
     <string name="settings_sleep_title">Schlaftimer</string>

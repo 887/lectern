@@ -140,4 +140,55 @@ class AndroidThemeSettingsTest {
             assertEquals(ThemeMode.Dark, reloaded.mode.first())
             assertEquals(false, reloaded.dynamicColor.first())
         }
+
+    // K.5 follow-up — round-trip tests for the two custom-colour
+    // pickers (ported-from-tonearmboy work).
+
+    @Test
+    fun `customBaseSeed defaults to 0L on a fresh store`() = scope.runTest {
+        assertEquals(0L, settings.customBaseSeed.first())
+    }
+
+    @Test
+    fun `customChromeTint defaults to 0L on a fresh store`() = scope.runTest {
+        assertEquals(0L, settings.customChromeTint.first())
+    }
+
+    @Test
+    fun `setCustomBaseSeed round-trips a non-zero RGB long`() = scope.runTest {
+        settings.setCustomBaseSeed(0xFF8800L)
+        assertEquals(0xFF8800L, settings.customBaseSeed.first())
+    }
+
+    @Test
+    fun `setCustomBaseSeed round-trips zero (reset path)`() = scope.runTest {
+        settings.setCustomBaseSeed(0x123456L)
+        assertEquals(0x123456L, settings.customBaseSeed.first())
+        settings.setCustomBaseSeed(0L)
+        assertEquals(0L, settings.customBaseSeed.first())
+    }
+
+    @Test
+    fun `setCustomChromeTint round-trips a non-zero RGB long`() = scope.runTest {
+        settings.setCustomChromeTint(0x6464C8L)
+        assertEquals(0x6464C8L, settings.customChromeTint.first())
+    }
+
+    @Test
+    fun `setCustomChromeTint round-trips zero (reset path)`() = scope.runTest {
+        settings.setCustomChromeTint(0xDEADBEL)
+        assertEquals(0xDEADBEL, settings.customChromeTint.first())
+        settings.setCustomChromeTint(0L)
+        assertEquals(0L, settings.customChromeTint.first())
+    }
+
+    @Test
+    fun `custom colour setters persist across a recreated settings instance`() = scope.runTest {
+        settings.setCustomBaseSeed(0xC0FFEEL)
+        settings.setCustomChromeTint(0xABCDEFL)
+
+        val reloaded = AndroidThemeSettings(dataStore)
+        assertEquals(0xC0FFEEL, reloaded.customBaseSeed.first())
+        assertEquals(0xABCDEFL, reloaded.customChromeTint.first())
+    }
 }

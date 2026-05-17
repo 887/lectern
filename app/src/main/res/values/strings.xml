@@ -267,6 +267,17 @@
     <string name="settings_theme_dynamic_color_title">Dynamic color</string>
     <string name="settings_theme_dynamic_color_body">Use colors from your wallpaper (Material You).</string>
     <string name="settings_theme_dynamic_color_unavailable">Requires Android 12 or later.</string>
+    <!-- K.5 follow-up — custom base seed + custom chrome tint pickers (ported from tonearmboy). -->
+    <string name="settings_theme_custom_base_label">Custom base color</string>
+    <string name="settings_theme_custom_base_subtitle_set">Color: #%1$06X</string>
+    <string name="settings_theme_custom_base_subtitle_unset">Not set</string>
+    <string name="settings_theme_custom_tint_label">Custom player tint</string>
+    <string name="settings_theme_custom_tint_subtitle_set">Color: #%1$06X</string>
+    <string name="settings_theme_custom_tint_subtitle_unset">Use cover art</string>
+    <string name="settings_theme_color_picker_title">Pick a color</string>
+    <string name="settings_theme_color_picker_reset">Reset</string>
+    <string name="settings_theme_color_picker_confirm">OK</string>
+    <string name="settings_theme_color_picker_cancel">Cancel</string>
 
     <!-- settings_sleep_ — Sleep timer sub-page (Phase K.3) -->
     <string name="settings_sleep_title">Sleep timer</string>

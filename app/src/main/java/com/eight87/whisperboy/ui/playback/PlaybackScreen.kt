@@ -135,11 +135,19 @@ fun PlaybackScreen(
         tint = extractTint(coverPath)
     }
     val surface = MaterialTheme.colorScheme.surface
+    // K.5 follow-up — user-picked chrome tint override (ported from
+    // tonearmboy `82d6248`). When the user has set a custom tint in
+    // Settings → Theme, the override wins regardless of cover-art
+    // extraction. When unset (`LocalCustomChromeTint.current == null`),
+    // the F.6 Palette-derived tint stays in effect — that's the
+    // "default" UX the user picked when they shipped F.6.
+    val customTint = com.eight87.whisperboy.theme.LocalCustomChromeTint.current
+    val effectiveTint = customTint ?: tint
     // Animate the top-of-gradient color so book changes cross-fade instead of snap.
     // Single per-screen animation (not a 9-call theme crossfade — see cold-start-perf B.2);
     // the alpha multiply is folded into the target so we don't allocate a second `Color`.
     val animatedTop by animateColorAsState(
-        targetValue = (tint ?: surface).copy(alpha = 0.4f),
+        targetValue = (effectiveTint ?: surface).copy(alpha = 0.4f),
         label = "playerTintTop",
     )
 
