@@ -261,10 +261,10 @@ This is the payoff for picking `MediaLibraryService` in Phase B.2 instead of the
 
 Goal: a sideload-able APK on GitHub Releases. Mirror of tonearmboy's release pipeline almost exactly. **Voice analog:** none — Voice ships via Play + F-Droid.
 
-- [ ] **O.1** `scripts/build-release-apk.sh` — port from tonearmboy, swap `tonearmboy` → `whisperboy` in artefact names + tag prefixes.
-- [ ] **O.2** `.github/workflows/release.yml` — tag-only, self-disabling, mirror of tonearmboy's workflow. Zero CI minutes by default.
-- [ ] **O.3** First release `v0.1.0-<sha7>` — debug-signed, sideload via Obtainium, validate the install path end-to-end.
-- [ ] **O.4** Production-signed releases when keystore is in place — env vars `WHISPERBOY_RELEASE_KEYSTORE` / `WHISPERBOY_RELEASE_KEY_ALIAS` / `WHISPERBOY_RELEASE_KEY_PASSWORD`.
+- [x] **O.1** `scripts/build-release-apk.sh` — port from tonearmboy, swap `tonearmboy` → `whisperboy` in artefact names + tag prefixes. **shipped in commit `8292b6b`** (and extended by O.5 in `161e0e0` for baseline-profile generation).
+- [x] **O.2** `.github/workflows/release.yml` — tag-only, self-disabling, mirror of tonearmboy's workflow. Zero CI minutes by default. **shipped in commit `9d9df7a`**.
+- [ ] **O.3** First release `v0.1.0-<sha7>` (or whatever the active `v1.0-<sha7>` scheme produces) — debug-signed, sideload via Obtainium, validate the install path end-to-end. **USER-DRIVEN — deferred to a manual `scripts/build-release-apk.sh --gh-release` invocation by the user.**
+- [ ] **O.4** Production-signed releases when keystore is in place — env vars `WHISPER_RELEASE_KEYSTORE` / `WHISPER_RELEASE_KEY_ALIAS` / `WHISPER_RELEASE_KEY_PASSWORD` (script side) and `RELEASE_KEYSTORE_BASE64` / `RELEASE_KEY_ALIAS` / `RELEASE_KEY_PASSWORD` (CI side). **DEFERRED — needs the user to generate the keystore and stash secrets; not subagent-shippable.**
 - [x] **O.5** Wire Baseline Profile generation into `scripts/build-release-apk.sh` (cold-start-perf F.4). Profile generation is the only delta-of-work piece in [`cold-start-perf.md`](cold-start-perf.md) — F.1 plugin + sibling `:baselineprofile` module, F.2 record cold-boot path via `MacrobenchmarkRule`, F.3 `androidx.profileinstaller` in app module, F.4 hook into the release script so every shipped APK includes the profile. Worth more than every other cold-start guard combined (~25–35% off cold start). **shipped in commit `161e0e0`** (placeholder for the commit hash that includes this tick).
 
 ---
