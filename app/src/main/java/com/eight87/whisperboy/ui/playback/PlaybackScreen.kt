@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Pause
@@ -38,6 +39,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -60,6 +62,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eight87.whisperboy.R
+import com.eight87.whisperboy.data.library.BookmarkSource
 import com.eight87.whisperboy.data.library.ChapterEntity
 import com.eight87.whisperboy.data.library.ChapterSource
 import com.eight87.whisperboy.data.playback.PlaybackSettings
@@ -90,9 +93,11 @@ fun PlaybackScreen(
     state: NowPlayingState,
     transport: TransportCommands,
     chapterSource: ChapterSource,
+    bookmarkSource: BookmarkSource,
     playbackSettings: PlaybackSettings,
     sleepTimerCommands: SleepTimerCommands,
     onBack: () -> Unit,
+    onViewBookmarksClick: (bookId: String) -> Unit,
     modifier: Modifier = Modifier,
     /**
      * Optional list state for the inline chapter-queue LazyColumn so a host
@@ -105,6 +110,11 @@ fun PlaybackScreen(
     val uiState by state.state.collectAsStateWithLifecycle()
     val sleepState by sleepTimerCommands.state.collectAsStateWithLifecycle()
     var sleepSheetOpen by remember { mutableStateOf(false) }
+    // Phase H.2 — add-bookmark dialog visibility. Lives at this scope (not inside
+    // PlayerLoaded) so the IconButton in the TopAppBar can flip it without having
+    // to thread a callback through the loaded branch.
+    var addBookmarkDialogOpen by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     // F.6 — extract a single dominant accent color from the current book's cover.
     // Off-main (Dispatchers.IO inside extractTint). Re-keys on the cover path so a
@@ -153,10 +163,27 @@ fun PlaybackScreen(
                     sleepState = sleepState,
                     onClick = { sleepSheetOpen = true },
                 )
-                IconButton(onClick = { /* Phase H */ }) {
+                // Phase H.2 — add-bookmark. Disabled when not Loaded (no book to attach to).
+                val loaded = uiState as? PlaybackUiState.Loaded
+                IconButton(
+                    onClick = { addBookmarkDialogOpen = true },
+                    enabled = loaded != null,
+                ) {
                     Icon(
                         imageVector = Icons.Filled.Bookmark,
                         contentDescription = stringResource(R.string.player_bookmark_cd),
+                    )
+                }
+                // Phase H.1 — view-bookmarks icon. Uses Icons.Filled.Bookmarks (plural)
+                // to distinguish "open the list" from the singular Bookmark "add one".
+                // Disabled until a Loaded book is known.
+                IconButton(
+                    onClick = { loaded?.let { onViewBookmarksClick(it.book.bookId) } },
+                    enabled = loaded != null,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Bookmarks,
+                        contentDescription = stringResource(R.string.bookmark_screen_view_cd),
                     )
                 }
             },
@@ -184,6 +211,77 @@ fun PlaybackScreen(
             onDismiss = { sleepSheetOpen = false },
         )
     }
+
+    // Phase H.2 — add-bookmark dialog. Only meaningful in the Loaded branch (we need a
+    // bookId + chapterId + positionInBookMs to write the row); guarded by the same
+    // `loaded != null` predicate the icon button uses, so the dialog can't open without
+    // a book.
+    val loadedForDialog = uiState as? PlaybackUiState.Loaded
+    if (addBookmarkDialogOpen && loadedForDialog != null) {
+        val chapter = loadedForDialog.currentChapter
+        val positionInChapter = positionInChapter(loadedForDialog)
+        val chapterTitle = chapter?.title
+            ?: chapter?.let { stringResource(R.string.player_unknown_chapter, it.chapterIndex + 1) }
+            ?: loadedForDialog.book.title
+        val defaultTitle = stringResource(
+            R.string.bookmark_add_default_title_format,
+            chapterTitle,
+            formatMmSs(positionInChapter),
+        )
+        AddBookmarkDialog(
+            defaultTitle = defaultTitle,
+            onConfirm = { title ->
+                scope.launch {
+                    bookmarkSource.addBookmark(
+                        bookId = loadedForDialog.book.bookId,
+                        chapterId = chapter?.chapterId,
+                        title = title.ifBlank { null },
+                        positionInBookMs = loadedForDialog.positionInBookMs,
+                        setBySleepTimer = false,
+                    )
+                }
+                addBookmarkDialogOpen = false
+            },
+            onDismiss = { addBookmarkDialogOpen = false },
+        )
+    }
+}
+
+/**
+ * Phase H.2 — inline add-bookmark dialog launched from the player's top-app-bar bookmark
+ * button. Pre-fills the title with `<chapter title> — <mm:ss in chapter>`; the user can rename
+ * or accept. Save fires [onConfirm] with the (possibly edited) title; a blank title is treated
+ * as null so the bookmark list falls back to its default-title rendering.
+ */
+@Composable
+private fun AddBookmarkDialog(
+    defaultTitle: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var text by remember(defaultTitle) { mutableStateOf(defaultTitle) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(R.string.bookmark_add_dialog_title)) },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text(stringResource(R.string.bookmark_add_dialog_hint)) },
+                singleLine = true,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(text) }) {
+                Text(stringResource(R.string.bookmark_add_dialog_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.dialog_cancel))
+            }
+        },
+    )
 }
 
 /**

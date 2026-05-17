@@ -73,3 +73,15 @@ import kotlinx.serialization.Serializable
 @Serializable data object OnboardingFolderPickerRoute : NavKey
 
 @Serializable data object OnboardingFirstScanRoute : NavKey
+
+/**
+ * Phase H.1 — bookmark list for a single book. Pushed from the player's top-app-bar
+ * "view bookmarks" icon. Tap on a row inside the screen seeks the active player to the
+ * bookmark's `positionInBookMs`, auto-resumes playback, and pops the back stack back to the
+ * player (the entry-block in `WhisperboyApp` owns the seek + play + pop wiring).
+ *
+ * Carries `bookId` so the screen can scope its `observeBookmarksForBook` flow without reaching
+ * into the playback session — keeps the screen usable even when nothing is currently playing
+ * (a future deeplink "bookmarks for book X" pattern, parallel to `PlaybackRoute`).
+ */
+@Serializable data class BookmarkRoute(val bookId: String) : NavKey

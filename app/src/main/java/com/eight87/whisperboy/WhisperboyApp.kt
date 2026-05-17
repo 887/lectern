@@ -19,6 +19,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.eight87.whisperboy.playback.PlaybackUiState
+import com.eight87.whisperboy.ui.bookmark.BookmarkScreen
 import com.eight87.whisperboy.ui.coverart.SelectCoverFromInternet
 import com.eight87.whisperboy.ui.home.HomeScreen
 import com.eight87.whisperboy.ui.onboarding.OnboardingFirstScanScreen
@@ -190,6 +191,29 @@ fun WhisperboyApp() {
                         modifier = Modifier.safeDrawingPadding(),
                     )
                 }
+                entry<BookmarkRoute> { route ->
+                    // Phase H.1 — bookmark list for a single book. Tap on a row seeks the
+                    // active player to the bookmark, auto-resumes, and pops back so the user
+                    // lands inside the player resuming at the bookmark.
+                    BookmarkScreen(
+                        bookId = route.bookId,
+                        bookmarkSource = graph.bookmarkSource,
+                        chapterSource = graph.chapterSource,
+                        onBack = { backStack.removeLastOrNull() },
+                        onBookmarkSeek = { positionInBookMs ->
+                            scope.launch {
+                                graph.transportCommands.seekTo(positionInBookMs)
+                                graph.transportCommands.play()
+                            }
+                            backStack.removeLastOrNull()
+                            // Make sure the player surface is on screen for the seek to be
+                            // visible — the sheet may have been collapsed when the user opened
+                            // the bookmark list from a future deeplink.
+                            openSheet()
+                        },
+                        modifier = Modifier.safeDrawingPadding(),
+                    )
+                }
                 entry<CoverSearchRoute> { route ->
                     // cover-art Phase B.7 — the per-book DuckDuckGo image-search surface.
                     SelectCoverFromInternet(
@@ -217,10 +241,12 @@ fun WhisperboyApp() {
             nowPlayingState = graph.nowPlayingState,
             transportCommands = graph.transportCommands,
             chapterSource = graph.chapterSource,
+            bookmarkSource = graph.bookmarkSource,
             playbackSettings = graph.playbackSettings,
             sleepTimerCommands = graph.sleepTimerCommands,
             sheetProgress = sheetProgress,
             onCollapse = closeSheet,
+            onViewBookmarksClick = { bookId -> backStack.add(BookmarkRoute(bookId)) },
         )
     }
 }

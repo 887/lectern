@@ -159,14 +159,16 @@ Goal: the best sleep timer in class. **Voice analog:** `:core:sleeptimer:impl` (
 
 ---
 
-## Phase H — bookmarks
+## Phase H — bookmarks ✅ DONE
 
 Goal: named bookmarks tied to position-in-book. **Voice analog:** `:features:bookmark`.
 
-- [ ] **H.1** `BookmarkScreen` — list of bookmarks for the current book, grouped by chapter. Each row shows title, time, addedAt, "set by sleep timer" badge if applicable.
-- [ ] **H.2** Add bookmark via the player top-app-bar bookmark button. Default title = chapter title + position; user can rename inline.
-- [ ] **H.3** Tap → seek to bookmark position + auto-resume.
-- [ ] **H.4** Long-press → rename / delete.
+- [x] **H.1** `BookmarkScreen` — list of bookmarks for the current book, grouped by chapter. Each row shows title, time, addedAt, "set by sleep timer" badge if applicable. — read/edit-only screen at `ui/bookmark/BookmarkScreen.kt`; sticky chapter-title headers per group; `Icons.Filled.Bedtime` trailing badge when `setBySleepTimer = true`; coarse relative-addedAt rendering ("Just now" → "x min ago" → "x h ago" → "x d ago" → "A long time ago"). Pushed via new `BookmarkRoute(bookId)` from the player's top-app-bar bookmarks (plural) icon.
+- [x] **H.2** Add bookmark via the player top-app-bar bookmark button. Default title = chapter title + position; user can rename inline. — `IconButton(Icons.Filled.Bookmark)` (singular, "add") in `PlaybackScreen` opens `AddBookmarkDialog`; default title format `<chapter title> — <mm:ss in chapter>`; Save writes via `bookmarkSource.addBookmark(..., setBySleepTimer = false)`. Blank title coerced to null so the list falls back to its default-title rendering.
+- [x] **H.3** Tap → seek to bookmark position + auto-resume. — wired in `WhisperboyApp.kt`'s `entry<BookmarkRoute>` block: `transport.seekTo(positionInBookMs)` + `transport.play()` + `backStack.removeLastOrNull()` + `openSheet()` so the player surface is on screen if the sheet had been collapsed.
+- [x] **H.4** Long-press → rename / delete. — `combinedClickable` per row; long-press opens a `ModalBottomSheet` (Rename / Delete); Rename launches `OutlinedTextField` `AlertDialog`, Delete launches a confirm dialog. Both route through `BookmarkSource.{rename,delete}Bookmark`.
+
+Shipped as a single commit. View-bookmarks icon: `Icons.Filled.Bookmarks` (plural) — chosen over `Icons.AutoMirrored.Filled.List` because the icon's domain semantics ("a stack of bookmarks") read more clearly next to the singular `Icons.Filled.Bookmark` "add" button. Default title format ships as a translatable resource `bookmark_add_default_title_format` = `%1$s — %2$s` so locales can swap the separator.
 
 ---
 
