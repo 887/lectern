@@ -89,7 +89,7 @@ slot-table reuse works correctly across reorderings.
 - [ ] **E.1** Every `items(...)` / `items(count = ...)` call passes a `key = { ... }` argument that returns a stable identity (typically the entity id, NOT the index). **Duplicate-key crash gotcha** (tonearmboy `d75b542`): when a single `LazyVerticalGrid` mixes heterogeneous item types (e.g. section headers + book tiles), the section header's key MUST include a type discriminator (`"section:$letter"` not just `letter`) — otherwise it can collide with a tile id that happens to share the same value, and `LazyVerticalGrid` throws `IllegalArgumentException: Key X was already used`. Same rule applies when sort-aware section keys are introduced (per main.md E.3): keys must round-trip across sort changes without collision.
 - [ ] **E.2** When using `LazyColumn` / `LazyVerticalGrid` for a heterogeneous content type, consider `contentType = { ... }` too — Compose's slot table reuse benefits.
 
-## Phase F — Baseline Profile — shipped in commit `23532ba`
+## Phase F — Baseline Profile — shipped in commit `161e0e0`
 
 Baseline Profile typically shaves 25–35% off cold start on its own.
 Worth more than every phase above combined.
