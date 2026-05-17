@@ -28,6 +28,7 @@ import com.eight87.whisperboy.data.library.ChapterSource
 import com.eight87.whisperboy.data.playback.PlaybackSettings
 import com.eight87.whisperboy.playback.NowPlayingState
 import com.eight87.whisperboy.playback.PlaybackUiState
+import com.eight87.whisperboy.playback.SleepTimerCommands
 import com.eight87.whisperboy.playback.TransportCommands
 import com.eight87.whisperboy.ui.library.NowPlayingBar
 import kotlin.math.max
@@ -65,6 +66,7 @@ fun NowPlayingSheet(
     transportCommands: TransportCommands,
     chapterSource: ChapterSource,
     playbackSettings: PlaybackSettings,
+    sleepTimerCommands: SleepTimerCommands,
     sheetProgress: Animatable<Float, AnimationVector1D>,
     onCollapse: () -> Unit,
     peekDp: androidx.compose.ui.unit.Dp = DEFAULT_PEEK_DP,
@@ -158,6 +160,7 @@ fun NowPlayingSheet(
                             transport = transportCommands,
                             chapterSource = chapterSource,
                             playbackSettings = playbackSettings,
+                            sleepTimerCommands = sleepTimerCommands,
                             onBack = onCollapse,
                         )
                     }

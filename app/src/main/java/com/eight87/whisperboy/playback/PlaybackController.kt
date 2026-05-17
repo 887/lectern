@@ -74,9 +74,43 @@ interface BookCommands {
 }
 
 /**
- * Sleep timer commands — empty in Phase F (compositional shape only). Phase G fills this in.
+ * Phase G — narrow handle the sleep-timer service uses to drive the underlying
+ * [androidx.media3.session.MediaController]. Kept separate from [TransportCommands] so the
+ * timer can ramp volume / pause without inheriting transport-button authority, and so the test
+ * surface for [AndroidSleepTimer] doesn't need a full transport mock.
+ *
+ *  - [setVolumeNow] — set the player's volume (0.0..1.0). Called on Main thread internally.
+ *  - [pauseNow] — pause the player. Called when the timer fires.
+ *  - [currentPositionMs] — read current playback position (for the auto-bookmark at fire).
+ *  - [currentBookId] — read the currently-targeted bookId (for the auto-bookmark).
+ *  - [currentChapterId] — current chapter id, if any (for the auto-bookmark).
+ *  - [mediaItemTransitions] — Flow of `Unit` ticks each time the player transitions media items
+ *    (chapter boundaries). Used by [SleepTimerMode.EndOfChapter] to know when to pause.
  */
-interface SleepTimerCommands
+internal interface PlayerHandle {
+    suspend fun setVolumeNow(volume: Float)
+    suspend fun pauseNow()
+    suspend fun currentPositionMs(): Long
+    suspend fun currentBookId(): String?
+    suspend fun currentChapterId(): String?
+    val mediaItemTransitions: kotlinx.coroutines.flow.SharedFlow<Unit>
+}
+
+/**
+ * Sleep timer commands — Phase G surface. Narrow facet (R.A pattern): the player top-app-bar
+ * sleep button + bottom-sheet take only this interface, never the concrete
+ * [com.eight87.whisperboy.playback.AndroidSleepTimer].
+ *
+ *  - [arm] — start a new timer in the given mode. Replaces any active timer.
+ *  - [cancel] — stop the active timer (or unregister the post-fire shake window). Restores volume
+ *    to 1.0 if a fade-out was in flight.
+ *  - [state] — observable [SleepTimerState] for the UI (button label + bottom-sheet header).
+ */
+interface SleepTimerCommands {
+    suspend fun arm(mode: SleepTimerMode)
+    suspend fun cancel()
+    val state: kotlinx.coroutines.flow.StateFlow<SleepTimerState>
+}
 
 /**
  * UI-side wrapper around Media3's [MediaController]. Owns:
@@ -100,7 +134,7 @@ internal class PlaybackController(
     private val chapterSource: ChapterSource,
     private val playbackSettings: PlaybackSettings,
     private val applicationScope: CoroutineScope,
-) : NowPlayingState, TransportCommands, BookCommands, SleepTimerCommands {
+) : NowPlayingState, TransportCommands, BookCommands, PlayerHandle {
 
     private val appContext = context.applicationContext
 
@@ -124,6 +158,19 @@ internal class PlaybackController(
 
     /** Position ticker output. Decoupled from [playerSnapshot] so chapter projection doesn't churn. */
     private val positionMs = MutableStateFlow(0L)
+
+    /**
+     * Phase G — broadcast on every [Player.Listener.onMediaItemTransition] so the sleep timer's
+     * "end of chapter" mode can pause when the current chapter ends. `replay = 0` (event-only, no
+     * late-subscriber replay) and `extraBufferCapacity = 1` so a fast transition isn't dropped if
+     * the collector is briefly behind.
+     */
+    override val mediaItemTransitions: kotlinx.coroutines.flow.SharedFlow<Unit>
+        get() = _mediaItemTransitions
+    private val _mediaItemTransitions = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(
+        replay = 0,
+        extraBufferCapacity = 1,
+    )
 
     /**
      * Current values for the three user-tunable seek knobs (F.3 + F.4). Updated by a settings
@@ -164,6 +211,10 @@ internal class PlaybackController(
             }
             // A media-item transition is an event-driven projection tick (R.C.5).
             controller?.let { c -> positionMs.value = c.currentPosition }
+            // Phase G — broadcast the chapter boundary to the sleep timer. tryEmit is fine here
+            // because the SharedFlow has `extraBufferCapacity = 1` and we never miss a meaningful
+            // edge (the collector is interested in *that there was* a transition).
+            _mediaItemTransitions.tryEmit(Unit)
         }
 
         override fun onPlaybackParametersChanged(p: androidx.media3.common.PlaybackParameters) {
@@ -451,6 +502,28 @@ internal class PlaybackController(
         // caller's `playBook` is a user error and the null return surfaces as `BookNotFound` via
         // the state projection.
         return this.firstOrNull()
+    }
+
+    // ---------------------------------------------------------------- PlayerHandle (Phase G)
+
+    override suspend fun setVolumeNow(volume: Float) = onMain { c ->
+        c.volume = volume.coerceIn(0f, 1f)
+    }
+
+    override suspend fun pauseNow() = onMain { it.pause() }
+
+    override suspend fun currentPositionMs(): Long {
+        var pos = 0L
+        onMain { c -> pos = c.currentPosition }
+        return pos
+    }
+
+    override suspend fun currentBookId(): String? = targetedBookId.value
+
+    override suspend fun currentChapterId(): String? {
+        var id: String? = null
+        onMain { c -> id = c.currentMediaItem?.mediaId }
+        return id
     }
 
     fun release() {

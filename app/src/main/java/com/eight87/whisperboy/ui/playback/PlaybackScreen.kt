@@ -65,6 +65,8 @@ import com.eight87.whisperboy.data.library.ChapterSource
 import com.eight87.whisperboy.data.playback.PlaybackSettings
 import com.eight87.whisperboy.playback.NowPlayingState
 import com.eight87.whisperboy.playback.PlaybackUiState
+import com.eight87.whisperboy.playback.SleepTimerCommands
+import com.eight87.whisperboy.playback.SleepTimerState
 import com.eight87.whisperboy.playback.TransportCommands
 import com.eight87.whisperboy.ui.common.CoverArt
 import kotlinx.coroutines.launch
@@ -89,6 +91,7 @@ fun PlaybackScreen(
     transport: TransportCommands,
     chapterSource: ChapterSource,
     playbackSettings: PlaybackSettings,
+    sleepTimerCommands: SleepTimerCommands,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     /**
@@ -100,6 +103,8 @@ fun PlaybackScreen(
     chapterListState: LazyListState? = null,
 ) {
     val uiState by state.state.collectAsStateWithLifecycle()
+    val sleepState by sleepTimerCommands.state.collectAsStateWithLifecycle()
+    var sleepSheetOpen by remember { mutableStateOf(false) }
 
     // F.6 — extract a single dominant accent color from the current book's cover.
     // Off-main (Dispatchers.IO inside extractTint). Re-keys on the cover path so a
@@ -144,12 +149,10 @@ fun PlaybackScreen(
                 }
             },
             actions = {
-                IconButton(onClick = { /* Phase G */ }) {
-                    Icon(
-                        imageVector = Icons.Filled.Timer,
-                        contentDescription = stringResource(R.string.player_sleep_timer_cd),
-                    )
-                }
+                SleepTimerButton(
+                    sleepState = sleepState,
+                    onClick = { sleepSheetOpen = true },
+                )
                 IconButton(onClick = { /* Phase H */ }) {
                     Icon(
                         imageVector = Icons.Filled.Bookmark,
@@ -172,6 +175,61 @@ fun PlaybackScreen(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
         }
+        }
+    }
+
+    if (sleepSheetOpen) {
+        SleepTimerSheet(
+            sleepTimerCommands = sleepTimerCommands,
+            onDismiss = { sleepSheetOpen = false },
+        )
+    }
+}
+
+/**
+ * Phase G.2 — top-app-bar sleep timer button. Inactive: plain timer icon. Running with a known
+ * remaining time: shows "mm:ss" as the button label. End-of-chapter mode (remainingMs = -1):
+ * shows the icon + small "EoC" dot. PausedAwaitingShake: shows a shake hint.
+ *
+ * Renders inside the parent [TopAppBar]'s `actions` slot, so the touch target is sized by
+ * [IconButton]; we render a `Box` overlay over the icon for the text badge.
+ */
+@Composable
+private fun SleepTimerButton(
+    sleepState: SleepTimerState,
+    onClick: () -> Unit,
+) {
+    val cd = when (sleepState) {
+        SleepTimerState.Inactive -> stringResource(R.string.sleep_timer_cd_inactive)
+        is SleepTimerState.Running ->
+            if (sleepState.remainingMs > 0L) {
+                stringResource(R.string.sleep_timer_cd_running, (sleepState.remainingMs / 60_000L).toInt())
+            } else {
+                stringResource(R.string.sleep_end_of_chapter)
+            }
+        is SleepTimerState.PausedAwaitingShake -> stringResource(R.string.sleep_shake_to_resume_window)
+    }
+    IconButton(onClick = onClick) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = Icons.Filled.Timer,
+                contentDescription = cd,
+            )
+            val badge = when (sleepState) {
+                is SleepTimerState.Running ->
+                    if (sleepState.remainingMs > 0L) formatMmSs(sleepState.remainingMs) else null
+                else -> null
+            }
+            if (badge != null) {
+                Text(
+                    text = badge,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                        .padding(horizontal = 2.dp),
+                )
+            }
         }
     }
 }

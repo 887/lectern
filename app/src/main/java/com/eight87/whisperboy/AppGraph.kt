@@ -31,13 +31,17 @@ import com.eight87.whisperboy.data.library.ScanWriter
 import com.eight87.whisperboy.data.onboarding.AndroidOnboardingSettings
 import com.eight87.whisperboy.data.onboarding.OnboardingSettings
 import com.eight87.whisperboy.data.playback.AndroidPlaybackSettings
+import com.eight87.whisperboy.data.playback.AndroidSleepTimerSettings
 import com.eight87.whisperboy.data.playback.PlaybackSettings
+import com.eight87.whisperboy.data.playback.SleepTimerSettings
 import com.eight87.whisperboy.data.theme.AndroidThemeSettings
 import com.eight87.whisperboy.data.theme.ThemeSettings
+import com.eight87.whisperboy.playback.AndroidSleepTimer
 import com.eight87.whisperboy.playback.BookCommands
 import com.eight87.whisperboy.playback.NowPlayingState
 import com.eight87.whisperboy.playback.PlaybackController
 import com.eight87.whisperboy.playback.PlayerHolder
+import com.eight87.whisperboy.playback.SleepTimerCommands
 import com.eight87.whisperboy.playback.TransportCommands
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -110,6 +114,18 @@ class AppGraph(context: Context) {
 
     val onboardingSettings: OnboardingSettings =
         AndroidOnboardingSettings(onboardingDataStore)
+
+    /**
+     * Phase G — sleep-timer-specific tunables (default duration, fade-out, shake-to-resume,
+     * auto-arm window). Own DataStore file so a future "reset sleep timer" affordance in K.3
+     * can delete this without touching `playback_settings` (R.B store-split pattern).
+     */
+    private val sleepTimerSettingsDataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
+        produceFile = { appContext.preferencesDataStoreFile("sleep_timer_settings") }
+    )
+
+    val sleepTimerSettings: SleepTimerSettings =
+        AndroidSleepTimerSettings(sleepTimerSettingsDataStore)
 
     /**
      * Library cache database. Eagerly constructed so a misconfigured schema fails fast at app
@@ -226,6 +242,22 @@ class AppGraph(context: Context) {
     val nowPlayingState: NowPlayingState = playbackController
     val transportCommands: TransportCommands = playbackController
     val bookCommands: BookCommands = playbackController
+
+    /**
+     * Phase G — sleep timer service. Takes the narrow [com.eight87.whisperboy.playback.PlayerHandle]
+     * (volume / pause / position reads) implemented by [PlaybackController], plus the
+     * [BookmarkSource] (auto-bookmark on fire, G.5) and [SleepTimerSettings] (G.1 + G.6 knobs).
+     * Concrete class stays `internal`; module-external code sees only [SleepTimerCommands].
+     */
+    private val androidSleepTimer: AndroidSleepTimer = AndroidSleepTimer(
+        context = appContext,
+        playerHandle = playbackController,
+        bookmarkSource = bookmarkSource,
+        sleepTimerSettings = sleepTimerSettings,
+        applicationScope = applicationScope,
+    )
+
+    val sleepTimerCommands: SleepTimerCommands = androidSleepTimer
 
     fun release() {
         playbackController.release()
