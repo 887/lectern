@@ -29,6 +29,7 @@ import com.eight87.whisperboy.ui.onboarding.OnboardingWelcomeScreen
 import com.eight87.whisperboy.ui.playback.NowPlayingSheet
 import com.eight87.whisperboy.ui.settings.AboutScreen
 import com.eight87.whisperboy.ui.settings.LibraryFoldersScreen
+import com.eight87.whisperboy.ui.settings.PlaybackSettingsScreen
 import com.eight87.whisperboy.ui.settings.SettingsScreen
 import com.eight87.whisperboy.ui.settings.SleepTimerSettingsScreen
 import com.eight87.whisperboy.ui.settings.ThemeSettingsScreen
@@ -165,8 +166,17 @@ fun WhisperboyApp() {
                         onBack = { backStack.removeLastOrNull() },
                         onAboutClick = { backStack.add(AboutRoute) },
                         onLibraryFoldersClick = { backStack.add(LibraryFoldersRoute) },
+                        onPlaybackClick = { backStack.add(PlaybackSettingsRoute) },
                         onSleepTimerClick = { backStack.add(SleepTimerSettingsRoute) },
                         onThemeClick = { backStack.add(ThemeSettingsRoute) },
+                        modifier = Modifier.safeDrawingPadding(),
+                    )
+                }
+                entry<PlaybackSettingsRoute> {
+                    // Phase K.2 — playback defaults + seek seconds + equalizer launcher.
+                    PlaybackSettingsScreen(
+                        playbackSettings = graph.playbackSettings,
+                        onBack = { backStack.removeLastOrNull() },
                         modifier = Modifier.safeDrawingPadding(),
                     )
                 }

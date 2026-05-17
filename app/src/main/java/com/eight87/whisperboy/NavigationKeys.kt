@@ -57,6 +57,15 @@ import kotlinx.serialization.Serializable
 @Serializable data object ThemeSettingsRoute : NavKey
 
 /**
+ * Phase K.2 — Playback sub-page. Pushed from Settings. Hosts the
+ * [com.eight87.whisperboy.data.playback.PlaybackSettings] knobs: per-book
+ * defaults (speed / skip silence / gain), seek seconds (rewind / forward /
+ * auto-rewind radio groups), and a system equalizer launcher row that
+ * fires `AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL`.
+ */
+@Serializable data object PlaybackSettingsRoute : NavKey
+
+/**
  * Phase K.3 — Sleep timer sub-page. Pushed from Settings. Hosts the four
  * [com.eight87.whisperboy.data.playback.SleepTimerSettings] knobs: default
  * duration (5/10/15/30/45/60 min radio group), fade-out duration (slider),

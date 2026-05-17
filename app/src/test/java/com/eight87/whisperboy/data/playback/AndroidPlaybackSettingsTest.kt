@@ -3,7 +3,9 @@ package com.eight87.whisperboy.data.playback
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -83,7 +85,8 @@ class AndroidPlaybackSettingsTest {
 
     @Test
     fun `setAutoRewindSeconds round-trips each allowed value`() = scope.runTest {
-        for (value in listOf(5, 10, 30, 60)) {
+        // K.2 picker shape: 0 (off) / 3 / 5 / 10.
+        for (value in listOf(0, 3, 5, 10)) {
             settings.setAutoRewindSeconds(value)
             assertEquals(value, settings.autoRewindSeconds.first())
         }
@@ -97,7 +100,7 @@ class AndroidPlaybackSettingsTest {
         settings.setForwardSeconds(-1)
         assertEquals(30, settings.forwardSeconds.first())
 
-        settings.setAutoRewindSeconds(0)
+        settings.setAutoRewindSeconds(60) // not in K.2 auto-rewind set
         assertEquals(5, settings.autoRewindSeconds.first())
     }
 
@@ -114,16 +117,96 @@ class AndroidPlaybackSettingsTest {
         assertEquals(5, settings.autoRewindSeconds.first())
     }
 
+    // ---- K.2 per-book defaults ----
+
+    @Test
+    fun `defaultSpeed defaults to 1f on a fresh store`() = scope.runTest {
+        assertEquals(1.0f, settings.defaultSpeed.first(), 0.0001f)
+    }
+
+    @Test
+    fun `defaultSkipSilence defaults to false on a fresh store`() = scope.runTest {
+        assertEquals(false, settings.defaultSkipSilence.first())
+    }
+
+    @Test
+    fun `defaultGainDb defaults to 0f on a fresh store`() = scope.runTest {
+        assertEquals(0.0f, settings.defaultGainDb.first(), 0.0001f)
+    }
+
+    @Test
+    fun `setDefaultSpeed round-trips an in-range value`() = scope.runTest {
+        settings.setDefaultSpeed(1.5f)
+        assertEquals(1.5f, settings.defaultSpeed.first(), 0.0001f)
+    }
+
+    @Test
+    fun `setDefaultSpeed clamps out-of-range input`() = scope.runTest {
+        settings.setDefaultSpeed(10f)
+        assertEquals(3.5f, settings.defaultSpeed.first(), 0.0001f)
+
+        settings.setDefaultSpeed(0.1f)
+        assertEquals(0.5f, settings.defaultSpeed.first(), 0.0001f)
+    }
+
+    @Test
+    fun `setDefaultSkipSilence round-trips both values`() = scope.runTest {
+        settings.setDefaultSkipSilence(true)
+        assertEquals(true, settings.defaultSkipSilence.first())
+        settings.setDefaultSkipSilence(false)
+        assertEquals(false, settings.defaultSkipSilence.first())
+    }
+
+    @Test
+    fun `setDefaultGainDb round-trips an in-range value`() = scope.runTest {
+        settings.setDefaultGainDb(4.5f)
+        assertEquals(4.5f, settings.defaultGainDb.first(), 0.0001f)
+    }
+
+    @Test
+    fun `setDefaultGainDb clamps out-of-range input`() = scope.runTest {
+        settings.setDefaultGainDb(50f)
+        assertEquals(12.0f, settings.defaultGainDb.first(), 0.0001f)
+
+        settings.setDefaultGainDb(-100f)
+        assertEquals(-3.0f, settings.defaultGainDb.first(), 0.0001f)
+    }
+
+    @Test
+    fun `out-of-range persisted default speed coerces to 1f on read`() = scope.runTest {
+        dataStore.edit { prefs ->
+            prefs[floatPreferencesKey("default_speed")] = 99f
+        }
+        assertEquals(1.0f, settings.defaultSpeed.first(), 0.0001f)
+    }
+
+    @Test
+    fun `out-of-range persisted default gain coerces to 0f on read`() = scope.runTest {
+        dataStore.edit { prefs ->
+            prefs[floatPreferencesKey("default_gain_db")] = 99f
+        }
+        assertEquals(0.0f, settings.defaultGainDb.first(), 0.0001f)
+    }
+
+    @Test
+    fun `persisted default skip silence round-trips through a recreated instance`() = scope.runTest {
+        dataStore.edit { prefs ->
+            prefs[booleanPreferencesKey("default_skip_silence")] = true
+        }
+        val reloaded = AndroidPlaybackSettings(dataStore)
+        assertEquals(true, reloaded.defaultSkipSilence.first())
+    }
+
     @Test
     fun `setters persist across a recreated settings instance using the same store`() =
         scope.runTest {
             settings.setRewindSeconds(10)
             settings.setForwardSeconds(60)
-            settings.setAutoRewindSeconds(30)
+            settings.setAutoRewindSeconds(10)
 
             val reloaded = AndroidPlaybackSettings(dataStore)
             assertEquals(10, reloaded.rewindSeconds.first())
             assertEquals(60, reloaded.forwardSeconds.first())
-            assertEquals(30, reloaded.autoRewindSeconds.first())
+            assertEquals(10, reloaded.autoRewindSeconds.first())
         }
 }
