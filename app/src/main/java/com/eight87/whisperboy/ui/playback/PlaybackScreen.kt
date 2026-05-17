@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
@@ -39,8 +40,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -114,6 +117,8 @@ fun PlaybackScreen(
     // PlayerLoaded) so the IconButton in the TopAppBar can flip it without having
     // to thread a callback through the loaded branch.
     var addBookmarkDialogOpen by remember { mutableStateOf(false) }
+    // Phase J — per-book playback-options sheet (speed / skip silence / gain).
+    var optionsSheetOpen by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     // F.6 — extract a single dominant accent color from the current book's cover.
@@ -186,6 +191,18 @@ fun PlaybackScreen(
                         contentDescription = stringResource(R.string.bookmark_screen_view_cd),
                     )
                 }
+                // Phase J — overflow IconButton opens the per-book playback options sheet
+                // (speed / skip silence / volume gain). Disabled until a book is loaded
+                // since all three knobs live on the book row.
+                IconButton(
+                    onClick = { optionsSheetOpen = true },
+                    enabled = loaded != null,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.MoreVert,
+                        contentDescription = stringResource(R.string.player_overflow_cd),
+                    )
+                }
             },
         )
 
@@ -244,6 +261,124 @@ fun PlaybackScreen(
             },
             onDismiss = { addBookmarkDialogOpen = false },
         )
+    }
+
+    // Phase J — per-book playback-options sheet. Values come straight off [Loaded] (which is
+    // sourced from [BookEntity]), so the sheet renders the user's last persisted choices.
+    val loadedForOptions = uiState as? PlaybackUiState.Loaded
+    if (optionsSheetOpen && loadedForOptions != null) {
+        PlaybackOptionsSheet(
+            speed = loadedForOptions.speed,
+            skipSilenceEnabled = loadedForOptions.skipSilenceEnabled,
+            gainDb = loadedForOptions.gainDb,
+            onSpeedChange = { value -> scope.launch { transport.setSpeed(value) } },
+            onSkipSilenceChange = { value -> scope.launch { transport.setSkipSilence(value) } },
+            onGainChange = { value -> scope.launch { transport.setGain(value) } },
+            onDismiss = { optionsSheetOpen = false },
+        )
+    }
+}
+
+/**
+ * Phase J — per-book playback options sheet. Three sections:
+ *  - Playback speed: 0.5..3.5x in 0.05 steps, numeric display, reset button.
+ *  - Skip silent passages: Switch.
+ *  - Volume gain: -3..+12 dB in 0.5 dB steps, numeric +/- dB readout.
+ *
+ * Each `onChange` is fire-and-forget from the screen's scope; persistence + ExoPlayer apply
+ * happens inside [PlaybackController].
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlaybackOptionsSheet(
+    speed: Float,
+    skipSilenceEnabled: Boolean,
+    gainDb: Float,
+    onSpeedChange: (Float) -> Unit,
+    onSkipSilenceChange: (Boolean) -> Unit,
+    onGainChange: (Float) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            // --- Speed ---
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(R.string.player_speed_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = stringResource(R.string.player_speed_value_format, speed),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Slider(
+                    value = speed.coerceIn(0.5f, 3.5f),
+                    onValueChange = onSpeedChange,
+                    valueRange = 0.5f..3.5f,
+                    // (3.5 - 0.5) / 0.05 = 60 internal positions, minus the 2 endpoints = 59 steps.
+                    steps = 59,
+                )
+                TextButton(
+                    onClick = { onSpeedChange(1.0f) },
+                    modifier = Modifier.padding(top = 4.dp),
+                ) {
+                    Text(text = stringResource(R.string.player_speed_reset))
+                }
+            }
+
+            // --- Skip silence ---
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.player_silence_title),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = stringResource(R.string.player_silence_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = skipSilenceEnabled,
+                    onCheckedChange = onSkipSilenceChange,
+                )
+            }
+
+            // --- Volume gain ---
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(R.string.player_gain_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = stringResource(R.string.player_gain_value_format, gainDb),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Slider(
+                    value = gainDb.coerceIn(-3f, 12f),
+                    onValueChange = onGainChange,
+                    valueRange = -3f..12f,
+                    // (12 - -3) / 0.5 = 30 internal positions, minus the 2 endpoints = 29 steps.
+                    steps = 29,
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+        }
     }
 }
 

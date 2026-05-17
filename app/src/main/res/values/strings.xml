@@ -133,6 +133,14 @@
     <string name="player_book_not_found_title">Book not found</string>
     <string name="player_book_not_found_subtitle">whisperboy can\'t find this book anymore. It may have been moved or removed from your library.</string>
     <string name="player_chapter_duration_format">%1$s</string>
+    <string name="player_overflow_cd">Playback options</string>
+    <string name="player_speed_title">Playback speed</string>
+    <string name="player_speed_value_format">%1$.2fx</string>
+    <string name="player_speed_reset">Reset</string>
+    <string name="player_silence_title">Skip silent passages</string>
+    <string name="player_silence_subtitle">Trim silent sections so you don\'t wait through them.</string>
+    <string name="player_gain_title">Volume gain</string>
+    <string name="player_gain_value_format">%1$+.1f dB</string>
 
     <!-- bookmark_ — bookmark list, add/rename/delete, "set by sleep timer" badge (Phase H) -->
     <string name="bookmark_screen_title">Bookmarks</string>

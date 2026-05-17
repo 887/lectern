@@ -10,6 +10,7 @@ import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService.LibraryParams
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession.ConnectionResult
 import androidx.media3.session.MediaSession.ControllerInfo
 import androidx.media3.session.SessionCommand
@@ -52,6 +53,13 @@ class WhisperboyLibrarySessionCallback(
     private val bookCommands: BookCommands,
     private val sleepTimerCommands: SleepTimerCommands,
     private val scope: CoroutineScope,
+    // Phase J — direct handles for the two knobs that can't ride [TransportCommands] over the
+    // cross-process [androidx.media3.session.MediaController] boundary:
+    //  * `ExoPlayer.skipSilenceEnabled` is an ExoPlayer-only property (not on [Player]).
+    //  * The gain processor's `setGainDb` is a custom audio-pipeline knob with no IPC surface.
+    // Both are reached via custom session commands that land here on the service side.
+    private val exoPlayer: ExoPlayer,
+    private val volumeGain: VolumeGainAudioProcessor,
 ) : MediaLibrarySession.Callback {
 
     private val appContext = context.applicationContext
@@ -67,6 +75,7 @@ class WhisperboyLibrarySessionCallback(
             .add(SessionCommand(CustomCommands.SET_SLEEP_TIMER, Bundle.EMPTY))
             .add(SessionCommand(CustomCommands.SET_SPEED, Bundle.EMPTY))
             .add(SessionCommand(CustomCommands.SET_SKIP_SILENCE, Bundle.EMPTY))
+            .add(SessionCommand(CustomCommands.SET_GAIN_DB, Bundle.EMPTY))
             .build()
         return ConnectionResult.accept(sessionCommands, base.availablePlayerCommands)
     }
@@ -269,10 +278,19 @@ class WhisperboyLibrarySessionCallback(
             }
             CustomCommands.SET_SKIP_SILENCE -> {
                 val enabled = args.getBoolean(CustomCommands.EXTRA_ENABLED, false)
-                // Phase J wires the actual AudioProcessor; for now project the request
-                // into TransportCommands (a no-op stub there too) and return success so
-                // the car UI doesn't show an error.
-                transportCommands.setSkipSilence(enabled)
+                // Phase J — `skipSilenceEnabled` is an ExoPlayer-only property; reach the
+                // concrete player directly here on the service side so the next decoded buffer
+                // picks up the toggle. Controller-side persistence happens in
+                // [PlaybackController.setSkipSilence] alongside the dispatch of this command.
+                exoPlayer.skipSilenceEnabled = enabled
+                SessionResult(SessionResult.RESULT_SUCCESS)
+            }
+            CustomCommands.SET_GAIN_DB -> {
+                val gainDb = args.getFloat(CustomCommands.EXTRA_GAIN_DB, 0f)
+                // Phase J — drive the custom [VolumeGainAudioProcessor] held by [PlayerHolder].
+                // No-op bypass at 0 dB (processor reports `isActive = false`); any non-zero value
+                // re-derives the multiplier and the next decoded frame is scaled.
+                volumeGain.setGainDb(gainDb)
                 SessionResult(SessionResult.RESULT_SUCCESS)
             }
             else -> SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED)

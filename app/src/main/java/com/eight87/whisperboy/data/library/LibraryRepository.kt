@@ -50,6 +50,18 @@ internal class LibraryRepository(
         coverStore.deleteCover(bookId)
     }
 
+    override suspend fun setSpeed(bookId: String, speed: Float) {
+        bookDao.setSpeed(bookId, speed)
+    }
+
+    override suspend fun setSkipSilence(bookId: String, enabled: Boolean) {
+        bookDao.setSkipSilence(bookId, enabled)
+    }
+
+    override suspend fun setGain(bookId: String, gainDb: Float) {
+        bookDao.setGainDb(bookId, gainDb)
+    }
+
     override suspend fun setCustomCover(bookId: String, bytes: ByteArray) {
         // Phase A.6 (`cover-art.md`): write the bytes through [CoverStore] (atomic tmp+rename),
         // then flip the cached row to point at the new path with `coverSource = Custom` so

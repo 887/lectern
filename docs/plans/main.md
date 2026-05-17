@@ -191,14 +191,14 @@ Shipped as a single commit; new package `data/library/parser/` houses every pars
 
 ---
 
-## Phase J — speed, skip silence, volume gain
+## Phase J — speed, skip silence, volume gain — ✅ DONE (shipped in this commit)
 
 Goal: per-book speed (0.5x–3.5x), skip silence, volume gain in dB. **Voice analog:** `VoicePlayer` + `VolumeGain` audio processor.
 
-- [ ] **J.1** Speed — ExoPlayer's native `setPlaybackSpeed(Float)` (Sonic time-stretching, no FFmpeg). Persisted on `BookEntity`. Settings UX: slider + numeric display + "reset to 1.0x" button. Range 0.5–3.5 in 0.05 steps.
-- [ ] **J.2** Skip silence — `Player.skipSilenceEnabled = enabled`. Persisted on `BookEntity`. Toggle in player overflow.
-- [ ] **J.3** Volume gain — custom `VolumeGain` `AudioProcessor` measured in `Decibel` (range -3 dB to +12 dB), applied as a pre-amp in the audio pipeline before output. Persisted on `BookEntity`. Settings UX: slider with numeric dB readout. Note: this is *additive* to the system volume, not a substitute.
-- [ ] **J.4** Per-book vs global defaults — when a book is first scanned it inherits global defaults (DataStore); subsequent edits write to the `BookEntity` row, not back to the defaults. This is Voice's behaviour and the right one — a quiet book gets +6 dB without the next book screaming.
+- [x] **J.1** Speed — ExoPlayer's native `setPlaybackSpeed(Float)` (Sonic time-stretching, no FFmpeg). Persisted on `BookEntity`. Settings UX: slider + numeric display + "reset to 1.0x" button. Range 0.5–3.5 in 0.05 steps. _Shipped: `PlaybackController.setSpeed` persists via `BookSource.setSpeed`; `startPlayback` re-applies `book.speed` on each `playBook`._
+- [x] **J.2** Skip silence — `Player.skipSilenceEnabled = enabled`. Persisted on `BookEntity`. Toggle in player overflow. _Shipped: `SET_SKIP_SILENCE` custom session command bridges the cross-process [MediaController] boundary; `WhisperboyLibrarySessionCallback` writes directly to `exoPlayer.skipSilenceEnabled` on the service side. `PlaybackController.setSkipSilence` persists + dispatches; `startPlayback` re-issues on every book switch._
+- [x] **J.3** Volume gain — custom `VolumeGain` `AudioProcessor` measured in `Decibel` (range -3 dB to +12 dB), applied as a pre-amp in the audio pipeline before output. Persisted on `BookEntity`. Settings UX: slider with numeric dB readout. _Shipped: `VolumeGainAudioProcessor` (BaseAudioProcessor) scales 16-bit PCM by 10^(dB/20); bit-exact bypass at 0 dB. Wired via `OnlyAudioRenderersFactory.buildAudioSink` override using `DefaultAudioSink.Builder.setAudioProcessors`. `SET_GAIN_DB` custom session command drives `volumeGain.setGainDb` directly on the service side. Gain runs AFTER Sonic in the chain so speed + skip-silence coexist cleanly._
+- [x] **J.4** Per-book vs global defaults — when a book is first scanned it inherits global defaults (DataStore); subsequent edits write to the `BookEntity` row, not back to the defaults. _Shipped: BookEntity columns `speed`/`skipSilenceEnabled`/`gain_db` carry per-book state; `BookSource.setSpeed`/`setSkipSilence`/`setGain` + matching DAO queries. `LibraryRepository.applyScan` leaves these fields at scanner-derived defaults (TODO noted there for merge-preserve-on-rescan, not on Phase J's critical path)._
 
 ---
 
