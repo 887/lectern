@@ -34,7 +34,10 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -74,6 +77,7 @@ import com.eight87.whisperboy.playback.PlaybackUiState
 import com.eight87.whisperboy.playback.SleepTimerCommands
 import com.eight87.whisperboy.playback.SleepTimerState
 import com.eight87.whisperboy.playback.TransportCommands
+import com.eight87.whisperboy.theme.PlaybackAccent
 import com.eight87.whisperboy.ui.common.CoverArt
 import kotlinx.coroutines.launch
 
@@ -299,7 +303,13 @@ private fun PlaybackOptionsSheet(
     onGainChange: (Float) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    // m3-expressive D.3 — playback-options sheet on the M3E `surfaceContainer`
+    // tier with the playback-category accent (orange) tinting the drag handle.
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = PlaybackAccent.onContainer) },
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -674,7 +684,17 @@ private fun ChapterQueueRow(
     isActive: Boolean,
     onClick: () -> Unit,
 ) {
-    val bg = if (isActive) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+    // m3-expressive D.2 — elevate chapter rows onto M3E card surfaces. Active
+    // row carries the full `secondaryContainer` token (matches Settings'
+    // selected-row treatment); inactive rows ride a translucent
+    // `surfaceContainerHigh` so the F.6 Palette-tinted gradient on the
+    // parent Box still bleeds through, giving the queue a glassy-card look
+    // against the book's cover tint rather than flat squares.
+    val bg = if (isActive) {
+        MaterialTheme.colorScheme.secondaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.55f)
+    }
     val fg = if (isActive) {
         MaterialTheme.colorScheme.onSecondaryContainer
     } else {
@@ -690,6 +710,7 @@ private fun ChapterQueueRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
             .background(bg)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eight87.whisperboy.R
+import com.eight87.whisperboy.theme.SleepTimerAccent
 import com.eight87.whisperboy.playback.SleepTimerCommands
 import com.eight87.whisperboy.playback.SleepTimerMode
 import com.eight87.whisperboy.playback.SleepTimerState
@@ -65,15 +67,22 @@ fun SleepTimerSheet(
     val state by sleepTimerCommands.state.collectAsStateWithLifecycle()
     var customOpen by remember { mutableStateOf(false) }
 
+    // m3-expressive D.2 / D.3 — sleep-timer sheet pinned to the M3E `surfaceContainer`
+    // tier with the sleep-category accent (indigo) painting both the drag handle and
+    // the title so the sheet reads as a sleep surface end-to-end. Mirrors the
+    // settings rows' coloured-avatar treatment one level up the chrome stack.
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = SleepTimerAccent.onContainer) },
         modifier = modifier,
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)) {
             Text(
                 text = stringResource(R.string.sleep_timer_title),
                 style = MaterialTheme.typography.titleLarge,
+                color = SleepTimerAccent.onContainer,
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(Modifier.height(8.dp))
