@@ -185,19 +185,33 @@ Two supporting niceties:
   Cheap regression guard for the M3 alpha churn re-collapsing the
   ladder.
 
-## Phase C — `CategoryAccent` + per-row avatars
+## Phase C — `CategoryAccent` + per-row avatars — shipped in commit `b433511`
 
-- [ ] **C.1** Add `data class CategoryAccent(val container: Color,
-  val onContainer: Color)` next to the theme.
-- [ ] **C.2** Define ~5–6 hand-picked accent pairs for each surface
-  that needs them. whisperboy's category split is its own — pick
-  naturals from whatever the settings catalog ends up shaped like
-  (e.g. Appearance / Library sources / Playback / Sleep timer /
-  Bookmarks / About). Light + dark variants.
-- [ ] **C.3** New composable
-  `SettingsCategoryIcon(icon: ImageVector, accent: CategoryAccent,
-  contentDescription: String?)` per the pattern in §3 above.
-- [ ] **C.4** Wire it into the settings catalog row renderer.
+- [x] **C.1** Added `data class CategoryAccent(val container: Color,
+  val onContainer: Color)` at `theme/CategoryAccent.kt` next to the
+  rest of the theme tokens.
+- [x] **C.2** Six hand-picked accent pairs covering whisperboy's
+  category split: Playback (orange), Sleep timer (indigo), Library
+  (green), Theme (purple), About (teal), Open-source licenses
+  (slate). Dark-leaning palette only for now — the light-mode pass
+  is deferred per the gotcha noted under "Risk / unknowns" below.
+  Each pair was spot-checked for ≥3:1 contrast between container
+  and onContainer at 24-dp icon size.
+- [x] **C.3** New composable `SettingsCategoryIcon(icon, accent,
+  contentDescription)` at `ui/settings/SettingsCategoryIcon.kt` —
+  40-dp `CircleShape` box, filled 24-dp glyph tinted with
+  `accent.onContainer`.
+- [x] **C.4** Wired into both `SettingsScreen.SettingsCategoryRow`
+  and `AboutScreen.AboutRow` (+ the spiritual-sibling card's inline
+  icon). Each row carries a stable `id` and the row composable
+  resolves the accent via `accent ?: id?.let { accentFor(it) } ?:
+  PlaybackAccent`, per gotcha #3, so hand-rolled screens / future
+  custom surfaces stay coloured for free. All settings-row glyphs
+  swapped from `Icons.Outlined.*` to `Icons.Filled.*` per gotcha
+  #4 of the four-patterns section.
+  Regression test: `CategoryAccentTest` asserts every accent's
+  container differs from its onContainer + every `accentFor` arm
+  returns the canonical top-level `val`.
 
 ## Phase D — the rest of the chrome
 
