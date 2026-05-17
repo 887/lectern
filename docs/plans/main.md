@@ -214,15 +214,15 @@ _No K.7. Cover-art has no settings surface — see [`cover-art.md`](cover-art.md
 
 ---
 
-## Phase L — onboarding flow
+## Phase L — onboarding flow ✅ DONE
 
-Goal: a clean first-run flow that gets the user from install to first book playing. **Voice analog:** `:features:onboarding`.
+Goal: a clean first-run flow that gets the user from install to first book playing. **Voice analog:** `:features:onboarding`. Shipped as a single commit — see L.1–L.5 below.
 
-- [ ] **L.1** Welcome screen — one short sentence + one CTA.
-- [ ] **L.2** Permissions screen — `POST_NOTIFICATIONS` (API 33+); SAF permission is granted by the picker, not by a Manifest-level dialog, so this screen is short.
-- [ ] **L.3** Folder picker screen — explains the four `FolderType` modes briefly with a small visual for each, then launches the SAF `OPEN_DOCUMENT_TREE` flow, then asks the user to pick the type.
-- [ ] **L.4** First-scan loading — shows scan progress (books found / chapters parsed). Skippable to library after first book lands.
-- [ ] **L.5** Onboarding-completed flag in DataStore. Re-running clears it (debug menu only).
+- [x] **L.1** Welcome screen — one short sentence + one CTA. `OnboardingWelcomeScreen` renders a centered headline + one-sentence body + a bottom "Get started" CTA that pushes `OnboardingPermissionsRoute`.
+- [x] **L.2** Permissions screen — `POST_NOTIFICATIONS` (API 33+); SAF permission is granted by the picker, not by a Manifest-level dialog, so this screen is short. `OnboardingPermissionsScreen` shows a notification-icon rationale + "Allow notifications" / "Not now"; on API < 33 a `LaunchedEffect` pushes the next route immediately so the screen never renders.
+- [x] **L.3** Folder picker screen — explains the four `FolderType` modes briefly with a small visual for each, then launches the SAF `OPEN_DOCUMENT_TREE` flow, then asks the user to pick the type. `OnboardingFolderPickerScreen` renders one icon+title+subtitle row per `FolderType.allOrdered` entry, a "Pick a folder" CTA that launches `OpenDocumentTree`, and surfaces a `ModalBottomSheet` for FolderType selection before advancing to the first-scan route. The `FolderTypeSheet` Compose helper moved out of `HomeScreen.kt` (which is now a pure library hand-off) into the onboarding package.
+- [x] **L.4** First-scan loading — shows scan progress (books found / chapters parsed). Skippable to library after first book lands. `OnboardingFirstScanScreen` observes `libraryRescanCoordinator.state`; renders a `CircularProgressIndicator` + "Scanning your library…" while `Running`, then "Found N books, M chapters" with a "Continue" button once `Idle`. Chapter total is computed by fanning `ChapterSource.chaptersFor(bookId)` over the catalog after the scan settles.
+- [x] **L.5** Onboarding-completed flag in DataStore. Re-running clears it (debug menu only). New `data/onboarding/OnboardingSettings.kt` interface + `AndroidOnboardingSettings` impl on a dedicated `onboarding` Preferences file in `AppGraph`. `WhisperboyApp` reads the flag, picks `OnboardingWelcomeRoute` vs `HomeRoute` as initial back-stack key, and gates rendering on the first emission (avoids a flash of either path on cold start; the Android 12+ system splash stays up until the DataStore emits). Completion flips the flag to `true` and replaces the back stack with `HomeRoute` so back from Home doesn't re-enter onboarding. **Debug "reset onboarding" menu deferred** — flag + own DataStore are in place for a future trivial wire-up.
 
 ---
 
