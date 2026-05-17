@@ -111,13 +111,30 @@ class NowPlayingBarTest {
                 nowPlayingState = FakeNowPlayingState(loaded(isPlaying = false)),
                 transport = RecordingTransport(),
                 onExpand = {},
+                rewindSeconds = 30,
+                forwardSeconds = 30,
             )
         }
-        composeRule.onNodeWithContentDescription("Rewind 0 seconds").assertExists()
+        composeRule.onNodeWithContentDescription("Rewind 30 seconds").assertExists()
         composeRule.onNodeWithContentDescription("Previous chapter").assertExists()
         composeRule.onNodeWithContentDescription("Play").assertExists()
         composeRule.onNodeWithContentDescription("Next chapter").assertExists()
-        composeRule.onNodeWithContentDescription("Forward 0 seconds").assertExists()
+        composeRule.onNodeWithContentDescription("Forward 30 seconds").assertExists()
+    }
+
+    @Test
+    fun `rewind and forward CDs reflect configured seconds`() {
+        composeRule.setContent {
+            NowPlayingBar(
+                nowPlayingState = FakeNowPlayingState(loaded(isPlaying = false)),
+                transport = RecordingTransport(),
+                onExpand = {},
+                rewindSeconds = 15,
+                forwardSeconds = 45,
+            )
+        }
+        composeRule.onNodeWithContentDescription("Rewind 15 seconds").assertExists()
+        composeRule.onNodeWithContentDescription("Forward 45 seconds").assertExists()
     }
 
     @Test
@@ -155,7 +172,7 @@ class NowPlayingBarTest {
                 onExpand = {},
             )
         }
-        composeRule.onNodeWithContentDescription("Rewind 0 seconds").performClick()
+        composeRule.onNodeWithContentDescription("Rewind 30 seconds").performClick()
         composeRule.waitForIdle()
         assertEquals(1, transport.rewinds)
     }
