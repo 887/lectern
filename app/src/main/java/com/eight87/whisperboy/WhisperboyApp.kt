@@ -142,6 +142,7 @@ fun WhisperboyApp() {
             transportCommands = graph.transportCommands,
             chapterSource = graph.chapterSource,
             playbackSettings = graph.playbackSettings,
+            sleepTimerCommands = graph.sleepTimerCommands,
             sheetProgress = sheetProgress,
             onCollapse = closeSheet,
         )
