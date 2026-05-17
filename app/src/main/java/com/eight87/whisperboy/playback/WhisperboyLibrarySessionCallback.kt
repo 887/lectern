@@ -132,10 +132,26 @@ class WhisperboyLibrarySessionCallback(
     }
 
     private fun rootChildren(): List<MediaItem> = listOf(
-        browseableFolder(CURRENT_ID, appContext.getString(R.string.auto_browse_currently_listening)),
-        browseableFolder(NOT_STARTED_ID, appContext.getString(R.string.auto_browse_not_started)),
-        browseableFolder(ALL_ID, appContext.getString(R.string.auto_browse_all_books)),
-        browseableFolder(AUTHORS_ID, appContext.getString(R.string.auto_browse_authors)),
+        browseableFolder(
+            CURRENT_ID,
+            appContext.getString(R.string.auto_browse_currently_listening),
+            R.drawable.auto_browse_current,
+        ),
+        browseableFolder(
+            NOT_STARTED_ID,
+            appContext.getString(R.string.auto_browse_not_started),
+            R.drawable.auto_browse_not_started,
+        ),
+        browseableFolder(
+            ALL_ID,
+            appContext.getString(R.string.auto_browse_all_books),
+            R.drawable.auto_browse_all_books,
+        ),
+        browseableFolder(
+            AUTHORS_ID,
+            appContext.getString(R.string.auto_browse_authors),
+            R.drawable.auto_browse_authors,
+        ),
     )
 
     private suspend fun currentlyListeningChildren(): List<MediaItem> {
@@ -299,12 +315,28 @@ class WhisperboyLibrarySessionCallback(
 
     // ---------------------------------------------------------------- MediaItem helpers
 
-    private fun browseableFolder(id: String, title: String): MediaItem {
+    private fun browseableFolder(
+        id: String,
+        title: String,
+        @androidx.annotation.DrawableRes artworkRes: Int? = null,
+    ): MediaItem {
         val metadata = MediaMetadata.Builder()
             .setTitle(title)
             .setIsBrowsable(true)
             .setIsPlayable(false)
             .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+            .also { meta ->
+                if (artworkRes != null) {
+                    // m3-expressive D.4 — per-root accent-coloured artwork for Auto's
+                    // browse tree. android.resource:// URIs are the documented hand-off
+                    // for in-APK drawables that the system-side media browser can
+                    // resolve cross-process. Auto's system theme often re-tints these
+                    // monochrome on real head units; the colour is a best-effort signal.
+                    meta.setArtworkUri(
+                        Uri.parse("android.resource://${appContext.packageName}/$artworkRes")
+                    )
+                }
+            }
             .build()
         return MediaItem.Builder()
             .setMediaId(id)
