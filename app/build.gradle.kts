@@ -52,6 +52,22 @@ android {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"
       }
     }
+
+    // Robolectric — JVM-only Android-shadow runner for unit tests.
+    //   * `isIncludeAndroidResources = true` packages merged resources +
+    //     `AndroidManifest.xml` + the `assets/` tree onto the JVM test
+    //     classpath, which is what makes `LocalContext.current.assets.open(...)`
+    //     resolve under Robolectric (the LicensesScreen's `assets/licenses/`
+    //     inventory + future cover-art asset reads land via this).
+    //   * `usePreciseLog` keeps Robolectric's "ran shadow X at line Y" trace
+    //     on so test failures are diagnosable without re-running.
+    // Test classes pick the SDK level with `@Config(sdk = [34])`.
+    testOptions {
+      unitTests.isIncludeAndroidResources = true
+      unitTests.all {
+        it.systemProperty("robolectric.usePreciseLog", "true")
+      }
+    }
 }
 
 room {
@@ -132,6 +148,18 @@ dependencies {
   // Local tests: jUnit, coroutines, Android runner
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
+
+  // Robolectric — JVM-side Android shadows + AndroidX test runner shims. Lets
+  // any `Context`/`AssetManager`/`Resources`/`SharedPreferences`-dependent test
+  // (and the Compose `createComposeRule()` harness) run under
+  // `:app:testDebugUnitTest` without an emulator. Compose UI tests reuse the
+  // already-versioned `androidx.compose.ui:ui-test-junit4` from the BOM plus
+  // `ui-test-manifest` for the host harness.
+  testImplementation(libs.robolectric)
+  testImplementation(libs.androidx.test.core.ktx)
+  testImplementation(libs.androidx.test.ext.junit.ktx)
+  testImplementation(libs.androidx.compose.ui.test.junit4)
+  testImplementation(libs.androidx.compose.ui.test.manifest)
 
   // Instrumented tests: jUnit rules and runners
   androidTestImplementation(libs.androidx.test.core)
