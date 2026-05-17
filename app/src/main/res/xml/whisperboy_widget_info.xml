@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  main.md Phase M — AppWidget provider metadata.
+
+  minWidth / minHeight pick the smallest cell envelope the widget will render
+  in; targetCellWidth / targetCellHeight (API 31+) declare the default size on
+  Android 12+. resizeMode="horizontal|vertical" lets the user stretch the
+  widget across the three breakpoints handled by WhisperboyWidget.kt
+  (cover-only / cover+transport / wide row).
+
+  initialLayout points at Glance's loading layout shim, which gets replaced
+  the moment provideGlance composes for the first time.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="60dp"
+    android:minHeight="60dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:previewLayout="@layout/glance_default_loading_layout" />

@@ -83,6 +83,24 @@
                 <action android:name="com.eight87.whisperboy.action.SMOKE_PLAY" />
             </intent-filter>
         </receiver>
+
+        <!--
+          main.md Phase M — home-screen widget receiver. Glance dispatches
+          AppWidgetProvider intents into its own internal receiver; we only
+          need to declare the receiver + its provider metadata. exported=true
+          is required so the launcher can bind to it.
+        -->
+        <receiver
+            android:name=".ui.widget.WhisperboyWidgetReceiver"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/whisperboy_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

@@ -44,6 +44,12 @@ kotlinxSerialization = "1.7.3"
 androidxBaselineProfile = "1.5.0-alpha06"
 androidxBenchmark = "1.5.0-alpha06"
 androidxProfileinstaller = "1.4.1"
+# main.md Phase M — AndroidX Glance for the home-screen widget. 1.1.1 is
+# the latest stable as of October 2024; 1.2.0-rc01 exists but we stay on
+# the stable line until it ships. glance-material3 pulls in the theme
+# bridge so the widget can read MaterialTheme.colorScheme.surface /
+# onSurface and stay visually coherent with the rest of the app.
+glance = "1.1.1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
@@ -99,6 +105,9 @@ androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profi
 # cold-start-perf F.2 — macrobenchmark + BaselineProfileRule for the
 # :baselineprofile sibling module that records the cold-boot path.
 androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "androidxBenchmark" }
+# main.md Phase M — Glance widget runtime + Material3 theme bridge.
+androidx-glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
+androidx-glance-material3 = { group = "androidx.glance", name = "glance-material3", version.ref = "glance" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }

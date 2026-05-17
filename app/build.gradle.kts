@@ -146,6 +146,12 @@ dependencies {
   implementation(libs.androidx.paging.runtime)
   implementation(libs.androidx.paging.compose)
 
+  // main.md Phase M — AndroidX Glance for the home-screen widget. RemoteViews
+  // generation under the hood; we keep the composable-style API. The Material3
+  // bridge gives us `GlanceTheme` which lifts colours from the host.
+  implementation(libs.androidx.glance.appwidget)
+  implementation(libs.androidx.glance.material3)
+
   // cold-start-perf F.3 — profileinstaller picks up the baseline-prof.txt
   // packaged into the APK and hands it to ART at app install time, which is
   // the mechanism that gives us the ~25–35% cold-start win.
