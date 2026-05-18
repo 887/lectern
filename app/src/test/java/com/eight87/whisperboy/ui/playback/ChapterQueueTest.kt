@@ -107,9 +107,9 @@ class ChapterQueueTest {
     }
 
     @Test
-    fun `tap on a row fires onChapterTap with the position of that chapter`() {
+    fun `tap on a row fires onChapterTap with the index of that chapter`() {
         val flow = MutableStateFlow(chapters)
-        val taps = mutableListOf<Long>()
+        val taps = mutableListOf<Int>()
         composeRule.setContent {
             ChapterQueue(
                 bookId = "b1",
@@ -120,6 +120,6 @@ class ChapterQueueTest {
             )
         }
         composeRule.onNodeWithText("Chapter Two").performClick()
-        assertEquals(listOf(420_000L), taps)
+        assertEquals(listOf(2), taps)
     }
 }

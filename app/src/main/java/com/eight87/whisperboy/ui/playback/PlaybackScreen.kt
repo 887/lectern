@@ -614,8 +614,8 @@ private fun PlayerLoaded(
             currentChapterIndex = state.currentChapter?.chapterIndex ?: -1,
             chapterSource = chapterSource,
             listState = chapterListState,
-            onChapterTap = { positionInBookMs ->
-                scope.launch { transport.seekTo(positionInBookMs) }
+            onChapterTap = { chapterIndex ->
+                scope.launch { transport.playChapter(chapterIndex) }
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -644,7 +644,7 @@ internal fun ChapterQueue(
     currentChapterIndex: Int,
     chapterSource: ChapterSource,
     listState: LazyListState?,
-    onChapterTap: (Long) -> Unit,
+    onChapterTap: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val chaptersFlow = remember(chapterSource, bookId) {
@@ -675,7 +675,7 @@ internal fun ChapterQueue(
             ChapterQueueRow(
                 chapter = chapter,
                 isActive = chapter.chapterIndex == currentChapterIndex,
-                onClick = { onChapterTap(chapter.positionInBookMs) },
+                onClick = { onChapterTap(chapter.chapterIndex) },
             )
         }
     }

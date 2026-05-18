@@ -64,6 +64,13 @@ interface TransportCommands {
     suspend fun forward()
     suspend fun nextChapter()
     suspend fun prevChapter()
+    /**
+     * Jump directly to chapter [chapterIndex] (zero-based), starting at the chapter head.
+     * Used by the inline chapter queue tap so seeking is index-driven, not absolute-time
+     * driven — `currentMediaItemIndex` updates cleanly, [Player.Listener.onMediaItemTransition]
+     * fires, and the top-bar / scrubber projection refreshes immediately.
+     */
+    suspend fun playChapter(chapterIndex: Int)
     suspend fun setSpeed(speed: Float)
     suspend fun setSkipSilence(enabled: Boolean)
     suspend fun setGain(gainDb: Float)
@@ -533,6 +540,20 @@ internal class PlaybackController(
         }
         c.seekTo(idx, remaining)
         positionMs.value = positionInBookMs
+    }
+
+    override suspend fun playChapter(chapterIndex: Int) = onMain { c ->
+        val count = c.mediaItemCount
+        if (count <= 0) return@onMain
+        val safe = chapterIndex.coerceIn(0, count - 1)
+        c.seekTo(safe, 0L)
+        if (!c.isPlaying) c.play()
+        // Optimistic projection update — keeps the top-bar / scrubber snappy even
+        // before onMediaItemTransition fires. The listener will reconcile on the
+        // next tick if Media3 picked a different index (shouldn't happen for a
+        // direct index seek, but cheap to be safe).
+        positionMs.value = 0L
+        playerSnapshot.update { it.copy(currentItemIndex = safe, currentMediaId = c.currentMediaItem?.mediaId) }
     }
 
     override suspend fun rewind() = onMain { c ->
