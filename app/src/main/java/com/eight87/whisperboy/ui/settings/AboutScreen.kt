@@ -105,8 +105,12 @@ fun AboutScreen(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                // `R.mipmap.ic_launcher` resolves to the adaptive-icon XML on Android 8+,
+                // which `painterResource` can't load (Compose only supports VectorDrawable
+                // + rasterized PNG/JPG/WEBP). Use the foreground PNG asset directly — same
+                // visual, just the icon without the background tile.
                 Image(
-                    painter = painterResource(id = R.mipmap.ic_launcher),
+                    painter = painterResource(id = R.mipmap.ic_launcher_foreground),
                     contentDescription = null,
                     modifier = Modifier.size(96.dp),
                 )
