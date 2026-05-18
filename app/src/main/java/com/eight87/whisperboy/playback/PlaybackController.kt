@@ -661,9 +661,18 @@ internal class PlaybackController(
         startIndex: Int,
     ) = onMain { c ->
         targetedBookId.value = book.bookId
+        // SingleFile detection: if every chapter shares the same `fileUri`, the book is a
+        // single audio file with embedded chapter markers (Phase I.8). Without clipping,
+        // each MediaItem would replay the WHOLE file from 0 — tap chapter 5 → file starts
+        // at 0, plays for hours. Fix: apply a `ClippingConfiguration` per-item so each
+        // chapter MediaItem is bounded to its `[positionInBookMs, +durationMs)` slice.
+        // Multi-file books (different fileUri per chapter) bypass the clip — each item
+        // is already a self-contained file.
+        val firstUri = chapters.firstOrNull()?.fileUri
+        val isSingleFile = firstUri != null && chapters.all { it.fileUri == firstUri }
         val items = chapters.map { ch ->
             val uri = ch.fileUri ?: book.relativePath
-            MediaItem.Builder()
+            val builder = MediaItem.Builder()
                 .setMediaId(ch.chapterId)
                 .setUri(uri)
                 .setMediaMetadata(
@@ -674,7 +683,21 @@ internal class PlaybackController(
                         .setDurationMs(ch.durationMs)
                         .build(),
                 )
-                .build()
+            if (isSingleFile && ch.durationMs > 0L) {
+                builder.setClippingConfiguration(
+                    androidx.media3.common.MediaItem.ClippingConfiguration.Builder()
+                        .setStartPositionMs(ch.positionInBookMs)
+                        .setEndPositionMs(ch.positionInBookMs + ch.durationMs)
+                        .build()
+                )
+            } else if (isSingleFile) {
+                builder.setClippingConfiguration(
+                    androidx.media3.common.MediaItem.ClippingConfiguration.Builder()
+                        .setStartPositionMs(ch.positionInBookMs)
+                        .build()
+                )
+            }
+            builder.build()
         }
         if (items.isEmpty()) {
             // Degenerate: no chapters. Fall back to the book's primary path so Phase B's smoke

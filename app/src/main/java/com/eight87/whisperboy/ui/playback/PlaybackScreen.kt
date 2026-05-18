@@ -531,132 +531,86 @@ private fun PlayerLoaded(
     val rewindSeconds by playbackSettings.rewindSeconds.collectAsStateWithLifecycle(initialValue = 30)
     val forwardSeconds by playbackSettings.forwardSeconds.collectAsStateWithLifecycle(initialValue = 30)
 
-    // Unified-scroll player (tonearmboy NowPlayingScreen parity). The whole page is ONE
-    // scrollable surface — cover/title/scrubber/transport at the top scroll up together with
-    // the chapter list below. The prior shape pinned the player chunks and made the chapter
-    // list its own internal scroll container — divergent from tonearmboy + counter-intuitive
-    // ("can't scroll the page", "two scrollbars").
-    val chaptersFlow = remember(chapterSource, state.book.bookId) {
-        chapterSource.observeChaptersForBook(state.book.bookId)
-    }
-    val chapters by chaptersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-    val fallbackListState = rememberLazyListState()
-    val lazyState = chapterListState ?: fallbackListState
-    val currentChapterIndex = state.currentChapter?.chapterIndex ?: -1
-    // Header items emit at indices 0..3; chapter rows start at index 4. We scroll to the
-    // current chapter exactly ONCE per screen mount — when chapters first load — so the user
-    // entering the player on chapter 47 lands on chapter 47. After that the user's scroll
-    // position is theirs; tapping a chapter (playChapter) MUST NOT yank the viewport, and
-    // natural chapter advancement during long listening also leaves scroll alone.
-    val headerItemCount = 4
-    var hasScrolledToInitialChapter by remember(state.book.bookId) { mutableStateOf(false) }
-    LaunchedEffect(chapters.size) {
-        if (!hasScrolledToInitialChapter &&
-            chapters.isNotEmpty() &&
-            currentChapterIndex in chapters.indices
-        ) {
-            lazyState.scrollToItem((currentChapterIndex + headerItemCount).coerceAtLeast(0))
-            hasScrolledToInitialChapter = true
-        }
-    }
-    LazyColumn(
-        state = lazyState,
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(bottom = 16.dp),
+    // Pinned-header player: cover / title / scrubber / transport stay visible at the top;
+    // only the chapter list scrolls below. No auto-scroll on open — the user's viewport is
+    // theirs from the moment the screen mounts. (Earlier shapes tried unified-scroll and
+    // scroll-to-current-chapter; both proved counter-intuitive — header gone on scroll,
+    // chapter tap yanked the viewport.)
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        item(key = "player-cover", contentType = "header") {
-            Column(
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.height(16.dp))
+            CoverArt(
+                coverPath = state.book.coverPath,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Spacer(Modifier.height(16.dp))
-                CoverArt(
-                    coverPath = state.book.coverPath,
-                    modifier = Modifier
-                        .fillMaxWidth(0.55f)
-                        .aspectRatio(1f),
-                )
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = state.book.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = chapterDisplayTitle(state),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        item(key = "player-scrubber", contentType = "header") {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-            ) {
-                Spacer(Modifier.height(16.dp))
-                PlayerScrubber(
-                    positionInChapterMs = positionInChapter(state),
-                    chapterDurationMs = chapterDurationMs,
-                    onSeek = { newPositionInChapterMs ->
-                        val absolute = (state.currentChapter?.positionInBookMs ?: 0L) + newPositionInChapterMs
-                        scope.launch { transport.seekTo(absolute) }
-                    },
-                )
-            }
-        }
-        item(key = "player-transport", contentType = "header") {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Spacer(Modifier.height(8.dp))
-                PlayerTransport(
-                    isPlaying = state.isPlaying,
-                    rewindSeconds = rewindSeconds,
-                    forwardSeconds = forwardSeconds,
-                    onPlayPause = {
-                        scope.launch { if (state.isPlaying) transport.pause() else transport.play() }
-                    },
-                    onRewind = { scope.launch { transport.rewind() } },
-                    onForward = { scope.launch { transport.forward() } },
-                    onPrev = { scope.launch { transport.prevChapter() } },
-                    onNext = { scope.launch { transport.nextChapter() } },
-                    onSetRewindSeconds = { value ->
-                        scope.launch { playbackSettings.setRewindSeconds(value) }
-                    },
-                    onSetForwardSeconds = { value ->
-                        scope.launch { playbackSettings.setForwardSeconds(value) }
-                    },
-                )
-                Spacer(Modifier.height(16.dp))
-            }
-        }
-        item(key = "player-chapter-spacer", contentType = "header") {
-            Spacer(Modifier.height(8.dp))
-        }
-        items(
-            items = chapters,
-            key = { it.chapterId },
-            contentType = { "chapter" },
-        ) { chapter ->
-            ChapterQueueRow(
-                chapter = chapter,
-                isActive = chapter.chapterIndex == currentChapterIndex,
-                onClick = { scope.launch { transport.playChapter(chapter.chapterIndex) } },
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 1.dp),
+                    .fillMaxWidth(0.55f)
+                    .aspectRatio(1f),
             )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = state.book.title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = chapterDisplayTitle(state),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(16.dp))
+            PlayerScrubber(
+                positionInChapterMs = positionInChapter(state),
+                chapterDurationMs = chapterDurationMs,
+                onSeek = { newPositionInChapterMs ->
+                    val absolute = (state.currentChapter?.positionInBookMs ?: 0L) + newPositionInChapterMs
+                    scope.launch { transport.seekTo(absolute) }
+                },
+            )
+            Spacer(Modifier.height(8.dp))
+            PlayerTransport(
+                isPlaying = state.isPlaying,
+                rewindSeconds = rewindSeconds,
+                forwardSeconds = forwardSeconds,
+                onPlayPause = {
+                    scope.launch { if (state.isPlaying) transport.pause() else transport.play() }
+                },
+                onRewind = { scope.launch { transport.rewind() } },
+                onForward = { scope.launch { transport.forward() } },
+                onPrev = { scope.launch { transport.prevChapter() } },
+                onNext = { scope.launch { transport.nextChapter() } },
+                onSetRewindSeconds = { value ->
+                    scope.launch { playbackSettings.setRewindSeconds(value) }
+                },
+                onSetForwardSeconds = { value ->
+                    scope.launch { playbackSettings.setForwardSeconds(value) }
+                },
+            )
+            Spacer(Modifier.height(16.dp))
         }
+        ChapterQueue(
+            bookId = state.book.bookId,
+            currentChapterIndex = state.currentChapter?.chapterIndex ?: -1,
+            chapterSource = chapterSource,
+            listState = chapterListState,
+            onChapterTap = { chapterIndex ->
+                scope.launch { transport.playChapter(chapterIndex) }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+        )
     }
 }
 
@@ -689,14 +643,9 @@ internal fun ChapterQueue(
     val chapters by chaptersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val fallbackListState = rememberLazyListState()
     val state = listState ?: fallbackListState
-    // Scroll to the active chapter on first load + when it changes (user on chapter 47
-    // shouldn't have to scroll manually to see where they are). Same pattern as the retired
-    // ChapterListSheet's LaunchedEffect.
-    LaunchedEffect(chapters.size, currentChapterIndex) {
-        if (chapters.isNotEmpty() && currentChapterIndex in chapters.indices) {
-            state.scrollToItem(currentChapterIndex.coerceAtLeast(0))
-        }
-    }
+    // No auto-scroll. User's viewport is theirs from mount onward; tapping a chapter
+    // plays it without yanking the list. Natural chapter advancement also leaves scroll
+    // alone — the active row is highlighted via the row's `isActive` style.
     LazyColumn(
         state = state,
         modifier = modifier,
