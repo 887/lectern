@@ -531,96 +531,125 @@ private fun PlayerLoaded(
     val rewindSeconds by playbackSettings.rewindSeconds.collectAsStateWithLifecycle(initialValue = 30)
     val forwardSeconds by playbackSettings.forwardSeconds.collectAsStateWithLifecycle(initialValue = 30)
 
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Spacer(Modifier.height(16.dp))
-            // F.5 (inline-queue refactor) — cover shrunk from 0.85f to 0.55f so the inline
-            // chapter queue below has room to breathe. Tonearmboy's NowPlayingScreen uses a
-            // very small cover (96dp seed) because its queue dominates; whisperboy keeps the
-            // cover more prominent (audiobooks are one-cover-per-session) — 55% of width is the
-            // middle ground.
-            CoverArt(
-                coverPath = state.book.coverPath,
-                modifier = Modifier
-                    .fillMaxWidth(0.55f)
-                    .aspectRatio(1f),
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = state.book.title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = chapterDisplayTitle(state),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            PlayerScrubber(
-                positionInChapterMs = positionInChapter(state),
-                chapterDurationMs = chapterDurationMs,
-                onSeek = { newPositionInChapterMs ->
-                    val absolute = (state.currentChapter?.positionInBookMs ?: 0L) + newPositionInChapterMs
-                    scope.launch { transport.seekTo(absolute) }
-                },
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            PlayerTransport(
-                isPlaying = state.isPlaying,
-                rewindSeconds = rewindSeconds,
-                forwardSeconds = forwardSeconds,
-                onPlayPause = {
-                    scope.launch { if (state.isPlaying) transport.pause() else transport.play() }
-                },
-                onRewind = { scope.launch { transport.rewind() } },
-                onForward = { scope.launch { transport.forward() } },
-                onPrev = { scope.launch { transport.prevChapter() } },
-                onNext = { scope.launch { transport.nextChapter() } },
-                onSetRewindSeconds = { value ->
-                    scope.launch { playbackSettings.setRewindSeconds(value) }
-                },
-                onSetForwardSeconds = { value ->
-                    scope.launch { playbackSettings.setForwardSeconds(value) }
-                },
-            )
-
-            Spacer(Modifier.height(16.dp))
+    // Unified-scroll player (tonearmboy NowPlayingScreen parity). The whole page is ONE
+    // scrollable surface — cover/title/scrubber/transport at the top scroll up together with
+    // the chapter list below. The prior shape pinned the player chunks and made the chapter
+    // list its own internal scroll container — divergent from tonearmboy + counter-intuitive
+    // ("can't scroll the page", "two scrollbars").
+    val chaptersFlow = remember(chapterSource, state.book.bookId) {
+        chapterSource.observeChaptersForBook(state.book.bookId)
+    }
+    val chapters by chaptersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val fallbackListState = rememberLazyListState()
+    val lazyState = chapterListState ?: fallbackListState
+    val currentChapterIndex = state.currentChapter?.chapterIndex ?: -1
+    // Header items are emitted as item {} blocks at indices 0..3. Chapter rows start at
+    // index 4. Scrolling to the current chapter therefore offsets by the header count so the
+    // active row lands at the top of the viewport, not under the header.
+    val headerItemCount = 4
+    LaunchedEffect(chapters.size, currentChapterIndex) {
+        if (chapters.isNotEmpty() && currentChapterIndex in chapters.indices) {
+            lazyState.scrollToItem((currentChapterIndex + headerItemCount).coerceAtLeast(0))
         }
-
-        // F.5 (inline-queue refactor, replaces ChapterListSheet) — the chapter list now lives
-        // inline below the transport row, fills remaining vertical space, scrolls itself.
-        // Tonearmboy's NowPlayingScreen pattern, adapted to chapters (whisperboy ships
-        // audiobooks; the analog of "queue" is "chapters in this book").
-        ChapterQueue(
-            bookId = state.book.bookId,
-            currentChapterIndex = state.currentChapter?.chapterIndex ?: -1,
-            chapterSource = chapterSource,
-            listState = chapterListState,
-            onChapterTap = { chapterIndex ->
-                scope.launch { transport.playChapter(chapterIndex) }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-        )
+    }
+    LazyColumn(
+        state = lazyState,
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(bottom = 16.dp),
+    ) {
+        item(key = "player-cover", contentType = "header") {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Spacer(Modifier.height(16.dp))
+                CoverArt(
+                    coverPath = state.book.coverPath,
+                    modifier = Modifier
+                        .fillMaxWidth(0.55f)
+                        .aspectRatio(1f),
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = state.book.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = chapterDisplayTitle(state),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        item(key = "player-scrubber", contentType = "header") {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+            ) {
+                Spacer(Modifier.height(16.dp))
+                PlayerScrubber(
+                    positionInChapterMs = positionInChapter(state),
+                    chapterDurationMs = chapterDurationMs,
+                    onSeek = { newPositionInChapterMs ->
+                        val absolute = (state.currentChapter?.positionInBookMs ?: 0L) + newPositionInChapterMs
+                        scope.launch { transport.seekTo(absolute) }
+                    },
+                )
+            }
+        }
+        item(key = "player-transport", contentType = "header") {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Spacer(Modifier.height(8.dp))
+                PlayerTransport(
+                    isPlaying = state.isPlaying,
+                    rewindSeconds = rewindSeconds,
+                    forwardSeconds = forwardSeconds,
+                    onPlayPause = {
+                        scope.launch { if (state.isPlaying) transport.pause() else transport.play() }
+                    },
+                    onRewind = { scope.launch { transport.rewind() } },
+                    onForward = { scope.launch { transport.forward() } },
+                    onPrev = { scope.launch { transport.prevChapter() } },
+                    onNext = { scope.launch { transport.nextChapter() } },
+                    onSetRewindSeconds = { value ->
+                        scope.launch { playbackSettings.setRewindSeconds(value) }
+                    },
+                    onSetForwardSeconds = { value ->
+                        scope.launch { playbackSettings.setForwardSeconds(value) }
+                    },
+                )
+                Spacer(Modifier.height(16.dp))
+            }
+        }
+        item(key = "player-chapter-spacer", contentType = "header") {
+            Spacer(Modifier.height(8.dp))
+        }
+        items(
+            items = chapters,
+            key = { it.chapterId },
+            contentType = { "chapter" },
+        ) { chapter ->
+            ChapterQueueRow(
+                chapter = chapter,
+                isActive = chapter.chapterIndex == currentChapterIndex,
+                onClick = { scope.launch { transport.playChapter(chapter.chapterIndex) } },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 1.dp),
+            )
+        }
     }
 }
 
@@ -686,6 +715,7 @@ private fun ChapterQueueRow(
     chapter: ChapterEntity,
     isActive: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     // m3-expressive D.2 — elevate chapter rows onto M3E card surfaces. Active
     // row carries the full `secondaryContainer` token (matches Settings'
@@ -711,7 +741,7 @@ private fun ChapterQueueRow(
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(bg)

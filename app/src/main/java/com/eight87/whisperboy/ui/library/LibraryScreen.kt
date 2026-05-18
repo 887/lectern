@@ -125,8 +125,13 @@ fun LibraryScreen(
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
-    val books by bookSource.observeBooks()
-        .collectAsStateWithLifecycle(initialValue = emptyList<BookEntity>())
+    // Voice-style boot: keep books null until the first Room emission lands so the
+    // empty-state composable doesn't flash for the half-frame before the Flow fires.
+    // `null` = haven't loaded yet, `emptyList()` = library genuinely empty. Caller renders
+    // chrome (toolbar) unconditionally; content area gates on non-null.
+    val booksOrNull by bookSource.observeBooks()
+        .collectAsStateWithLifecycle(initialValue = null)
+    val books: List<BookEntity> = booksOrNull ?: emptyList()
     val roots by persistedUriPermissionStore.observeRoots()
         .collectAsStateWithLifecycle(initialValue = emptyList<LibraryRoot>())
     // Phase P.4 — observe library health; render an error banner above the rail+content row
@@ -326,6 +331,23 @@ fun LibraryScreen(
                     },
                 )
                 Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+                    if (booksOrNull != null) {
+                        LibraryContent(
+                            sortedBooks = sortedBooks,
+                            sectionStarts = sectionStarts,
+                            gridMode = gridMode,
+                            searchMode = searchMode,
+                            searchQuery = searchQuery,
+                            onBookTap = onBookTap,
+                            onBookLongPress = { actionSheetBookId = it },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
+            }
+        } else {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                if (booksOrNull != null) {
                     LibraryContent(
                         sortedBooks = sortedBooks,
                         sectionStarts = sectionStarts,
@@ -337,19 +359,6 @@ fun LibraryScreen(
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
-            }
-        } else {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                LibraryContent(
-                    sortedBooks = sortedBooks,
-                    sectionStarts = sectionStarts,
-                    gridMode = gridMode,
-                    searchMode = searchMode,
-                    searchQuery = searchQuery,
-                    onBookTap = onBookTap,
-                    onBookLongPress = { actionSheetBookId = it },
-                    modifier = Modifier.fillMaxSize(),
-                )
             }
         }
 
