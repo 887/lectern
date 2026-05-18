@@ -246,7 +246,7 @@
     <string name="settings_catalog_dynamic_color_label">Dynamic color</string>
     <string name="settings_catalog_dynamic_color_subtitle">Use Material You wallpaper colours.</string>
     <string name="settings_catalog_custom_base_seed_label">Custom base color</string>
-    <string name="settings_catalog_custom_chrome_tint_label">Custom player tint</string>
+    <string name="settings_catalog_custom_chrome_tint_label">Custom tint color</string>
     <string name="settings_catalog_base_theme_label">Base theme</string>
     <string name="settings_catalog_base_theme_subtitle">Foundation colors. Album art tint sits on top.</string>
     <string name="settings_catalog_base_theme_dynamic_option">Dynamic (Material You)</string>

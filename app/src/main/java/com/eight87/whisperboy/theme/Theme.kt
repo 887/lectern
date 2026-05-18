@@ -131,20 +131,21 @@ fun WhisperboyTheme(
     ?: if (tintByAlbumArt) albumPalette.surfaceTint else null
 
   // Blend the nine surface slots tonearmboy blends (Theme.kt:50-120).
-  // Bias 0.12 = a *gentle* shift — chrome remains chrome, "tinted by
-  // the cover" not "becomes the cover". Identical surface ladder
-  // tonearmboy uses; readable across light/dark + Material You + the
-  // custom-base-seed scheme above.
+  // **Fraction 0.4 matches tonearmboy** — the prior 0.08-0.18 ladder
+  // was too subtle to actually read on the user's device (custom tint
+  // appeared to do nothing). 0.4 means "chrome is meaningfully tinted
+  // toward the seed colour", visible at AMOLED dark with non-saturated
+  // picks. Same surface ladder + same fraction tonearmboy validated.
   val colorScheme = if (effectiveTint == null) baseScheme else baseScheme.copy(
-    surface = blendSurface(baseScheme.surface, effectiveTint, 0.12f),
-    surfaceVariant = blendSurface(baseScheme.surfaceVariant, effectiveTint, 0.12f),
-    background = blendSurface(baseScheme.background, effectiveTint, 0.10f),
-    surfaceContainerLowest = blendSurface(baseScheme.surfaceContainerLowest, effectiveTint, 0.08f),
-    surfaceContainerLow = blendSurface(baseScheme.surfaceContainerLow, effectiveTint, 0.10f),
-    surfaceContainer = blendSurface(baseScheme.surfaceContainer, effectiveTint, 0.12f),
-    surfaceContainerHigh = blendSurface(baseScheme.surfaceContainerHigh, effectiveTint, 0.14f),
-    surfaceContainerHighest = blendSurface(baseScheme.surfaceContainerHighest, effectiveTint, 0.16f),
-    secondaryContainer = blendSurface(baseScheme.secondaryContainer, effectiveTint, 0.18f),
+    surface = blendSurface(baseScheme.surface, effectiveTint, 0.4f),
+    surfaceVariant = blendSurface(baseScheme.surfaceVariant, effectiveTint, 0.4f),
+    background = blendSurface(baseScheme.background, effectiveTint, 0.4f),
+    surfaceContainerLowest = blendSurface(baseScheme.surfaceContainerLowest, effectiveTint, 0.4f),
+    surfaceContainerLow = blendSurface(baseScheme.surfaceContainerLow, effectiveTint, 0.4f),
+    surfaceContainer = blendSurface(baseScheme.surfaceContainer, effectiveTint, 0.4f),
+    surfaceContainerHigh = blendSurface(baseScheme.surfaceContainerHigh, effectiveTint, 0.4f),
+    surfaceContainerHighest = blendSurface(baseScheme.surfaceContainerHighest, effectiveTint, 0.4f),
+    secondaryContainer = blendSurface(baseScheme.secondaryContainer, effectiveTint, 0.4f),
   )
 
   CompositionLocalProvider(
