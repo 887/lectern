@@ -543,13 +543,20 @@ private fun PlayerLoaded(
     val fallbackListState = rememberLazyListState()
     val lazyState = chapterListState ?: fallbackListState
     val currentChapterIndex = state.currentChapter?.chapterIndex ?: -1
-    // Header items are emitted as item {} blocks at indices 0..3. Chapter rows start at
-    // index 4. Scrolling to the current chapter therefore offsets by the header count so the
-    // active row lands at the top of the viewport, not under the header.
+    // Header items emit at indices 0..3; chapter rows start at index 4. We scroll to the
+    // current chapter exactly ONCE per screen mount — when chapters first load — so the user
+    // entering the player on chapter 47 lands on chapter 47. After that the user's scroll
+    // position is theirs; tapping a chapter (playChapter) MUST NOT yank the viewport, and
+    // natural chapter advancement during long listening also leaves scroll alone.
     val headerItemCount = 4
-    LaunchedEffect(chapters.size, currentChapterIndex) {
-        if (chapters.isNotEmpty() && currentChapterIndex in chapters.indices) {
+    var hasScrolledToInitialChapter by remember(state.book.bookId) { mutableStateOf(false) }
+    LaunchedEffect(chapters.size) {
+        if (!hasScrolledToInitialChapter &&
+            chapters.isNotEmpty() &&
+            currentChapterIndex in chapters.indices
+        ) {
             lazyState.scrollToItem((currentChapterIndex + headerItemCount).coerceAtLeast(0))
+            hasScrolledToInitialChapter = true
         }
     }
     LazyColumn(
