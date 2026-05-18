@@ -77,7 +77,7 @@ class ChapterQueueTest {
                 currentChapterIndex = 1,
                 chapterSource = FakeChapterSource(flow),
                 listState = null,
-                onChapterTap = {},
+                onChapterTap = { _, _ -> },
             )
         }
         composeRule.onNodeWithText("Prologue").assertExists()
@@ -94,7 +94,7 @@ class ChapterQueueTest {
                 currentChapterIndex = 1,
                 chapterSource = FakeChapterSource(flow),
                 listState = null,
-                onChapterTap = {},
+                onChapterTap = { _, _ -> },
             )
         }
         composeRule.waitForIdle()
@@ -107,19 +107,19 @@ class ChapterQueueTest {
     }
 
     @Test
-    fun `tap on a row fires onChapterTap with the index of that chapter`() {
+    fun `tap on a row fires onChapterTap with the index and position of that chapter`() {
         val flow = MutableStateFlow(chapters)
-        val taps = mutableListOf<Int>()
+        val taps = mutableListOf<Pair<Int, Long>>()
         composeRule.setContent {
             ChapterQueue(
                 bookId = "b1",
                 currentChapterIndex = 0,
                 chapterSource = FakeChapterSource(flow),
                 listState = null,
-                onChapterTap = { taps += it },
+                onChapterTap = { idx, pos -> taps += idx to pos },
             )
         }
         composeRule.onNodeWithText("Chapter Two").performClick()
-        assertEquals(listOf(2), taps)
+        assertEquals(listOf(2 to 420_000L), taps)
     }
 }

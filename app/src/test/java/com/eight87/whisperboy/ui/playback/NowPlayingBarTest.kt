@@ -89,7 +89,7 @@ class NowPlayingBarTest {
         override suspend fun prevChapter() {
             prevs++
         }
-        override suspend fun playChapter(chapterIndex: Int) = Unit
+        override suspend fun playChapter(chapterIndex: Int, positionInBookMs: Long) = Unit
         override suspend fun setSpeed(speed: Float) = Unit
         override suspend fun setSkipSilence(enabled: Boolean) = Unit
         override suspend fun setGain(gainDb: Float) = Unit

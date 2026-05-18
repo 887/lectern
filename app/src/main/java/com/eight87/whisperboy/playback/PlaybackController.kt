@@ -65,12 +65,14 @@ interface TransportCommands {
     suspend fun nextChapter()
     suspend fun prevChapter()
     /**
-     * Jump directly to chapter [chapterIndex] (zero-based), starting at the chapter head.
-     * Used by the inline chapter queue tap so seeking is index-driven, not absolute-time
-     * driven — `currentMediaItemIndex` updates cleanly, [Player.Listener.onMediaItemTransition]
-     * fires, and the top-bar / scrubber projection refreshes immediately.
+     * Jump directly to a chapter, starting at the chapter head.
+     *
+     * MultiFile books (one MediaItem per chapter): dispatches as `c.seekTo(chapterIndex, 0)`.
+     * SingleFile books (one MediaItem for the whole file): dispatches as
+     * `c.seekTo(0, positionInBookMs)`. The caller passes BOTH so [PlaybackController]
+     * doesn't have to re-detect which mode it's in.
      */
-    suspend fun playChapter(chapterIndex: Int)
+    suspend fun playChapter(chapterIndex: Int, positionInBookMs: Long)
     suspend fun setSpeed(speed: Float)
     suspend fun setSkipSilence(enabled: Boolean)
     suspend fun setGain(gainDb: Float)
@@ -450,7 +452,17 @@ internal class PlaybackController(
             if (book == null) {
                 PlaybackUiState.BookNotFound
             } else {
-                val currentChapter = chapterAt(chapters, snap.currentItemIndex)
+                // SingleFile dispatch (matches startPlayback): when all chapters share one
+                // fileUri, `c.currentPosition` is book-absolute and `currentMediaItemIndex`
+                // is always 0. Derive the current chapter from absolute position instead.
+                // MultiFile: trust `currentItemIndex` (one mediaItem per chapter file).
+                val singleFileFirstUri = chapters.firstOrNull()?.fileUri
+                val isSingleFile = singleFileFirstUri != null && chapters.all { it.fileUri == singleFileFirstUri }
+                val currentChapter = if (isSingleFile) {
+                    chapterAtPosition(chapters, position)
+                } else {
+                    chapterAt(chapters, snap.currentItemIndex)
+                }
                 PlaybackUiState.Loaded(
                     book = book,
                     currentChapter = currentChapter,
@@ -467,6 +479,20 @@ internal class PlaybackController(
     private fun chapterAt(chapters: List<ChapterEntity>, index: Int): ChapterEntity? {
         if (chapters.isEmpty()) return null
         return chapters.getOrNull(index.coerceIn(0, chapters.lastIndex))
+    }
+
+    /**
+     * SingleFile chapter detection: find the chapter whose `[positionInBookMs, nextStart)`
+     * range contains [positionInBookMs]. Falls back to the last chapter if position is past
+     * the final start.
+     */
+    private fun chapterAtPosition(chapters: List<ChapterEntity>, positionInBookMs: Long): ChapterEntity? {
+        if (chapters.isEmpty()) return null
+        // chapters are ORDER BY chapterIndex → ascending positionInBookMs.
+        for (i in chapters.indices.reversed()) {
+            if (chapters[i].positionInBookMs <= positionInBookMs) return chapters[i]
+        }
+        return chapters.first()
     }
 
     // ---------------------------------------------------------------- ticker
@@ -542,18 +568,21 @@ internal class PlaybackController(
         positionMs.value = positionInBookMs
     }
 
-    override suspend fun playChapter(chapterIndex: Int) = onMain { c ->
+    override suspend fun playChapter(chapterIndex: Int, positionInBookMs: Long) = onMain { c ->
         val count = c.mediaItemCount
         if (count <= 0) return@onMain
-        val safe = chapterIndex.coerceIn(0, count - 1)
-        c.seekTo(safe, 0L)
+        if (count == 1) {
+            // SingleFile: one MediaItem; seek absolute. Position drives chapter detection.
+            c.seekTo(0, positionInBookMs.coerceAtLeast(0L))
+            positionMs.value = positionInBookMs
+        } else {
+            // MultiFile: one MediaItem per chapter; seek by index.
+            val safe = chapterIndex.coerceIn(0, count - 1)
+            c.seekTo(safe, 0L)
+            positionMs.value = 0L
+            playerSnapshot.update { it.copy(currentItemIndex = safe, currentMediaId = c.currentMediaItem?.mediaId) }
+        }
         if (!c.isPlaying) c.play()
-        // Optimistic projection update — keeps the top-bar / scrubber snappy even
-        // before onMediaItemTransition fires. The listener will reconcile on the
-        // next tick if Media3 picked a different index (shouldn't happen for a
-        // direct index seek, but cheap to be safe).
-        positionMs.value = 0L
-        playerSnapshot.update { it.copy(currentItemIndex = safe, currentMediaId = c.currentMediaItem?.mediaId) }
     }
 
     override suspend fun rewind() = onMain { c ->
@@ -661,49 +690,60 @@ internal class PlaybackController(
         startIndex: Int,
     ) = onMain { c ->
         targetedBookId.value = book.bookId
-        // SingleFile detection: if every chapter shares the same `fileUri`, the book is a
-        // single audio file with embedded chapter markers (Phase I.8). Without clipping,
-        // each MediaItem would replay the WHOLE file from 0 — tap chapter 5 → file starts
-        // at 0, plays for hours. Fix: apply a `ClippingConfiguration` per-item so each
-        // chapter MediaItem is bounded to its `[positionInBookMs, +durationMs)` slice.
-        // Multi-file books (different fileUri per chapter) bypass the clip — each item
-        // is already a self-contained file.
+        // SingleFile vs MultiFile dispatch:
+        //
+        // SingleFile (all chapters share one fileUri, e.g. an .m4b with embedded chapter marks):
+        // build ONE MediaItem for the whole file. `c.currentPosition` is then book-absolute,
+        // `c.mediaItemCount = 1`, and chapter navigation is position-seek-within-the-item.
+        // Chapter detection happens UI-side from absolute position vs `chapter.positionInBookMs`.
+        // This mirrors Voice's approach and avoids the ClippingMediaSource quirks (no
+        // auto-advance, clip-relative positions confusing the scrubber).
+        //
+        // MultiFile (one fileUri per chapter, the typical folder-of-MP3s case): one MediaItem
+        // per chapter file. `c.currentPosition` is within-file; `c.mediaItemCount = N`;
+        // chapter navigation is `seekTo(chapterIndex, 0)`.
         val firstUri = chapters.firstOrNull()?.fileUri
         val isSingleFile = firstUri != null && chapters.all { it.fileUri == firstUri }
-        val items = chapters.map { ch ->
-            val uri = ch.fileUri ?: book.relativePath
-            val builder = MediaItem.Builder()
-                .setMediaId(ch.chapterId)
-                .setUri(uri)
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setTitle(ch.title ?: book.title)
-                        .setArtist(book.author)
-                        .setAlbumTitle(book.title)
-                        .setDurationMs(ch.durationMs)
-                        .build(),
-                )
-            if (isSingleFile && ch.durationMs > 0L) {
-                builder.setClippingConfiguration(
-                    androidx.media3.common.MediaItem.ClippingConfiguration.Builder()
-                        .setStartPositionMs(ch.positionInBookMs)
-                        .setEndPositionMs(ch.positionInBookMs + ch.durationMs)
-                        .build()
-                )
-            } else if (isSingleFile) {
-                builder.setClippingConfiguration(
-                    androidx.media3.common.MediaItem.ClippingConfiguration.Builder()
-                        .setStartPositionMs(ch.positionInBookMs)
-                        .build()
-                )
+        val items = if (isSingleFile) {
+            listOf(
+                MediaItem.Builder()
+                    .setMediaId(book.bookId)
+                    .setUri(firstUri)
+                    .setMediaMetadata(
+                        MediaMetadata.Builder()
+                            .setTitle(book.title)
+                            .setArtist(book.author)
+                            .setAlbumTitle(book.title)
+                            .setDurationMs(book.durationMs)
+                            .build(),
+                    )
+                    .build()
+            )
+        } else {
+            chapters.map { ch ->
+                val uri = ch.fileUri ?: book.relativePath
+                MediaItem.Builder()
+                    .setMediaId(ch.chapterId)
+                    .setUri(uri)
+                    .setMediaMetadata(
+                        MediaMetadata.Builder()
+                            .setTitle(ch.title ?: book.title)
+                            .setArtist(book.author)
+                            .setAlbumTitle(book.title)
+                            .setDurationMs(ch.durationMs)
+                            .build(),
+                    )
+                    .build()
             }
-            builder.build()
         }
         if (items.isEmpty()) {
-            // Degenerate: no chapters. Fall back to the book's primary path so Phase B's smoke
-            // codec coverage still plays *something*. Real handling depends on Phase D's
-            // single-file scan producing at least a placeholder chapter row.
             c.setMediaItems(emptyList())
+        } else if (isSingleFile) {
+            // Resume position: convert (startIndex, startMs) → book-absolute for the single
+            // media item. startMs in single-file mode came in as "within saved chapter" so we
+            // add the chapter's offset to get absolute file position.
+            val absolute = (chapters.getOrNull(startIndex)?.positionInBookMs ?: 0L) + startMs
+            c.setMediaItems(items, 0, absolute.coerceAtLeast(0L))
         } else {
             c.setMediaItems(items, startIndex.coerceIn(0, items.lastIndex), startMs.coerceAtLeast(0L))
         }
