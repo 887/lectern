@@ -49,6 +49,7 @@ class AuthorDetailScreenTest {
         override fun observeBook(id: String): Flow<BookEntity?> = emptyFlow()
         override fun observeBooksByAuthor(authorName: String): Flow<List<BookEntity>> = flow
         override suspend fun search(query: String): List<BookEntity> = emptyList()
+        override suspend fun allBookIds(): Set<String> = emptySet()
         override suspend fun markCompleted(bookId: String) = Unit
         override suspend fun markNotStarted(bookId: String) = Unit
         override suspend fun forgetBook(bookId: String) = Unit

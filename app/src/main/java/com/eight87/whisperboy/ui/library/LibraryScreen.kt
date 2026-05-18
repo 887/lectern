@@ -161,33 +161,24 @@ fun LibraryScreen(
     var actionSheetBookId by remember { mutableStateOf<String?>(null) }
     var forgetConfirmBookId by remember { mutableStateOf<String?>(null) }
 
-    // Issue-3 — book-count snapshot at the moment the rescan kicked off, so the
-    // Idle-transition can compute the new-book delta and fire the snackbar.
+    // Issue-3 — "Found N new books" snackbar is now driven by the data layer's one-shot
+    // `scanSummaries` SharedFlow, NOT a Compose-side baseline. The prior preScanBookCount
+    // captured `books.size = 0` if the Flow hadn't emitted its first value yet (which is
+    // the case for scans that fire at app launch), causing the snackbar to report the
+    // full library as "new" every time. The coordinator now snapshots existing book IDs
+    // synchronously before touching Room and emits `(seenBookIds - existingIds).size`
+    // on completion — race-free.
     val running = rescanState as? RescanState.Running
-    var preScanBookCount by remember { mutableStateOf<Int?>(null) }
     val context = LocalContext.current
-    LaunchedEffect(rescanState) {
-        when (val s = rescanState) {
-            is RescanState.Running -> {
-                if (preScanBookCount == null) preScanBookCount = books.size
-            }
-            is RescanState.Idle -> {
-                val baseline = preScanBookCount
-                if (baseline != null) {
-                    val delta = books.size - baseline
-                    if (delta > 0) {
-                        snackbarHostState.showSnackbar(
-                            message = context.getString(
-                                R.string.library_scan_progress_complete_format,
-                                delta,
-                            ),
-                        )
-                    }
-                }
-                preScanBookCount = null
-            }
-            is RescanState.Failed -> {
-                preScanBookCount = null
+    LaunchedEffect(libraryRescanCoordinator) {
+        libraryRescanCoordinator.scanSummaries.collect { summary ->
+            if (summary.newBooks > 0) {
+                snackbarHostState.showSnackbar(
+                    message = context.getString(
+                        R.string.library_scan_progress_complete_format,
+                        summary.newBooks,
+                    ),
+                )
             }
         }
     }

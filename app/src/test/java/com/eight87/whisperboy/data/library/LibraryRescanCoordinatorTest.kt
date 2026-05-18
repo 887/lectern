@@ -416,6 +416,7 @@ private class FakeBookSource : BookSource {
     override fun observeBooksByAuthor(authorName: String) =
         MutableStateFlow<List<BookEntity>>(booksState.value.filter { it.author.equals(authorName, ignoreCase = true) })
     override suspend fun search(query: String): List<BookEntity> = emptyList()
+    override suspend fun allBookIds(): Set<String> = booksState.value.map { it.bookId }.toSet()
     override suspend fun markCompleted(bookId: String) = Unit
     override suspend fun markNotStarted(bookId: String) = Unit
     override suspend fun forgetBook(bookId: String) = Unit

@@ -29,6 +29,14 @@ interface BookSource {
     suspend fun search(query: String): List<BookEntity>
 
     /**
+     * Snapshot of all known book IDs (active or not). The rescan coordinator uses this at
+     * scan start to capture the existing-book baseline so the "Found N new books" snackbar
+     * counts the real delta (`seenBookIds - existingIds`), not a race-prone Compose-side
+     * `books.size` baseline that captures 0 when the Flow hasn't emitted yet.
+     */
+    suspend fun allBookIds(): Set<String>
+
+    /**
      * Phase E.5 — book actions. Mark / unmark completion (sets / clears `completedAt`),
      * forget a book entirely (deletes the row + cascading bookmarks/chapters via FK).
      *

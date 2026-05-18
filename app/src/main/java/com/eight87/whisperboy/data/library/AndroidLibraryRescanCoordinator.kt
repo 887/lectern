@@ -77,6 +77,12 @@ internal class AndroidLibraryRescanCoordinator(
     private val _health = MutableStateFlow(LibraryHealth())
     override val health: StateFlow<LibraryHealth> = _health.asStateFlow()
 
+    private val _scanSummaries = kotlinx.coroutines.flow.MutableSharedFlow<ScanSummary>(
+        replay = 0,
+        extraBufferCapacity = 4,
+    )
+    override val scanSummaries: kotlinx.coroutines.flow.SharedFlow<ScanSummary> = _scanSummaries
+
     /** Channel payload: `true` = force full walk, bypassing the fingerprint short-circuit. */
     private val rescanChannel: Channel<Boolean> = Channel(capacity = Channel.CONFLATED)
     private var lastForegroundRescan: Long = 0L
@@ -115,6 +121,10 @@ internal class AndroidLibraryRescanCoordinator(
 
     private suspend fun runScan(force: Boolean) {
         _state.value = RescanState.Running()
+        // Snapshot existing book IDs BEFORE the scan touches Room. Race-free baseline for the
+        // "Found N new books" summary — comparing to a Compose-side `books.size` baseline was
+        // off-by-the-full-library when the Flow hadn't emitted its first value yet.
+        val existingIds: Set<String> = runCatching { bookSource.allBookIds() }.getOrDefault(emptySet())
         try {
             val roots = persistedUriPermissionStore.observeRoots().first()
 
@@ -303,6 +313,10 @@ internal class AndroidLibraryRescanCoordinator(
             Log.i(SMOKE_TAG, "SCAN_COMPLETE roots=${rootsToWalk.size}/${roots.size} books=$discoveryBooksFound chapters=$discoveryChaptersFound force=$force")
 
             gcOrphanCovers()
+            // Emit scan summary BEFORE flipping to Idle so the UI's snackbar
+            // subscriber sees the new-books count derived from the pre-scan baseline.
+            val newBooks = (seenBookIds - existingIds).size
+            _scanSummaries.tryEmit(ScanSummary(newBooks = newBooks))
             _state.value = RescanState.Idle
         } catch (t: Throwable) {
             Log.e(SMOKE_TAG, "SCAN_FAILED ${t.javaClass.simpleName}: ${t.message}", t)

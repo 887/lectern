@@ -40,12 +40,23 @@ interface LibraryRescanCoordinator {
     val health: StateFlow<LibraryHealth>
 
     /**
+     * One-shot stream of scan-completion summaries — fires once per successful scan with the
+     * count of NEW books observed (`seenBookIds - existingIds` from the snapshot taken at
+     * scan start). Drives the "Found N new books" snackbar from the data layer instead of a
+     * race-prone Compose-side baseline.
+     */
+    val scanSummaries: kotlinx.coroutines.flow.SharedFlow<ScanSummary>
+
+    /**
      * Trigger a rescan. Conflated — calling repeatedly while a scan is running queues at most
      * one follow-up. Pass `force = true` to bypass the per-root fingerprint short-circuit
      * (Phase P.8).
      */
     fun requestRescan(force: Boolean = false)
 }
+
+/** Summary of a completed scan. [newBooks] = book IDs seen in this scan that weren't in the DB before. */
+data class ScanSummary(val newBooks: Int)
 
 /**
  * Lifecycle of a single rescan pass. Failures surface their cause so the UI can render

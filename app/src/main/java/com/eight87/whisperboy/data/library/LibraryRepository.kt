@@ -36,6 +36,8 @@ internal class LibraryRepository(
 
     override suspend fun search(query: String): List<BookEntity> = bookDao.search(query)
 
+    override suspend fun allBookIds(): Set<String> = bookDao.allBookIds().toSet()
+
     override suspend fun markCompleted(bookId: String) {
         bookDao.setCompletedAt(bookId, System.currentTimeMillis())
     }

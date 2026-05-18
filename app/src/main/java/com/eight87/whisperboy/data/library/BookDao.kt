@@ -31,6 +31,15 @@ interface BookDao {
     @Query("SELECT * FROM books WHERE bookId = :id LIMIT 1")
     suspend fun findById(id: String): BookEntity?
 
+    /**
+     * Snapshot of all known book IDs (active or not). Used by the rescan coordinator
+     * to compute the genuine "new books" delta after a scan — comparing the set of
+     * book IDs seen in this scan against the set that existed before. Race-free
+     * because it's a synchronous one-shot DAO read, not a Compose-state baseline.
+     */
+    @Query("SELECT bookId FROM books")
+    suspend fun allBookIds(): List<String>
+
     @Query(
         """
         SELECT * FROM books
